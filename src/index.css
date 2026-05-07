@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Mono:ital,wght@0,400;0,700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-base: var(--bg-primary);
+  --color-surface: var(--bg-secondary);
+  --color-border: var(--border-primary);
+  --color-text-main: var(--text-primary);
+  --color-text-muted: var(--text-secondary);
+
+  --color-action-capture: #00CC55;
+  --color-action-bleed: #FF4D4D;
+  --color-action-target: #F5C518;
+
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "Space Mono", "JetBrains Mono", monospace;
+
+  --shadow-brutal: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-brutal-sm: 3px 3px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-brutal-green: 6px 6px 0px 0px #00CC55;
+  --shadow-brutal-target: 6px 6px 0px 0px #F5C518;
+}
+
+:root {
+  --bg-primary: #FDFCF8;    /* Warm Paper */
+  --bg-secondary: #FFFFFF;
+  --border-primary: #000000;
+  --text-primary: #000000;
+  --text-secondary: #555555;
+  --shadow-color: rgba(0, 0, 0, 1);
+}
+
+.dark {
+  --bg-primary: #0C0C0C;   /* Deep Ink */
+  --bg-secondary: #181818;
+  --border-primary: #2A2A2A;
+  --text-primary: #F5F5F5;
+  --text-secondary: #999999;
+  --shadow-color: rgba(0, 255, 102, 0.2);
+}
+
+@layer base {
+  body {
+    @apply bg-base text-text-main font-sans antialiased transition-colors duration-300;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3 {
+    @apply font-black tracking-tight uppercase italic;
+  }
+}
+
+@layer utilities {
+  .btn-brutal {
+    @apply border-4 border-current bg-surface px-6 py-3 font-black uppercase tracking-widest transition-all 
+           hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_currentColor] 
+           active:translate-x-0 active:translate-y-0 active:shadow-none;
+  }
+  
+  .card-brutal {
+    @apply border-4 border-current bg-surface p-6 shadow-[6px_6px_0px_0px_currentColor];
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.pixel-grid {
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
