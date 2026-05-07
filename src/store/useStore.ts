@@ -217,6 +217,7 @@ export const useStore = create<StoreState>()(
         set((state: any) => {
           const nextState = {
             ...state,
+            liquidAssets: state.liquidAssets - amount - penalty,
             primaryVaultBalance: state.primaryVaultBalance + penalty,
             transactions: [newTransaction, ...state.transactions]
           };
@@ -240,6 +241,7 @@ export const useStore = create<StoreState>()(
         set((state: any) => {
           const nextState = {
             ...state,
+            liquidAssets: state.liquidAssets - amount,
             transactions: [newTransaction, ...state.transactions]
           };
           return {
@@ -252,6 +254,7 @@ export const useStore = create<StoreState>()(
         set((state: any) => {
           const nextState = {
             ...state,
+            liquidAssets: state.liquidAssets - split.personalDeduction - split.personalFlipCaptured,
             primaryVaultBalance: state.primaryVaultBalance + split.personalFlipCaptured,
             splitHistory: [split, ...state.splitHistory],
             // Split also adds to transactions to be seen by math.ts

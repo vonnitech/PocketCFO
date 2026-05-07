@@ -34,10 +34,26 @@ export default function Vaults() {
   };
 
   const handleInject = (id: string, amount: number) => {
-    updateState(prev => ({
-      ...prev,
-      vaults: prev.vaults.map(v => v.id === id ? { ...v, current: v.current + amount } : v)
-    }));
+    const targetVault = vaults.find(v => v.id === id);
+    updateState((prev: any) => {
+      const newTx = {
+        id: 'vtx_' + Date.now().toString(),
+        merchant: targetVault ? `VAULT: ${targetVault.name}` : 'VAULT_DEPOSIT',
+        amount: amount,
+        category: 'SAVINGS',
+        date: new Date().toISOString(),
+        isFlip: false,
+        flipAmount: 0
+      };
+
+      return {
+        ...prev,
+        liquidAssets: prev.liquidAssets - amount,
+        primaryVaultBalance: prev.primaryVaultBalance + amount,
+        vaults: prev.vaults.map((v: any) => v.id === id ? { ...v, current: v.current + amount } : v),
+        transactions: [newTx, ...prev.transactions]
+      };
+    });
   };
 
   const updateTarget = (id: string, newTarget: number) => {

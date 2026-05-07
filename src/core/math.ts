@@ -15,6 +15,7 @@ export const calculateRemainingCashRunway = (state: AppState): number => {
   const currentYear = now.getFullYear();
   
   const spentThisMonth = state.transactions
+    .filter(tx => tx.category !== 'SAVINGS')
     .filter(tx => {
       const txDate = new Date(tx.date);
       return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
@@ -47,6 +48,7 @@ export const calculateTrueSafeSpend = (state: AppState): number => {
   
   // 1. Calculate what was spent this month BEFORE today
   const spentBeforeToday = state.transactions
+    .filter(tx => tx.category !== 'SAVINGS')
     .filter(tx => {
       const txDate = new Date(tx.date);
       return txDate.getMonth() === currentMonth && 
@@ -77,6 +79,7 @@ export const calculateTrueSafeSpend = (state: AppState): number => {
   
   // 6. What was spent TODAY
   const spentToday = state.transactions
+    .filter(tx => tx.category !== 'SAVINGS')
     .filter(tx => {
       const txDate = new Date(tx.date);
       return txDate.getMonth() === currentMonth && 
@@ -119,11 +122,13 @@ export const calculateGremlinDeduction = (amount: number, penaltyRate: number): 
  * 3. The Nightly Recon
  */
 export const calculateDailyDrain = (transactionsToday: any[]): number => {
-  return transactionsToday.reduce((acc, tx) => {
-    // If it was a gremlin purchase, it would have been recorded differently or we check category
-    // For this context, we assume flipAmount already contains the penalty/tax
-    return acc + tx.amount + tx.flipAmount;
-  }, 0);
+  return transactionsToday
+    .filter(tx => tx.category !== 'SAVINGS')
+    .reduce((acc, tx) => {
+      // If it was a gremlin purchase, it would have been recorded differently or we check category
+      // For this context, we assume flipAmount already contains the penalty/tax
+      return acc + tx.amount + tx.flipAmount;
+    }, 0);
 };
 
 export const calculateDailySurplus = (safeSpendLimit: number, dailyDrain: number): number => {

@@ -1,37 +1,48 @@
 import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Activity, ShieldAlert, Crosshair } from 'lucide-react';
-
-// Mocking the forensic breakdown for the UI build
-const RAW_DRAIN_DATA = [
-  { name: 'UBEREATS', base: 0, gremlin: 345.50, isTotalGremlin: true },
-  { name: 'GROCERIES', base: 450.00, gremlin: 0, isTotalGremlin: false },
-  { name: 'TRANSPORT', base: 120.00, gremlin: 45.00, isTotalGremlin: false },
-  { name: 'AMAZON', base: 0, gremlin: 210.00, isTotalGremlin: true },
-];
+import { Activity, Search } from 'lucide-react';
+import { useStore } from '../store/useStore';
 
 export const Audit: React.FC = () => {
-  // Process the data for the chart and the ruthless stack ranking
+  const transactions = useStore(s => s.transactions);
+
   const { totalOutflow, chartData, rankedCategories } = useMemo(() => {
     let total = 0;
-    const formatted = RAW_DRAIN_DATA.map(item => {
+    
+    // Group by category, or merchant if category is generic
+    const grouped = transactions.reduce((acc, tx) => {
+      const key = tx.category === 'PENALTY' ? 'GREMLIN (TAX)' 
+                 : tx.category === 'SOCIAL' ? 'SPLITS'
+                 : tx.category === 'SAVINGS' ? 'VAULTS'
+                 : tx.merchant;
+                 
+      if (!acc[key]) acc[key] = { name: key, base: 0, gremlin: 0 };
+      
+      if (tx.category === 'PENALTY') {
+        acc[key].gremlin += tx.amount + tx.flipAmount;
+      } else {
+        acc[key].base += tx.amount;
+        acc[key].gremlin += tx.flipAmount;
+      }
+      return acc;
+    }, {} as Record<string, {name: string, base: number, gremlin: number}>);
+
+    const formatted = Object.values(grouped).map(item => {
       const itemTotal = item.base + item.gremlin;
       total += itemTotal;
       return {
         ...item,
         total: itemTotal,
-        // Chart uses high contrast red for gremlin spend, dark grey for base
         color: item.gremlin > item.base ? '#FF2A2A' : '#333333' 
       };
-    });
+    }).filter(i => i.total > 0);
 
     return {
       totalOutflow: total,
       chartData: formatted,
-      // Sort highest drain to lowest
       rankedCategories: formatted.sort((a, b) => b.total - a.total)
     };
-  }, []);
+  }, [transactions]);
 
   return (
     <div className="min-h-screen bg-base flex flex-col pt-8 px-6 pb-20">
@@ -45,7 +56,7 @@ export const Audit: React.FC = () => {
           <h1 className="font-mono text-5xl text-action-bleed">
             -${totalOutflow.toFixed(2)}
           </h1>
-          <p className="text-text-muted text-[10px] uppercase mt-2">Total Spending (30 Days)</p>
+          <p className="text-text-muted text-[10px] uppercase mt-2">Total Logging Outflow</p>
         </div>
       </div>
 

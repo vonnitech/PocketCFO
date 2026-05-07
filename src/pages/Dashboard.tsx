@@ -1,5 +1,7 @@
-import { motion } from 'motion/react';
-import { Wallet, Shield, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Wallet, Shield, TrendingUp, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 
@@ -8,8 +10,21 @@ export default function Dashboard() {
     safeSpendLimit, 
     liquidAssets, 
     primaryVaultBalance, 
-    ghostMode 
+    ghostMode,
+    logSpend
   } = useStore();
+
+  const [isLogMode, setIsLogMode] = useState(false);
+  const [spendAmount, setSpendAmount] = useState('');
+
+  const handleLogSpend = () => {
+    const amt = parseFloat(spendAmount);
+    if (!isNaN(amt) && amt > 0) {
+      logSpend(amt);
+      setIsLogMode(false);
+      setSpendAmount('');
+    }
+  };
 
   const format = (val: number) => formatCurrency(val, ghostMode);
 
@@ -96,14 +111,60 @@ export default function Dashboard() {
         </div>
         
         <div className="flex gap-4">
-          <button className="btn-brutal bg-action-target text-black text-xs">
+          <button onClick={() => setIsLogMode(true)} className="btn-brutal bg-action-target text-black text-xs">
             Log Spend
           </button>
-          <button className="btn-brutal bg-white text-black text-xs">
-            View Vaults
-          </button>
+          <Link to="/audit" className="btn-brutal bg-white text-black text-xs">
+            Audit
+          </Link>
+          <Link to="/vaults" className="btn-brutal bg-white text-black text-xs">
+            Vaults
+          </Link>
         </div>
       </footer>
+
+      {/* Log Spend Modal */}
+      <AnimatePresence>
+        {isLogMode && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ y: 50, scale: 0.95 }}
+              animate={{ y: 0, scale: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+              className="bg-base card-brutal w-full max-w-md"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-black italic tracking-tighter uppercase">Log Spend</h2>
+                <button onClick={() => setIsLogMode(false)} className="text-text-muted hover:text-text-main"><X /></button>
+              </div>
+              
+              <div className="relative mb-6">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span className="text-2xl font-black text-text-muted">$</span>
+                </div>
+                <input 
+                  type="number"
+                  className="w-full bg-surface border-4 border-black rounded-xl p-4 pl-12 text-3xl font-black outline-none focus:border-action-target transition-colors text-text-main"
+                  placeholder="0.00"
+                  value={spendAmount}
+                  onChange={e => setSpendAmount(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={() => setIsLogMode(false)} className="flex-1 btn-brutal bg-surface text-text-main">Cancel</button>
+                <button onClick={handleLogSpend} className="flex-1 btn-brutal bg-action-target text-black shadow-brutal-green hover:translate-y-1 hover:shadow-none transition-all">Submit</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
