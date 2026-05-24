@@ -36,7 +36,7 @@ export interface Debt {
   minPayment: number;
 }
 
-export interface Gremlin {
+export interface Impulse {
   id: string;
   name: string;
   taxRate: number; // 0 to 1 (e.g. 0.5 for 50%)
@@ -46,11 +46,11 @@ export interface ReconEntry {
   id: string;
   date: string;
   rawSpend: number;
-  gremlinSpend: number;
+  impulseSpend: number;
   taxAmount: number;
   surplus: number;
   action: 'roll' | 'stash';
-  gremlinId?: string;
+  impulseId?: string;
 }
 
 export interface AppState {
@@ -70,12 +70,12 @@ export interface AppState {
     level: number;
     experience: number;
     flipsExecuted: number;
-    leechesKilled: number;
+    subscriptionsCancelled: number;
     lifetimeCapture: number;
   };
   extraCashPool: number;
   dashboardWidgets: { id: string; visible: boolean }[];
-  gremlins: Gremlin[];
+  impulses: Impulse[];
   reconHistory: ReconEntry[];
   rolloverPool: number;
   themeColors?: {
@@ -109,7 +109,7 @@ export const INITIAL_STATE: AppState = {
     level: 1,
     experience: 0,
     flipsExecuted: 0,
-    leechesKilled: 0,
+    subscriptionsCancelled: 0,
     lifetimeCapture: 0,
   },
   extraCashPool: 0,
@@ -119,7 +119,7 @@ export const INITIAL_STATE: AppState = {
     { id: 'momentum', visible: true },
     { id: 'alert', visible: true },
   ],
-  gremlins: [],
+  impulses: [],
   reconHistory: [],
   rolloverPool: 0,
 };

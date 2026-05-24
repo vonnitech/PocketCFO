@@ -1,36 +1,32 @@
-import { AppState } from '../store/useStore';
+import { AppState, Transaction } from '../store/useStore';
 import { SplitBreakdown } from '../types/split';
 
+const formatLocalDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseStoredDate = (value: string): Date => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  return new Date(value);
+};
+
+export const toLocalDateKey = (value: Date | string): string => {
+  const date = typeof value === 'string' ? parseStoredDate(value) : value;
+  return Number.isNaN(date.getTime()) ? '' : formatLocalDateKey(date);
+};
+
 /**
- * 1. The Core Engine (Dynamic Recalibration)
+ * 1. The Core Engine (Horizon Math — Pay-Cycle Liquidity)
  */
 export const calculateTotalMonthlyDiscretionary = (state: AppState): number => {
   return state.monthlyTakeHome - state.fixedBills - state.monthlySavingsGoal;
-};
-
-export const calculateRemainingCashRunway = (state: AppState): number => {
-  const totalDiscretionary = calculateTotalMonthlyDiscretionary(state);
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  
-  const spentThisMonth = state.transactions
-    .filter(tx => tx.category !== 'SAVINGS')
-    .filter(tx => {
-      const txDate = new Date(tx.date);
-      return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
-    })
-    .reduce((acc, tx) => acc + tx.amount + tx.flipAmount, 0);
-
-  const stashedThisMonth = state.reconHistory
-    .filter(entry => {
-       const entryDate = new Date(entry.date);
-       return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
-    })
-    .filter(entry => entry.action === 'stash')
-    .reduce((acc, entry) => acc + entry.surplus, 0);
-
-  return totalDiscretionary - spentThisMonth - stashedThisMonth;
 };
 
 export const calculateRemainingDaysInMonth = (): number => {
@@ -39,62 +35,40 @@ export const calculateRemainingDaysInMonth = (): number => {
   return lastDay - now.getDate() + 1;
 };
 
-export const calculateTrueSafeSpend = (state: AppState): number => {
-  const totalDiscretionaryTotal = calculateTotalMonthlyDiscretionary(state);
+const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'INCOME']);
+
+export const calculateDaysUntilPayday = (nextPayday: string): number => {
+  if (!nextPayday) return 1;
+  const [year, month, day] = nextPayday.split('-').map(Number);
+  const payday = new Date(year, month - 1, day);
   const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const todayDate = now.getDate();
-  
-  // 1. Calculate what was spent this month BEFORE today
-  const spentBeforeToday = state.transactions
-    .filter(tx => tx.category !== 'SAVINGS')
-    .filter(tx => {
-      const txDate = new Date(tx.date);
-      return txDate.getMonth() === currentMonth && 
-             txDate.getFullYear() === currentYear &&
-             txDate.getDate() < todayDate;
-    })
-    .reduce((acc, tx) => acc + tx.amount + tx.flipAmount, 0);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffMs = payday.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(1, diffDays);
+};
 
-  // 2. Calculate what was stashed BEFORE today
-  const stashedBeforeToday = state.reconHistory
-    .filter(entry => {
-       const entryDate = new Date(entry.date);
-       return entryDate.getMonth() === currentMonth && 
-              entryDate.getFullYear() === currentYear &&
-              entryDate.getDate() < todayDate;
-    })
-    .filter(entry => entry.action === 'stash')
-    .reduce((acc, entry) => acc + entry.surplus, 0);
+export const calculateCurrentMonthDeposits = (transactions: Transaction[]): number => {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  return transactions
+    .filter(tx => tx.category === 'VAULT_DEPOSIT' && new Date(tx.date) >= startOfMonth)
+    .reduce((sum, tx) => sum + tx.amount, 0);
+};
 
-  // 3. Current Month Runway at START of today
-  const runwayAtStartOfToday = totalDiscretionaryTotal - spentBeforeToday - stashedBeforeToday;
-  
-  // 4. Days left including today
-  const daysLeft = calculateRemainingDaysInMonth();
-  
-  // 5. Daily budget for today (and following days if nothing else changes)
-  const baseBudgetForToday = Math.max(0, runwayAtStartOfToday / daysLeft);
-  
-  // 6. What was spent TODAY
-  const spentToday = state.transactions
-    .filter(tx => tx.category !== 'SAVINGS')
-    .filter(tx => {
-      const txDate = new Date(tx.date);
-      return txDate.getMonth() === currentMonth && 
-             txDate.getFullYear() === currentYear &&
-             txDate.getDate() === todayDate;
-    })
-    .reduce((acc, tx) => acc + tx.amount + tx.flipAmount, 0);
-    
-  // 7. Safe to spend today
-  const safeToday = baseBudgetForToday - spentToday;
+export const calculateRawSafeSpend = (state: AppState): number => {
+  if (!state.nextPayday) return 0;
+  const days = calculateDaysUntilPayday(state.nextPayday);
+  const deposited = calculateCurrentMonthDeposits(state.transactions);
+  const remainingSavingsGoal = Math.max(0, (state.monthlySavingsGoal || 0) - deposited);
+  return Math.max(0, (state.liquidAssets - (state.upcomingBills || 0) - remainingSavingsGoal) / days);
+};
 
-  // We still have rollover and extra cash
-  const finalResult = safeToday + (state.rolloverPool || 0) + (state.extraCashPool || 0);
-  
-  return Math.max(0, finalResult);
+export const calculateTrueSafeSpend = (state: AppState): number => {
+  const raw = calculateRawSafeSpend(state);
+  const cap = state.hardDailyCap ?? 0;
+  return cap > 0 ? Math.min(raw, cap) : raw;
 };
 
 /**
@@ -110,25 +84,38 @@ export const calculateTotalStandardDeduction = (amount: number): number => {
   return amount + calculateUniversalFlip(amount);
 };
 
-export const calculateGremlinPenalty = (amount: number, penaltyRate: number): number => {
+export const calculateImpulsePenalty = (amount: number, penaltyRate: number): number => {
   return amount * penaltyRate;
 };
 
-export const calculateGremlinDeduction = (amount: number, penaltyRate: number): number => {
-  return amount + calculateGremlinPenalty(amount, penaltyRate);
+export const calculateImpulseDeduction = (amount: number, penaltyRate: number): number => {
+  return amount + calculateImpulsePenalty(amount, penaltyRate);
 };
 
 /**
- * 3. The Nightly Recon
+ * 3. The Spend Challenge
  */
+export const SPEND_TIERS = [
+  { id: 'EASY',   label: '90% LIMIT', multiplier: 0.90, color: 'bg-action-capture', textColor: 'text-black',  accent: '#00CC55' },
+  { id: 'TIGHT',  label: '75% LIMIT', multiplier: 0.75, color: 'bg-[#facc15]',      textColor: 'text-black',  accent: '#facc15' },
+  { id: 'STRICT', label: '50% LIMIT', multiplier: 0.50, color: 'bg-[#c084fc]',      textColor: 'text-white',  accent: '#c084fc' },
+  { id: 'BARE',   label: '25% LIMIT', multiplier: 0.25, color: 'bg-action-bleed',   textColor: 'text-white',  accent: '#FF4D4D' },
+] as const;
+
+export type SpendTierId = typeof SPEND_TIERS[number]['id'];
+
+export const calculateTierLimit = (safeSpendLimit: number, multiplier: number): number =>
+  safeSpendLimit * multiplier;
+
+export const calculateDangerProgress = (dailySpend: number, tierLimit: number): number => {
+  if (tierLimit <= 0) return 0;
+  return Math.min(110, (dailySpend / tierLimit) * 100);
+};
+
 export const calculateDailyDrain = (transactionsToday: any[]): number => {
   return transactionsToday
-    .filter(tx => tx.category !== 'SAVINGS')
-    .reduce((acc, tx) => {
-      // If it was a gremlin purchase, it would have been recorded differently or we check category
-      // For this context, we assume flipAmount already contains the penalty/tax
-      return acc + tx.amount + tx.flipAmount;
-    }, 0);
+    .filter(tx => !DISCRETIONARY_CATEGORIES.has(tx.category))
+    .reduce((acc, tx) => acc + tx.amount + tx.flipAmount, 0);
 };
 
 export const calculateDailySurplus = (safeSpendLimit: number, dailyDrain: number): number => {
@@ -136,14 +123,14 @@ export const calculateDailySurplus = (safeSpendLimit: number, dailyDrain: number
 };
 
 /**
- * 4. The Leech List (Implemented via store actions, but logic here)
+ * 4. Active Subs (Implemented via store actions, but logic here)
  */
-export const calculateNewBaselineBills = (currentBills: number, leechCost: number): number => {
-  return currentBills - leechCost;
+export const calculateNewBaselineBills = (currentBills: number, subCost: number): number => {
+  return currentBills - subCost;
 };
 
-export const calculateNewWealthTarget = (currentGoal: number, leechCost: number): number => {
-  return currentGoal + leechCost;
+export const calculateNewWealthTarget = (currentGoal: number, subCost: number): number => {
+  return currentGoal + subCost;
 };
 
 /**
@@ -158,9 +145,15 @@ export const calculateSalaryDelta = (current: number, target: number): number =>
   return Math.max(0, target - current);
 };
 
-export const calculate10YearCompoundCapture = (grossDelta: number): number => {
-  // Gross Delta × 0.20 × 10
-  return grossDelta * UNIVERSAL_FLIP_RATE * 10;
+// FV = PMT × ((1 + r)^n − 1) / r
+// PMT = monthly contribution, r = monthly return (7% annual), n = 120 months
+export const calculate10YearCompoundCapture = (grossDelta: number, redirectRate = UNIVERSAL_FLIP_RATE): number => {
+  const annualContribution = grossDelta * redirectRate;
+  const pmt = annualContribution / 12;
+  const r = 0.07 / 12;
+  const n = 120;
+  if (pmt <= 0) return 0;
+  return pmt * ((Math.pow(1 + r, n) - 1) / r);
 };
 
 /**

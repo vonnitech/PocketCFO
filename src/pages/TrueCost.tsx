@@ -1,178 +1,143 @@
 import React, { useState, useMemo } from 'react';
-import { Numpad } from '../components/Numpad';
-import { Calculator, Flame, AlertOctagon } from 'lucide-react';
-
-type InputStep = 'PRICE' | 'APR' | 'TERM';
+import { Flame, AlertOctagon, RotateCcw } from 'lucide-react';
 
 export const TrueCost: React.FC = () => {
-  const [step, setStep] = useState<InputStep>('PRICE');
-  const [price, setPrice] = useState('0');
-  const [apr, setApr] = useState('0');
-  const [term, setTerm] = useState('0');
-  const [showResults, setShowResults] = useState(false);
+  const [price, setPrice] = useState('');
+  const [apr, setApr] = useState('');
+  const [term, setTerm] = useState('');
+
+  const sanitize = (val: string) => val.replace(/[^0-9.]/g, '');
+  const sanitizeInt = (val: string) => val.replace(/[^0-9]/g, '');
 
   const metrics = useMemo(() => {
-    const P = parseFloat(price) || 0;
-    const annualRate = parseFloat(apr) || 0;
-    const n = parseInt(term) || 0;
-
-    if (P === 0 || n === 0) return { monthly: 0, total: 0, interest: 0 };
-
-    if (annualRate === 0) {
-      return {
-        monthly: P / n,
-        total: P,
-        interest: 0
-      };
-    }
-
+    const P = Math.max(0, parseFloat(price) || 0);
+    const annualRate = Math.max(0, parseFloat(apr) || 0);
+    const n = Math.max(1, parseInt(term) || 0);
+    if (P === 0 || parseInt(term) < 1) return null;
+    if (annualRate === 0) return { monthly: P / n, total: P, interest: 0 };
     const r = (annualRate / 100) / 12;
-    const monthly = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    const discountFactor = Math.pow(1 + r, -n);
+    const monthly = (P * r) / (1 - discountFactor);
     const total = monthly * n;
-    const interest = total - P;
-
-    return {
-      monthly,
-      total,
-      interest
-    };
+    return { monthly, total, interest: total - P };
   }, [price, apr, term]);
 
-  const handleNext = () => {
-    if (step === 'PRICE') setStep('APR');
-    else if (step === 'APR') setStep('TERM');
-    else {
-      setShowResults(true);
-    }
-  };
+  const hasInput = parseFloat(price) > 0 || parseFloat(apr) > 0 || parseInt(term) > 0;
 
-  const reset = () => {
-    setPrice('0');
-    setApr('0');
-    setTerm('0');
-    setStep('PRICE');
-    setShowResults(false);
-  };
-
-  if (showResults) {
-    return (
-      <div className="min-h-screen bg-base text-text-main flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-sm border-4 border-action-bleed bg-surface p-8 relative overflow-hidden shadow-brutal">
-          <h2 className="font-mono text-action-bleed tracking-widest mb-8 flex items-center gap-2">
-            <AlertOctagon size={24} /> FINANCE REVEALED
-          </h2>
-
-          <div className="space-y-8 mb-12">
-            <div className="border-l-4 border-border pl-4">
-              <p className="text-text-muted uppercase text-xs mb-1">Sticker Price</p>
-              <p className="font-mono text-2xl text-text-main">${parseFloat(price).toLocaleString()}</p>
-            </div>
-
-            <div className="bg-action-bleed/10 p-6 border-2 border-action-bleed">
-              <p className="text-action-bleed uppercase text-sm font-black tracking-[0.2em] mb-2 flex items-center gap-2">
-                <Flame size={18} /> INTEREST BURNED
-              </p>
-              <p className="font-mono text-5xl text-action-bleed">${metrics.interest.toFixed(2)}</p>
-              <p className="text-text-muted text-[10px] uppercase mt-4 leading-tight">
-                This is pure wealth surrender. You are paying {((metrics.interest / parseFloat(price)) * 100).toFixed(1)}% extra for the privilege of debt.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-text-muted uppercase text-[10px] mb-1">Monthly Hit</p>
-                <p className="font-mono text-xl text-text-main">${metrics.monthly.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-text-muted uppercase text-[10px] mb-1">Total Drain</p>
-                <p className="font-mono text-xl text-text-main">${metrics.total.toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-
-          <button 
-            onClick={reset}
-            className="w-full btn-brutal bg-base border-border text-text-main py-4 text-sm"
-          >
-            DISMISS & RECALCULATE
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const inputBase = "w-full bg-input border-4 border-black rounded-2xl p-4 text-3xl font-black text-text-main outline-none focus:bg-surface transition-colors";
 
   return (
-    <div className="min-h-screen bg-base text-text-main flex flex-col pt-8">
-      {/* Header Readout */}
-      <div className="px-6 mb-8">
-        <p className="text-text-muted text-xs tracking-widest uppercase mb-1 flex items-center gap-2">
-          <Calculator size={14} /> True Cost Calculator
-        </p>
-        <h1 className="font-mono text-3xl text-text-main border-b-2 border-border pb-4 uppercase tracking-tighter">
-          {step === 'PRICE' && 'Enter Sticker Price'}
-          {step === 'APR' && 'Enter Interest Rate (APR)'}
-          {step === 'TERM' && 'Enter Loan Term (Months)'}
-        </h1>
-      </div>
-
-      {/* Progress Track */}
-      <div className="flex px-6 gap-2 mb-8">
-        <div className={`h-1 flex-1 transition-colors ${step === 'PRICE' ? 'bg-action-capture' : 'bg-border'}`} />
-        <div className={`h-1 flex-1 transition-colors ${step === 'APR' ? 'bg-action-capture' : 'bg-border'}`} />
-        <div className={`h-1 flex-1 transition-colors ${step === 'TERM' ? 'bg-action-capture' : 'bg-border'}`} />
-      </div>
-
-      {/* Live Display */}
-      <div className="px-6 mb-auto">
-        <div className="bg-surface border-2 border-border p-6 shadow-brutal">
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-text-muted uppercase text-[10px] mb-1">
-                {step === 'PRICE' && 'PRINCIPAL'}
-                {step === 'APR' && 'ANNUAL PERCENTAGE'}
-                {step === 'TERM' && 'DURATION MONTHS'}
-              </p>
-              <span className="text-5xl font-mono text-action-capture">
-                {step === 'PRICE' && `$${price}`}
-                {step === 'APR' && `${apr}%`}
-                {step === 'TERM' && `${term}m`}
-              </span>
-            </div>
-            {step !== 'PRICE' && (
-              <div className="text-right pb-1">
-                <p className="text-text-muted text-[10px] uppercase">Base Progress</p>
-                <p className="font-mono text-text-main">${parseFloat(price).toLocaleString()}</p>
-              </div>
-            )}
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Reality Check</h1>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">True cost of financing</p>
         </div>
-      </div>
-
-      {/* Control Engine */}
-      <div className="mt-8 pb-8 bg-surface border-t-2 border-border">
-        <Numpad 
-          value={step === 'PRICE' ? price : step === 'APR' ? apr : term} 
-          onChange={(val) => {
-            if (step === 'PRICE') setPrice(val);
-            else if (step === 'APR') setApr(val);
-            else setTerm(val);
-          }} 
-          onSubmit={handleNext}
-          submitLabel={step === 'TERM' ? "VIEW SUMMARY" : "CONTINUE"}
-        />
-        
-        {step !== 'PRICE' && (
-          <button 
-            onClick={() => {
-              if (step === 'APR') setStep('PRICE');
-              if (step === 'TERM') setStep('APR');
-            }}
-            className="w-full text-text-muted text-[10px] uppercase underline mt-2 text-center"
+        {hasInput && (
+          <button
+            type="button"
+            onClick={() => { setPrice(''); setApr(''); setTerm(''); }}
+            className="flex items-center gap-1.5 mt-2 text-[11px] font-bold uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
           >
-            Go Back
+            <RotateCcw size={11} strokeWidth={3} /> Reset
           </button>
         )}
       </div>
+
+      <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
+        {/* Sticker Price */}
+        <div>
+          <label className="label-xs block mb-2">Sticker Price</label>
+          <div className="relative">
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted pointer-events-none">$</span>
+            <input
+              inputMode="decimal"
+              placeholder="0"
+              min="0"
+              value={price}
+              onChange={e => setPrice(sanitize(e.target.value))}
+              onFocus={e => e.target.select()}
+              className={`${inputBase} pl-10 focus:border-action-capture`}
+            />
+          </div>
+        </div>
+
+        {/* APR + Term */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label-xs block mb-2">APR (%)</label>
+            <div className="relative">
+              <input
+                inputMode="decimal"
+                placeholder="0"
+                min="0"
+                max="100"
+                value={apr}
+                onChange={e => setApr(sanitize(e.target.value))}
+                onFocus={e => e.target.select()}
+                className={`${inputBase} pr-10 focus:border-action-bleed`}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-black text-text-muted pointer-events-none">%</span>
+            </div>
+          </div>
+          <div>
+            <label className="label-xs block mb-2">Term (months)</label>
+            <input
+              inputMode="numeric"
+              placeholder="0"
+              min="1"
+              value={term}
+              onChange={e => setTerm(sanitizeInt(e.target.value))}
+              onFocus={e => e.target.select()}
+              className={`${inputBase} focus:border-action-primary`}
+            />
+          </div>
+        </div>
+      </div>
+
+      {metrics ? (
+        <div className="space-y-4">
+          {/* Interest burned hero */}
+          {metrics.interest > 0 ? (
+            <div className="bg-action-bleed border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+              <p className="text-white/70 text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 mb-2">
+                <Flame size={11} strokeWidth={3} /> Interest burned
+              </p>
+              <p className="text-5xl md:text-6xl font-black italic text-white leading-none">
+                +${metrics.interest.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-3">
+                {((metrics.interest / parseFloat(price)) * 100).toFixed(1)}% on top · pure wealth surrender
+              </p>
+            </div>
+          ) : (
+            <div className="bg-action-capture border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+              <p className="text-black font-black uppercase tracking-widest text-sm">Zero interest · clean deal</p>
+            </div>
+          )}
+
+          {/* Monthly + Total */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+              <p className="label-xs mb-2">Monthly Hit</p>
+              <p className="text-2xl font-black italic text-text-main tabular-nums">
+                ${metrics.monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+              <p className="label-xs mb-2">Total Drain</p>
+              <p className="text-2xl font-black italic text-text-main tabular-nums">
+                ${metrics.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="border-4 border-dashed border-border rounded-3xl p-10 flex flex-col items-center gap-3">
+          <AlertOctagon size={28} className="text-text-muted opacity-30" strokeWidth={1.5} />
+          <p className="label-xs text-center">Enter price + term to see the real cost</p>
+        </div>
+      )}
     </div>
   );
 };

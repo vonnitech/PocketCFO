@@ -1,6 +1,16 @@
-import React, { useState, useMemo } from 'react';
-import { Target, Zap, TrendingDown, Clock, ShieldAlert } from 'lucide-react';
+﻿import React, { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
+import { Zap, TrendingDown, Clock, ShieldAlert } from 'lucide-react';
 import { useStore } from '../store/useStore';
+
+const DEBT_PALETTES = [
+  { borderClass: '[border-left-color:#E8174B]', bgClass: 'bg-[#E8174B]', color: '#E8174B' },
+  { borderClass: '[border-left-color:#F97316]', bgClass: 'bg-[#F97316]', color: '#F97316' },
+  { borderClass: '[border-left-color:#F5C518]', bgClass: 'bg-[#F5C518]', color: '#F5C518' },
+  { borderClass: '[border-left-color:#00C853]', bgClass: 'bg-[#00C853]', color: '#00C853' },
+  { borderClass: '[border-left-color:#c084fc]', bgClass: 'bg-[#c084fc]', color: '#c084fc' },
+  { borderClass: '[border-left-color:#38bdf8]', bgClass: 'bg-[#38bdf8]', color: '#38bdf8' },
+] as const;
 
 interface Debt {
   id: string;
@@ -9,8 +19,6 @@ interface Debt {
   rate: number;
   minPay: number;
 }
-
-// Removed DEFAULT_DEBTS since we use state
 
 interface SimulationResult {
   months: number;
@@ -34,7 +42,7 @@ export const DebtDestroyer: React.FC = () => {
   const simulate = (activeDebts: Debt[], strategy: 'snowball' | 'avalanche'): SimulationResult => {
     if (activeDebts.length === 0) return { months: 0, totalInterest: 0 };
     let currentDebts = activeDebts.map(d => ({ ...d, currentBalance: d.balance }));
-    
+
     if (strategy === 'snowball') {
       currentDebts.sort((a, b) => a.balance - b.balance);
     } else {
@@ -43,14 +51,9 @@ export const DebtDestroyer: React.FC = () => {
 
     let months = 0;
     let totalInterest = 0;
-    let totalPaid = 0;
 
-    // Safety limit to avoid infinite loops
     while (currentDebts.some(d => d.currentBalance > 0) && months < 600) {
       months++;
-      let extraThisMonth = extraAmmo;
-      
-      // 1. Apply interest and identify freed up min payments
       for (let debt of currentDebts) {
         if (debt.currentBalance > 0) {
           const interest = (debt.currentBalance * (debt.rate / 100)) / 12;
@@ -58,33 +61,17 @@ export const DebtDestroyer: React.FC = () => {
           debt.currentBalance += interest;
         }
       }
-
-      // 2. Apply minimum payments
       for (let debt of currentDebts) {
         if (debt.currentBalance > 0) {
           const payment = Math.min(debt.currentBalance, debt.minPay);
           debt.currentBalance -= payment;
-          totalPaid += payment;
-        } else {
-          // If debt was already 0 or paid off before this step, its min payment becomes extra ammo
-          // (Actually common "snowball" rule: freed up min payments are rolled into the next debt)
         }
       }
-
-      // 3. Roll over payments (the "snowball" effect)
-      // Freed payments from finished debts
-      const freedPayments = currentDebts
-        .filter(d => d.currentBalance <= 0)
-        .reduce((sum, d) => sum + d.minPay, 0);
-      
-      let totalSurplus = extraThisMonth + freedPayments;
-
-      // 4. Apply extra ammo to the "target" debt
+      const freedPayments = currentDebts.filter(d => d.currentBalance <= 0).reduce((sum, d) => sum + d.minPay, 0);
+      const totalSurplus = extraAmmo + freedPayments;
       const target = currentDebts.find(d => d.currentBalance > 0);
       if (target) {
-        const extraPayment = Math.min(target.currentBalance, totalSurplus);
-        target.currentBalance -= extraPayment;
-        totalPaid += extraPayment;
+        target.currentBalance -= Math.min(target.currentBalance, totalSurplus);
       }
     }
 
@@ -93,123 +80,178 @@ export const DebtDestroyer: React.FC = () => {
 
   const snowball = useMemo(() => simulate(debts, 'snowball'), [debts, extraAmmo]);
   const avalanche = useMemo(() => simulate(debts, 'avalanche'), [debts, extraAmmo]);
-  
+
   const interestSaved = snowball.totalInterest - avalanche.totalInterest;
   const timeDifference = snowball.months - avalanche.months;
 
+  const attackOrder = useMemo(() => {
+    return [...debts].sort((a, b) => b.rate - a.rate);
+  }, [debts]);
+
+  const maxBalance = Math.max(...attackOrder.map(d => d.balance), 1);
+
   return (
-    <div className="min-h-screen bg-base text-text-main flex flex-col pt-8 px-6 pb-20">
-      
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <p className="text-text-muted text-xs tracking-widest uppercase mb-1 flex items-center gap-2">
-          <Target size={14} /> Debt Destroyer
+      <div>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Debt Free</h1>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
+          Eradication strategy · avalanche vs snowball
         </p>
-        <div className="border-b-2 border-border pb-4">
-          <h1 className="font-mono text-4xl text-text-main uppercase tracking-tighter">
-            Eradication Strategy
-          </h1>
-        </div>
       </div>
 
-      {/* The Ammo Slider */}
-      <div className="mb-12 bg-surface border-2 border-border p-6 shadow-brutal">
+      {/* Extra Ammo Slider */}
+      <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#c084fc] border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase mb-4">
+          EXTRA MONTHLY AMMO
+        </div>
         <div className="flex justify-between items-center mb-4">
-          <label className="text-text-muted text-xs font-black tracking-widest uppercase">
-            Extra Monthly Ammo
-          </label>
-          <span className="font-mono text-3xl text-action-capture">${extraAmmo}</span>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+            Surplus capital applied after minimums
+          </p>
+          <span className="text-3xl font-black italic text-action-capture">${extraAmmo}</span>
         </div>
-        <input 
-          type="range" 
-          min="0" 
-          max="2000" 
-          step="50" 
+        <input
+          type="range"
+          title="Extra Monthly Ammo"
+          min="0"
+          max="2000"
+          step="50"
           value={extraAmmo}
-          onChange={(e) => setExtraAmmo(parseInt(e.target.value))}
-          className="w-full h-2 bg-border rounded-none appearance-none cursor-pointer accent-action-capture"
+          onChange={e => setExtraAmmo(parseInt(e.target.value))}
+          className="w-full h-3 rounded-full appearance-none cursor-pointer accent-action-capture bg-input"
         />
-        <p className="text-[10px] text-text-muted uppercase mt-4">
-          Surplus capital applied to target debt after entry-level minimums.
-        </p>
       </div>
 
-      {/* Comparison Engine */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        
-        {/* Snowball - Psychology */}
-        <div className="border-2 border-border bg-surface p-6 opacity-70">
-          <h2 className="font-mono text-text-main text-lg mb-4 flex items-center gap-2">
-            <TrendingDown size={18} /> Snowball Method
+      {/* Comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Snowball */}
+        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] opacity-70">
+          <div className="inline-flex items-center px-3 py-1 bg-input border-2 border-black rounded-full text-text-muted text-[10px] font-black tracking-widest uppercase mb-5">
+            SNOWBALL METHOD
+          </div>
+          <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main flex items-center gap-2 mb-4">
+            <TrendingDown size={20} strokeWidth={3} /> Snowball
           </h2>
           <div className="space-y-4">
             <div>
-              <p className="text-text-muted uppercase text-[10px]">Interest Burned</p>
-              <p className="font-mono text-2xl text-text-main">${snowball.totalInterest.toFixed(2)}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Interest Burned</p>
+              <p className="text-2xl font-black italic text-text-main">${snowball.totalInterest.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-text-muted uppercase text-[10px]">Time to Freedom</p>
-              <p className="font-mono text-2xl text-text-main">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Time to Freedom</p>
+              <p className="text-2xl font-black italic text-text-main">
                 {Math.floor(snowball.months / 12)}y {snowball.months % 12}m
               </p>
             </div>
           </div>
-          <div className="mt-6 pt-4 border-t border-border italic text-[10px] text-text-muted uppercase">
-            Focuses on small wins. Mathematically inefficient.
-          </div>
+          <p className="mt-5 pt-4 border-t-2 border-border text-[10px] font-bold text-text-muted uppercase tracking-widest italic">
+            Small wins first. Mathematically inefficient.
+          </p>
         </div>
 
-        {/* Avalanche - The Math */}
-        <div className="border-4 border-action-capture bg-surface p-6 shadow-brutal-green relative">
-          <div className="absolute -top-3 left-4 bg-action-capture text-black px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
-            Recommended Strategy
+        {/* Avalanche - recommended */}
+        <div className="bg-surface border-4 border-action-capture rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] relative">
+          <div className="absolute -top-4 left-5 bg-action-capture text-black px-3 py-1 text-[11px] font-black uppercase tracking-widest border-2 border-black rounded-full">
+            Recommended
           </div>
-          <h2 className="font-mono text-action-capture text-lg mb-4 flex items-center gap-2">
-            <Zap size={18} /> Avalanche Strategy
+          <div className="inline-flex items-center px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-5 mt-2">
+            AVALANCHE STRATEGY
+          </div>
+          <h2 className="text-2xl font-black italic uppercase tracking-tighter text-action-capture flex items-center gap-2 mb-4">
+            <Zap size={20} strokeWidth={3} /> Avalanche
           </h2>
           <div className="space-y-4">
             <div>
-              <p className="text-text-muted uppercase text-[10px]">Interest Burned</p>
-              <p className="font-mono text-2xl text-text-main">${avalanche.totalInterest.toFixed(2)}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Interest Burned</p>
+              <p className="text-2xl font-black italic text-text-main">${avalanche.totalInterest.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-text-muted uppercase text-[10px]">Time to Freedom</p>
-              <p className="font-mono text-2xl text-text-main">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Time to Freedom</p>
+              <p className="text-2xl font-black italic text-text-main">
                 {Math.floor(avalanche.months / 12)}y {avalanche.months % 12}m
               </p>
             </div>
           </div>
-          <div className="mt-6 pt-4 border-t border-border text-[10px] text-action-capture uppercase font-bold">
+          <p className="mt-5 pt-4 border-t-2 border-black/20 text-[10px] font-bold text-action-capture uppercase tracking-widest">
             Maximum capital preservation. Targeted interest suppression.
-          </div>
+          </p>
         </div>
       </div>
 
-      {/* The Delta - Real Talk */}
-      {interestSaved > 0 && (
-        <div className="bg-action-capture/10 border-2 border-action-capture p-6 flex flex-col items-center justify-center text-center">
-          <p className="text-action-capture uppercase text-xs font-black tracking-[0.3em] mb-2">
-            The Math Dividend
+      {/* Attack Order */}
+      <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-bleed border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase mb-4">
+          AVALANCHE ATTACK ORDER
+        </div>
+        {attackOrder.length === 0 ? (
+          <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted text-center py-6">
+            No debts added yet · go to Config to add them.
           </p>
+        ) : (
+          <div className="space-y-3">
+            {attackOrder.map((debt, i) => {
+              const palette = DEBT_PALETTES[i % DEBT_PALETTES.length];
+              const pct = (debt.balance / maxBalance) * 100;
+              return (
+                <div
+                  key={debt.id}
+                  className={`flex items-center gap-4 border-[3px] border-l-[5px] border-border rounded-2xl p-3 ${palette.borderClass}`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm text-white shrink-0 ${palette.bgClass}`}>
+                    {i + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline mb-1.5">
+                      <span className="font-black uppercase text-sm tracking-tight text-text-main truncate">{debt.name}</span>
+                      <span className="font-black text-sm tabular-nums text-text-main ml-2 shrink-0">${debt.balance.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-input rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%`, backgroundColor: palette.color }}
+                          transition={{ duration: 0.6, ease: 'easeOut' }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-text-muted shrink-0">{debt.rate}% APR</span>
+                    </div>
+                  </div>
+                  {i === 0 && (
+                    <div className="shrink-0 px-2 py-0.5 bg-action-bleed text-white text-[11px] font-black uppercase tracking-widest rounded-full">
+                      ATTACK FIRST
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Delta */}
+      {interestSaved > 0 && (
+        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
+            THE MATH DIVIDEND
+          </div>
           <div className="flex items-center gap-4">
-             <ShieldAlert className="text-action-capture" size={32} />
-             <div className="text-left">
-                <p className="text-3xl font-mono text-action-capture">
-                  +${interestSaved.toFixed(2)}
-                </p>
-                <p className="text-text-muted text-[10px] uppercase">
-                  Capital saved by choosing Avalanche over Snowball.
-                </p>
-             </div>
+            <ShieldAlert className="text-action-capture shrink-0" size={36} strokeWidth={2.5} />
+            <div className="min-w-0 flex-1">
+              <p className="text-3xl sm:text-4xl font-black italic text-action-capture tabular-nums">+${interestSaved.toFixed(2)}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">
+                Capital saved by choosing Avalanche over Snowball
+              </p>
+            </div>
           </div>
           {timeDifference > 0 && (
-            <p className="text-action-capture text-[10px] uppercase mt-4 font-bold">
-              <Clock className="inline mr-1" size={10} /> You reach freedom {timeDifference} months faster with Avalanche.
+            <p className="text-action-capture text-[10px] uppercase mt-4 font-bold flex items-center gap-1">
+              <Clock size={12} /> You reach freedom {timeDifference} months faster with Avalanche.
             </p>
           )}
         </div>
       )}
-
     </div>
   );
 };

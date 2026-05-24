@@ -1,74 +1,280 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AnimatePresence } from 'motion/react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useStore } from './store/useStore';
 import { initDB } from './db';
+import { supabase, isSupabaseConfigured } from './core/supabase';
+import { AuthGate } from './components/AuthGate';
+import { ScreenLock } from './components/ScreenLock';
+import { FeatureTour, useFeatureTour } from './components/FeatureTour';
 
 // Pages
-import Dashboard from './pages/Dashboard';
-import { TacticalSplitter } from './pages/TacticalSplitter';
-import { Audit as SquadAudit } from './pages/Audit';
-import { TrueCost } from './pages/TrueCost';
-import { DebtDestroyer } from './pages/DebtDestroyer';
-import { TacticalCommand } from './pages/TacticalCommand';
-import Config from './pages/Config';
-import Onboarding from './pages/Onboarding';
-import Recon from './pages/Recon';
-import Vaults from './pages/Vaults';
-import Strategy from './pages/Strategy';
-import LeechList from './pages/LeechList';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const TacticalSplitter = lazy(() =>
+  import('./pages/TacticalSplitter').then(module => ({ default: module.TacticalSplitter }))
+);
+const SquadAudit = lazy(() =>
+  import('./pages/Audit').then(module => ({ default: module.Audit }))
+);
+const TrueCost = lazy(() =>
+  import('./pages/TrueCost').then(module => ({ default: module.TrueCost }))
+);
+const DebtDestroyer = lazy(() =>
+  import('./pages/DebtDestroyer').then(module => ({ default: module.DebtDestroyer }))
+);
+const TacticalCommand = lazy(() =>
+  import('./pages/TacticalCommand').then(module => ({ default: module.TacticalCommand }))
+);
+const Config = lazy(() => import('./pages/Config'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Recon = lazy(() => import('./pages/Recon'));
+const Vaults = lazy(() => import('./pages/Vaults'));
+const Strategy = lazy(() => import('./pages/Strategy'));
+const ActiveSubs = lazy(() => import('./pages/ActiveSubs'));
+const CompoundGrowth = lazy(() =>
+  import('./pages/CompoundGrowth').then(module => ({ default: module.CompoundGrowth }))
+);
+const Fire = lazy(() => import('./pages/Fire'));
 
 // Components
-import Navigation from './components/Navigation';
+const Navigation = lazy(() => import('./components/Navigation'));
 import { PageWrapper } from './components/PageWrapper';
 
+function RouteFallback() {
+  return (
+    <div className="min-h-[320px] flex items-center justify-center">
+      <div className="bg-surface border-4 border-border rounded-4xl px-6 py-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Loading Screen</p>
+      </div>
+    </div>
+  );
+}
+
+
+function NavigationFallback() {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t-[4px] border-black md:relative md:border-t-0 md:bg-transparent px-2 pt-1 pb-2 md:p-6 h-[68px] md:h-screen flex flex-col transition-colors duration-300">
+      <div className="md:hidden flex gap-1.5 overflow-x-auto no-scrollbar items-end pb-0.5">
+        <div className="w-12 h-14 border-[3px] border-black rounded-2xl bg-surface" />
+        <div className="w-12 h-14 border-[3px] border-black/20 rounded-2xl bg-surface" />
+        <div className="w-12 h-14 border-[3px] border-black/20 rounded-2xl bg-surface" />
+        <div className="w-px h-10 bg-black/20 self-center" />
+        <div className="w-12 h-14 border-[3px] border-black/20 rounded-2xl bg-surface" />
+        <div className="w-12 h-14 border-[3px] border-black/20 rounded-2xl bg-surface" />
+      </div>
+
+      <div className="hidden md:flex flex-col gap-4 flex-1">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-black tracking-[0.3em] uppercase text-text-main">Pocket CFO</p>
+        </div>
+
+        <div className="flex flex-col flex-1 gap-3">
+          <div className="space-y-2">
+            <div className="h-3 w-12 rounded bg-black/10" />
+            <div className="h-14 rounded-2xl border-4 border-black bg-surface shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" />
+            <div className="h-14 rounded-2xl border-4 border-black/10 bg-surface" />
+            <div className="h-14 rounded-2xl border-4 border-black/10 bg-surface" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="h-3 w-14 rounded bg-black/10" />
+            <div className="h-14 rounded-2xl border-4 border-black/10 bg-surface" />
+            <div className="h-14 rounded-2xl border-4 border-black/10 bg-surface" />
+          </div>
+
+          <div className="mt-auto h-14 rounded-2xl border-4 border-black/10 bg-surface" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SyncFallback() {
+  return (
+    <div className="fixed inset-0 bg-base dot-bg flex items-center justify-center font-mono">
+      <div className="bg-surface border-4 border-black rounded-3xl px-6 py-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted animate-pulse">
+          SYNCING DATA...
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function withPageWrapper(element: React.ReactNode) {
+  return (
+    <PageWrapper>
+      <Suspense fallback={<RouteFallback />}>
+        {element}
+      </Suspense>
+    </PageWrapper>
+  );
+}
+
+function checkPaydayCycle() {
+  const { isConfigured, nextPayday, monthlyTakeHome, processPayday } = useStore.getState();
+  if (!isConfigured || !nextPayday || monthlyTakeHome <= 0) return;
+  const t = new Date();
+  const todayKey = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  if (todayKey >= nextPayday) processPayday();
+}
+
 function App() {
-  const isConfigured = useStore(s => s.isConfigured);
-  const theme = useStore(s => s.theme);
+  const dataLoaded            = useStore(s => s.dataLoaded);
+  const fetchUserData         = useStore(s => s.fetchUserData);
+  const theme                 = useStore(s => s.theme);
+  const themeColors           = useStore(s => s.themeColors);
+  const hasCompletedOnboarding = useStore(s => s.hasCompletedOnboarding);
+  const isNewUser             = useStore(s => s.transactions.length === 0 && s.reconHistory.length === 0);
+  const { visible: tourVisible, dismiss: dismissTour } = useFeatureTour();
+
+  const [session, setSession]           = useState<Session | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
 
   useEffect(() => {
-    initDB().then(() => console.log('Terminal Ledger Initialized.'));
+    initDB();
   }, []);
+
+  // Lock screen when app is backgrounded + payday check on foreground
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (useStore.getState().lockEnabled) useStore.getState().setState({ isLocked: true });
+      } else {
+        if (useStore.getState().dataLoaded) checkPaydayCycle();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  // Payday lifecycle check after data loads
+  useEffect(() => {
+    if (dataLoaded) checkPaydayCycle();
+  }, [dataLoaded]);
+
+  // Establish session on mount and subscribe to auth changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setSessionLoaded(true);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
+      setSession(s);
+      if (!s) setSessionLoaded(true); // ensure gate unblocks on sign-out
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Populate store from Supabase whenever the authenticated user changes
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchUserData(session.user.id);
+    }
+  }, [session?.user?.id, fetchUserData]);
 
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
   }, [theme]);
 
-  if (!isConfigured) {
-    return <Onboarding />;
+  useEffect(() => {
+    if (themeColors?.primary) {
+      document.documentElement.style.setProperty('--color-action-primary', themeColors.primary);
+    }
+    if (themeColors?.secondary) {
+      document.documentElement.style.setProperty('--color-action-capture', themeColors.secondary);
+    }
+  }, [themeColors]);
+
+  // Supabase env vars missing — show setup instructions
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="fixed inset-0 bg-base dot-bg flex items-center justify-center px-4 font-mono">
+        <div className="w-full max-w-sm bg-surface border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4">
+          <div className="inline-flex px-3 py-1 bg-action-bleed border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase">
+            SETUP REQUIRED
+          </div>
+          <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-tight">
+            Connect Supabase
+          </h1>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-relaxed">
+            Create a <span className="text-text-main">.env.local</span> file in the project root with your Supabase credentials:
+          </p>
+          <div className="bg-black rounded-2xl p-4 space-y-1">
+            <p className="text-[11px] font-mono text-action-capture">VITE_SUPABASE_URL=https://your-project.supabase.co</p>
+            <p className="text-[11px] font-mono text-action-capture">VITE_SUPABASE_ANON_KEY=your-anon-key</p>
+          </div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
+            Find these in: Supabase Dashboard → Project Settings → API
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
+            Then restart the dev server.
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  return (
-    <Router>
-      <div className="min-h-screen bg-base text-text-main font-sans flex flex-col md:flex-row relative">
-        <div className="fixed inset-0 pointer-events-none z-[60] overflow-hidden opacity-5">
-          <div className="pixel-grid absolute inset-0"></div>
-        </div>
+  // Waiting for initial session check
+  if (!sessionLoaded) return <SyncFallback />;
 
-        <div className="md:w-64 flex-shrink-0 z-50">
-          <Navigation />
-        </div>
-        
-        <main className="flex-1 overflow-x-hidden pb-24 md:pb-0 p-4 md:p-8 relative z-10 transition-colors duration-300">
-          <div className="max-w-7xl mx-auto">
-            <Routes>
-              <Route path="/" element={<PageWrapper><Dashboard /></PageWrapper>} />
-              <Route path="/audit" element={<PageWrapper><SquadAudit /></PageWrapper>} />
-              <Route path="/split" element={<PageWrapper><TacticalSplitter /></PageWrapper>} />
-              <Route path="/true-cost" element={<PageWrapper><TrueCost /></PageWrapper>} />
-              <Route path="/debt-destroyer" element={<PageWrapper><DebtDestroyer /></PageWrapper>} />
-              <Route path="/tactical-command" element={<PageWrapper><TacticalCommand /></PageWrapper>} />
-              <Route path="/recon" element={<PageWrapper><Recon /></PageWrapper>} />
-              <Route path="/vaults" element={<PageWrapper><Vaults /></PageWrapper>} />
-              <Route path="/strategy" element={<PageWrapper><Strategy /></PageWrapper>} />
-              <Route path="/leeches" element={<PageWrapper><LeechList /></PageWrapper>} />
-              <Route path="/config" element={<PageWrapper><Config /></PageWrapper>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+  // No authenticated session → show login/signup gate
+  if (!session) {
+    return (
+      <ErrorBoundary>
+        <AuthGate />
+      </ErrorBoundary>
+    );
+  }
+
+  // Session established but Supabase data not yet loaded
+  if (!dataLoaded) return <SyncFallback />;
+
+  return (
+    <ErrorBoundary>
+      <ScreenLock />
+      <AnimatePresence>
+        {hasCompletedOnboarding && tourVisible && isNewUser && (
+          <FeatureTour onDismiss={dismissTour} />
+        )}
+      </AnimatePresence>
+      <Router>
+        <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">
+          <div className="md:w-64 shrink-0 z-50">
+            <Suspense fallback={<NavigationFallback />}>
+              <Navigation />
+            </Suspense>
           </div>
-        </main>
-      </div>
-    </Router>
+
+          <main className="flex-1 overflow-y-auto overflow-x-hidden main-pb-safe md:pb-0 p-4 pt-4 md:p-8 relative">
+            <div className="max-w-4xl mx-auto">
+              <Routes>
+                <Route path="/"                element={withPageWrapper(<Dashboard />)} />
+                <Route path="/audit"           element={withPageWrapper(<SquadAudit />)} />
+                <Route path="/split"           element={withPageWrapper(<TacticalSplitter />)} />
+                <Route path="/true-cost"       element={withPageWrapper(<TrueCost />)} />
+                <Route path="/debt-destroyer"  element={withPageWrapper(<DebtDestroyer />)} />
+                <Route path="/tactical-command" element={withPageWrapper(<TacticalCommand />)} />
+                <Route path="/recon"           element={withPageWrapper(<Recon />)} />
+                <Route path="/vaults"          element={withPageWrapper(<Vaults />)} />
+                <Route path="/strategy"        element={withPageWrapper(<Strategy />)} />
+                <Route path="/subscriptions"   element={withPageWrapper(<ActiveSubs />)} />
+                <Route path="/compound-growth" element={withPageWrapper(<CompoundGrowth />)} />
+                <Route path="/fire"            element={withPageWrapper(<Fire />)} />
+                <Route path="/config"          element={withPageWrapper(<Config />)} />
+                <Route path="/settings"        element={withPageWrapper(<Settings />)} />
+                <Route path="*"                element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </main>
+        </div>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

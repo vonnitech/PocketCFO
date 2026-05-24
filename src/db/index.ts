@@ -1,5 +1,5 @@
 import { openDB } from 'idb';
-import type { PocketCFO_DB, Leech } from '../types/database';
+import type { PocketCFO_DB, CancelledSub } from '../types/database';
 import { SplitTransaction } from '../types/split';
 
 const DB_NAME = 'pocket_cfo_ledger';
@@ -15,10 +15,10 @@ export const initDB = async () => {
         txStore.createIndex('by-type', 'type');
       }
 
-      // 2. Initialize the Leech Hit-List
+      // 2. Initialize the Cancelled Subscriptions log
       if (!db.objectStoreNames.contains('leeches')) {
-        const leechStore = db.createObjectStore('leeches', { keyPath: 'id' });
-        leechStore.createIndex('by-status', 'status');
+        const subStore = db.createObjectStore('leeches', { keyPath: 'id' });
+        subStore.createIndex('by-status', 'status');
       }
 
       // 3. Initialize the Vault Deposit History
@@ -33,21 +33,19 @@ export const initDB = async () => {
   return db;
 };
 
-export const executeLeechKill = async (leech: Leech) => {
+export const executeSubCancel = async (sub: CancelledSub) => {
   const db = await initDB();
   const tx = db.transaction(['leeches', 'vault_history'], 'readwrite');
-  
-  // 1. Mark the Leech as Terminated
-  const updatedLeech = { ...leech, status: 'KILLED' as const, dateKilled: Date.now() };
-  await tx.objectStore('leeches').put(updatedLeech);
-  
-  // 2. Log the Permanent Wealth Capture to the Vault
+
+  const updatedSub = { ...sub, status: 'KILLED' as const, dateKilled: Date.now() };
+  await tx.objectStore('leeches').put(updatedSub);
+
   await tx.objectStore('vault_history').add({
     id: crypto.randomUUID(),
     timestamp: Date.now(),
-    source: 'LEECH_PURGE',
-    amountCaptured: leech.monthlyCost,
-    vaultId: 'primary_vault', // Routes to main goal
+    source: 'SUB_CANCELLED',
+    amountCaptured: sub.monthlyCost,
+    vaultId: 'primary_vault',
   });
 
   await tx.done;

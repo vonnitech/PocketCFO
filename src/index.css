@@ -1,42 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Mono:ital,wght@0,400;0,700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --color-base: var(--bg-primary);
   --color-surface: var(--bg-secondary);
+  --color-input: var(--bg-input);
   --color-border: var(--border-primary);
   --color-text-main: var(--text-primary);
   --color-text-muted: var(--text-secondary);
 
-  --color-action-capture: #00CC55;
-  --color-action-bleed: #FF4D4D;
+  --color-action-capture: #00C853;
+  --color-action-bleed: #E8174B;
   --color-action-target: #F5C518;
+  --color-action-primary: #facc15;
 
-  --font-sans: "Inter", sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "Space Mono", "JetBrains Mono", monospace;
 
-  --shadow-brutal: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-brutal: 5px 5px 0px 0px rgba(0, 0, 0, 1);
   --shadow-brutal-sm: 3px 3px 0px 0px rgba(0, 0, 0, 1);
-  --shadow-brutal-green: 6px 6px 0px 0px #00CC55;
-  --shadow-brutal-target: 6px 6px 0px 0px #F5C518;
+  --shadow-brutal-green: 5px 5px 0px 0px #00C853;
+  --shadow-brutal-target: 5px 5px 0px 0px #F5C518;
+  --shadow-brutal-bleed: 5px 5px 0px 0px #E8174B;
 }
 
 :root {
-  --bg-primary: #FDFCF8;    /* Warm Paper */
-  --bg-secondary: #FFFFFF;
-  --border-primary: #000000;
-  --text-primary: #000000;
-  --text-secondary: #555555;
-  --shadow-color: rgba(0, 0, 0, 1);
+  --bg-primary: #F2F1EE;
+  --bg-secondary: #FAFAF9;
+  --bg-input: #E5E3DE;
+  --border-primary: #1A1A1A;
+  --text-primary: #111111;
+  --text-secondary: #666666;
+  --shadow-color: rgba(0, 0, 0, 0.88);
+  --dot-color: rgba(0, 0, 0, 0.13);
 }
 
 .dark {
-  --bg-primary: #0C0C0C;   /* Deep Ink */
-  --bg-secondary: #181818;
-  --border-primary: #2A2A2A;
-  --text-primary: #F5F5F5;
-  --text-secondary: #999999;
-  --shadow-color: rgba(0, 255, 102, 0.2);
+  --bg-primary: #0F0F0F;
+  --bg-secondary: #1A1A1A;
+  --bg-input: #242424;
+  --border-primary: #303030;
+  --text-primary: #F0F0F0;
+  --text-secondary: #888888;
+  --shadow-color: rgba(0, 200, 80, 0.22);
+  --dot-color: rgba(255, 255, 255, 0.10);
 }
 
 @layer base {
@@ -45,20 +51,24 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  h1, h2, h3 {
+  h1 {
     @apply font-black tracking-tight uppercase italic;
+  }
+
+  h2, h3 {
+    @apply font-bold tracking-tight uppercase;
   }
 }
 
 @layer utilities {
   .btn-brutal {
-    @apply border-4 border-current bg-surface px-6 py-3 font-black uppercase tracking-widest transition-all 
-           hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_currentColor] 
+    @apply border-[3px] border-current bg-surface px-6 py-3 font-black uppercase tracking-wider transition-all
+           hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_0px_currentColor]
            active:translate-x-0 active:translate-y-0 active:shadow-none;
   }
-  
+
   .card-brutal {
-    @apply border-4 border-current bg-surface p-6 shadow-[6px_6px_0px_0px_currentColor];
+    @apply border-[3px] border-current bg-surface p-6 shadow-[5px_5px_0px_0px_currentColor];
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -68,13 +78,36 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .dot-bg {
+    background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .label-xs {
+    @apply text-[10px] font-bold uppercase tracking-wider text-text-muted;
+  }
+}
+
+/* Safe-area padding for bottom-nav devices (iPhone home indicator) */
+.nav-pb-safe {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+.sheet-pb-safe {
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
+}
+.main-pb-safe {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.bar-fill {
+  width: var(--bar-fill);
 }
 
 .pixel-grid {
-  background-image: 
-    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
   background-size: 20px 20px;
   pointer-events: none;
 }
-
