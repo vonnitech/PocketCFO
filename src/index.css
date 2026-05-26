@@ -99,6 +99,9 @@
 .main-pb-safe {
   padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
 }
+.bottom-sheet-scroll {
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+}
 
 .bar-fill {
   width: var(--bar-fill);

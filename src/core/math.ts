@@ -35,7 +35,7 @@ export const calculateRemainingDaysInMonth = (): number => {
   return lastDay - now.getDate() + 1;
 };
 
-const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'INCOME']);
+const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
 export const calculateDaysUntilPayday = (nextPayday: string): number => {
   if (!nextPayday) return 1;
@@ -48,20 +48,29 @@ export const calculateDaysUntilPayday = (nextPayday: string): number => {
   return Math.max(1, diffDays);
 };
 
-export const calculateCurrentMonthDeposits = (transactions: Transaction[]): number => {
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
+export const calculateCurrentMonthDeposits = (transactions: Transaction[], nextPayday?: string): number => {
+  let periodStart: Date;
+  if (nextPayday) {
+    // Period started 1 month before the next payday
+    const [year, month, day] = nextPayday.split('-').map(Number);
+    // month is 1-based; new Date(year, month-2, day) = same day, previous month
+    periodStart = new Date(year, month - 2, day);
+  } else {
+    periodStart = new Date();
+    periodStart.setDate(1);
+  }
+  periodStart.setHours(0, 0, 0, 0);
   return transactions
-    .filter(tx => tx.category === 'VAULT_DEPOSIT' && new Date(tx.date) >= startOfMonth)
+    .filter(tx => tx.category === 'VAULT_DEPOSIT' && new Date(tx.date) >= periodStart)
     .reduce((sum, tx) => sum + tx.amount, 0);
 };
 
 export const calculateRawSafeSpend = (state: AppState): number => {
   if (!state.nextPayday) return 0;
   const days = calculateDaysUntilPayday(state.nextPayday);
-  const deposited = calculateCurrentMonthDeposits(state.transactions);
+  const deposited = calculateCurrentMonthDeposits(state.transactions, state.nextPayday);
   const remainingSavingsGoal = Math.max(0, (state.monthlySavingsGoal || 0) - deposited);
+  // debt.balance → Net Worth only; debt minPayments belong in the Horizon recurring-bills form
   return Math.max(0, (state.liquidAssets - (state.upcomingBills || 0) - remainingSavingsGoal) / days);
 };
 

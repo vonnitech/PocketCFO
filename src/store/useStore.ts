@@ -7,6 +7,12 @@ import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
 import { calculateTrueSafeSpend, calculateRawSafeSpend, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
 import { supabase } from '../core/supabase';
+import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
+import { SpendTierId } from '../core/math';
+
+// Prevents concurrent processPayday calls from double-crediting income when
+// runPaydayCheck fires multiple times before the first async call completes.
+let _paydayProcessing = false;
 
 export interface Transaction {
   id: string;
@@ -79,6 +85,13 @@ export interface IouEntry {
   date: string;
 }
 
+export interface IncomeEntry {
+  id: string;
+  date: string;  // YYYY-MM-DD
+  amount: number; // monthly take-home at that point
+  label: string;  // "New job", "Promotion", etc.
+}
+
 export interface AppState {
   // Auth
   userId: string | null;
@@ -140,6 +153,22 @@ export interface AppState {
   isLocked: boolean;
   lockEnabled: boolean;
   securityPIN: string;
+
+  // FIRE config (persisted)
+  fireConfig: {
+    strategy: string;
+    currentAge: string;
+    targetAge: string;
+    annualExpenses: string;
+    partTimeIncome: string;
+    lockedAt: string;
+  } | null;
+
+  // Income history (persisted)
+  incomeHistory: IncomeEntry[];
+
+  // Transient UI (not persisted)
+  paydayBanner: { amount: number } | null;
 }
 
 const calculatePrimaryVaultBalance = (vaults: Vault[]): number =>
@@ -210,6 +239,11 @@ export const INITIAL_STATE: AppState = {
   isLocked: false,
   lockEnabled: false,
   securityPIN: '1234',
+
+  fireConfig: null,
+  incomeHistory: [],
+
+  paydayBanner: null,
 };
 
 interface StoreActions {
@@ -242,7 +276,11 @@ interface StoreActions {
   updateDebt: (id: string, updates: Partial<Omit<Debt, 'id'>>) => void;
   removeDebt: (id: string) => void;
   makeDebtPayment: (debtId: string, extraAmount: number) => void;
-  updateBaseline: (income: number, bills: number, savingsGoal: number) => void;
+  updateBaseline: (income: number, savingsGoal: number) => void;
+  saveFireConfig: (config: NonNullable<AppState['fireConfig']>) => Promise<void>;
+  clearFireConfig: () => Promise<void>;
+  addIncomeEntry: (amount: number, label: string, date: string) => Promise<void>;
+  removeIncomeEntry: (id: string) => Promise<void>;
   addVault: (name: string, target: number, asset_class: VaultAssetClass) => Promise<void>;
   addFundsToVault: (vaultId: string, amount: number) => Promise<void>;
   transferVaultFunds: (sourceId: string, destinationId: string, amount: number) => Promise<void>;
@@ -251,6 +289,19 @@ interface StoreActions {
   restoreVault: (id: string) => void;
   permanentlyDeleteVault: (id: string) => void;
   processPayday: () => Promise<void>;
+  dismissPaydayBanner: () => void;
+  setImpulses: (impulses: Impulse[]) => Promise<void>;
+  submitReconEntry: (params: {
+    rawSpend: number;
+    action: 'roll' | 'stash';
+    impulseId: string | null;
+    impulseSpend: number;
+    taxAmount: number;
+    surplus: number;
+    tierId: SpendTierId;
+    tierMultiplier: number;
+    tierLimit: number;
+  }) => void;
 }
 
 export type StoreState = AppState & StoreActions;
@@ -262,13 +313,14 @@ export const useStore = create<StoreState>()(
     // ── Sync ─────────────────────────────────────────────────────────────────
 
     fetchUserData: async (userId) => {
-      const [profileRes, txRes, vaultRes, deletedVaultRes, debtRes, subRes] = await Promise.all([
+      const [profileRes, txRes, vaultRes, deletedVaultRes, debtRes, subRes, reconRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(500),
         supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', false),
         supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', true),
         supabase.from('debts').select('*').eq('user_id', userId),
         supabase.from('subscriptions').select('*').eq('user_id', userId),
+        supabase.from('recon_history').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(90),
       ]);
 
       const profile = profileRes.data as Record<string, unknown> | null;
@@ -310,6 +362,20 @@ export const useStore = create<StoreState>()(
         billingCycle: (s.billing_cycle as 'Monthly' | 'Yearly') ?? 'Monthly',
       }));
 
+      const reconHistory: ReconEntry[] = ((reconRes.data ?? []) as Record<string, unknown>[]).map(r => ({
+        id:             String(r.id),
+        date:           String(r.date),
+        rawSpend:       Number(r.raw_spend ?? 0),
+        impulseSpend:   Number(r.impulse_spend ?? 0),
+        taxAmount:      Number(r.tax_amount ?? 0),
+        surplus:        Number(r.surplus ?? 0),
+        action:         (r.action as 'roll' | 'stash') ?? 'roll',
+        impulseId:      r.impulse_id ? String(r.impulse_id) : undefined,
+        tier:           String(r.tier ?? 'TIGHT'),
+        tierMultiplier: Number(r.tier_multiplier ?? 0.75),
+        tierLimit:      Number(r.tier_limit ?? 0),
+      }));
+
       set((state: any) => {
         const merged: Partial<AppState> = {
           userId,
@@ -319,11 +385,14 @@ export const useStore = create<StoreState>()(
           deletedVaults,
           debts,
           subscriptions,
+          reconHistory,
           primaryVaultBalance: calculatePrimaryVaultBalance(vaults),
         };
 
         if (profile) {
           const widgets = profile.dashboard_widgets;
+          const rawBills = profile.recurring_bills;
+          const rawImpulses = profile.impulses;
           Object.assign(merged, {
             liquidAssets:          Number(profile.liquid_assets ?? 0),
             fixedBurn:             Number(profile.fixed_burn ?? 0),
@@ -336,6 +405,8 @@ export const useStore = create<StoreState>()(
             lastSweepDate:         String(profile.last_sweep_date ?? ''),
             extraCashPool:         Number(profile.extra_cash_pool ?? 0),
             rolloverPool:          Number(profile.rollover_pool ?? 0),
+            recurringBills:        Array.isArray(rawBills) ? rawBills as BillQueueItem[] : [],
+            impulses:              Array.isArray(rawImpulses) ? rawImpulses as Impulse[] : [],
             salary: {
               current: Number(profile.salary_current ?? 0),
               target:  Number(profile.salary_target ?? 0),
@@ -352,6 +423,8 @@ export const useStore = create<StoreState>()(
             privacyMode:           Boolean(profile.privacy_mode),
             hasCompletedOnboarding: Boolean(profile.has_completed_onboarding),
             isConfigured:          Boolean(profile.is_configured),
+            fireConfig:            profile.fire_config ? (profile.fire_config as AppState['fireConfig']) : null,
+            incomeHistory:         Array.isArray(profile.income_history) ? (profile.income_history as IncomeEntry[]) : [],
             dashboardWidgets:      Array.isArray(widgets) ? widgets : state.dashboardWidgets,
             ...(profile.theme_primary_color || profile.theme_capture_color ? {
               themeColors: {
@@ -361,7 +434,6 @@ export const useStore = create<StoreState>()(
             } : {}),
           });
         } else {
-          // New user — profile row created by trigger but all fields are defaults
           merged.userId      = userId;
           merged.dataLoaded  = true;
           merged.isConfigured = false;
@@ -397,6 +469,13 @@ export const useStore = create<StoreState>()(
       if (!userId) return;
       await (supabase.from('profiles') as any).update({ dashboard_widgets: widgets }).eq('id', userId);
     },
+    setImpulses: async (impulses) => {
+      const { userId } = get() as StoreState;
+      set((state: any) => ({ ...state, impulses }));
+      if (!userId) return;
+      await (supabase.from('profiles') as any).update({ impulses }).eq('id', userId);
+    },
+
     setState: (newState) => set((state: any) => {
       const nextState = { ...state, ...newState };
       return {
@@ -417,19 +496,35 @@ export const useStore = create<StoreState>()(
     // ── Horizon ──────────────────────────────────────────────────────────────
 
     setHorizon: async (capital, nextPayday, _upcomingBills, newHardDailyCap, newBillQueue) => {
-      const { userId, hardDailyCap, recurringBills, vaults: currentVaults, lastSweepDate } = get() as StoreState;
+      const {
+        userId, hardDailyCap, recurringBills, vaults: currentVaults, lastSweepDate,
+        nextPayday: currentNextPayday, billQueue: currentBillQueue, upcomingBills: currentUpcomingBills,
+      } = get() as StoreState;
       if (!userId) return;
 
       const capToUse      = newHardDailyCap !== undefined ? newHardDailyCap : (hardDailyCap ?? 0);
       const recurringToUse: BillQueueItem[] = newBillQueue !== undefined ? newBillQueue : (recurringBills || []);
-      const freshQueue: BillQueueItem[]     = recurringToUse.map(b => ({ ...b, id: crypto.randomUUID() }));
       const billsTotal    = recurringToUse.reduce((s, b) => s + b.amount, 0);
+
+      // Only regenerate the bill queue when the pay cycle period changes or the bill
+      // template is modified. Preserves ticked-off progress within the current cycle.
+      const fingerprint   = (bills: BillQueueItem[]) => bills.map(b => `${b.name}:${b.amount}`).join('|');
+      const paydayChanged = nextPayday !== currentNextPayday;
+      const billsChanged  = newBillQueue !== undefined && fingerprint(newBillQueue) !== fingerprint(recurringBills || []);
+      const shouldRegen   = paydayChanged || billsChanged || currentBillQueue.length === 0;
+
+      const freshQueue: BillQueueItem[]   = shouldRegen
+        ? recurringToUse.map(b => ({ ...b, id: crypto.randomUUID() }))
+        : currentBillQueue;
+      const effectiveUpcomingBills = shouldRegen ? billsTotal : currentUpcomingBills;
 
       const calcState = {
         ...(get() as StoreState),
         liquidAssets: capital,
         nextPayday,
-        upcomingBills: billsTotal,
+        upcomingBills: effectiveUpcomingBills,
+        fixedBills: billsTotal,
+        fixedBurn: billsTotal,
         recurringBills: recurringToUse,
         billQueue: freshQueue,
         isConfigured: true,
@@ -445,17 +540,47 @@ export const useStore = create<StoreState>()(
       const firstVault  = currentVaults[0];
       const finalLiquid = doSweep ? capital - sweepAmount : capital;
 
-      // Profile upsert
-      const { error: profileError } = await (supabase.from('profiles') as any).update({
-        liquid_assets:          finalLiquid,
-        next_payday:            nextPayday || null,
-        upcoming_bills:         billsTotal,
-        hard_daily_cap:         capToUse,
-        is_configured:          true,
+      // Claim the sweep date immediately before any awaits. A concurrent call to
+      // setHorizon (e.g. user double-submits) would then read lastSweepDate === todayKey
+      // and skip, preventing duplicate SURPLUS INTERCEPTED transactions.
+      if (doSweep) set((s: any) => ({ ...s, lastSweepDate: todayKey }));
+
+      // Optimistic local update — happens before any awaits so the UI never loses state
+      set((state: any) => {
+        const baseNext = {
+          ...state,
+          liquidAssets:          finalLiquid,
+          nextPayday,
+          upcomingBills:         effectiveUpcomingBills,
+          fixedBills:            billsTotal,
+          fixedBurn:             billsTotal,
+          recurringBills:        recurringToUse,
+          billQueue:             freshQueue,
+          isConfigured:          true,
+          hasCompletedOnboarding: true,
+          hardDailyCap:          capToUse,
+        };
+        return { ...baseNext, safeSpendLimit: calculateTrueSafeSpend(baseNext) };
+      });
+
+      // Core profile upsert
+      const { error: profileError } = await (supabase.from('profiles') as any).upsert({
+        id:                      userId,
+        liquid_assets:           finalLiquid,
+        next_payday:             nextPayday || null,
+        upcoming_bills:          effectiveUpcomingBills,
+        fixed_bills:             billsTotal,
+        fixed_burn:              billsTotal,
+        hard_daily_cap:          capToUse,
+        is_configured:           true,
         has_completed_onboarding: true,
-        last_sweep_date:        doSweep ? todayKey : (lastSweepDate || null),
-      }).eq('id', userId);
-      if (profileError) return;
+        last_sweep_date:         doSweep ? todayKey : (lastSweepDate || null),
+        recurring_bills:         recurringToUse,
+      }, { onConflict: 'id' });
+      if (profileError) {
+        console.error('[setHorizon] profile upsert failed:', profileError);
+        return;
+      }
 
       // Sweep transaction + vault update
       const sweepTxId = doSweep ? crypto.randomUUID() : null;
@@ -474,28 +599,17 @@ export const useStore = create<StoreState>()(
           (supabase.from('vaults') as any).update({ current: firstVault.current + sweepAmount }).eq('id', firstVault.id),
         ]);
         if (txRes.error || vaultRes.error) return;
-      }
 
-      // Update local state
-      set((state: any) => {
-        const nextVaults = doSweep && firstVault
-          ? state.vaults.map((v: any) => v.id === firstVault.id ? { ...v, current: v.current + sweepAmount } : v)
-          : state.vaults;
-
-        const baseNext = {
-          ...state,
-          liquidAssets:          finalLiquid,
-          nextPayday,
-          upcomingBills:         billsTotal,
-          recurringBills:        recurringToUse,
-          billQueue:             freshQueue,
-          isConfigured:          true,
-          hasCompletedOnboarding: true,
-          hardDailyCap:          capToUse,
-          vaults:                nextVaults,
-          primaryVaultBalance:   calculatePrimaryVaultBalance(nextVaults),
-          ...(doSweep && sweepTxId ? {
+        // Update local state with sweep side-effects
+        set((state: any) => {
+          const nextVaults = state.vaults.map((v: any) =>
+            v.id === firstVault.id ? { ...v, current: v.current + sweepAmount } : v
+          );
+          const baseNext = {
+            ...state,
             lastSweepDate: todayKey,
+            vaults:              nextVaults,
+            primaryVaultBalance: calculatePrimaryVaultBalance(nextVaults),
             transactions: [{
               id:        sweepTxId,
               merchant:  'SURPLUS INTERCEPTED',
@@ -509,10 +623,10 @@ export const useStore = create<StoreState>()(
               ...state.stats,
               lifetimeCapture: (state.stats?.lifetimeCapture || 0) + sweepAmount,
             },
-          } : {}),
-        };
-        return { ...baseNext, safeSpendLimit: calculateTrueSafeSpend(baseNext) };
-      });
+          };
+          return { ...baseNext, safeSpendLimit: calculateTrueSafeSpend(baseNext) };
+        });
+      }
     },
 
     setBaseline: async (liquid, fixed, goal) => {
@@ -576,18 +690,7 @@ export const useStore = create<StoreState>()(
         });
       }
 
-      const { error: txError } = await supabase.from('transactions').insert(inserts as any);
-      if (txError) return;
-
-      // Sync liquid_assets to profiles so it persists across sessions
-      await (supabase.from('profiles') as any)
-        .update({ liquid_assets: liquidAssets - amount - penalty })
-        .eq('id', userId);
-
-      if (penalty > 0 && firstVault) {
-        await (supabase.from('vaults') as any).update({ current: firstVault.current + penalty }).eq('id', firstVault.id);
-      }
-
+      // Optimistic local update — UI reacts instantly
       set((state: any) => {
         const nextVaults = (penalty > 0 && firstVault)
           ? state.vaults.map((v: any) => v.id === firstVault.id ? { ...v, current: v.current + penalty } : v)
@@ -628,6 +731,13 @@ export const useStore = create<StoreState>()(
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+
+      // Fire-and-forget sync — background, never blocks UI
+      pushTransactions(inserts).catch(() => {});
+      pushProfileUpdate(userId, { liquid_assets: liquidAssets - amount - penalty }).catch(() => {});
+      if (penalty > 0 && firstVault) {
+        pushVaultUpdate(firstVault.id, { current: firstVault.current + penalty }).catch(() => {});
+      }
     },
 
     executeImpulseHit: async (amount, taxRate) => {
@@ -716,31 +826,22 @@ export const useStore = create<StoreState>()(
       const { userId } = get() as StoreState;
       if (!userId) return;
 
-      const txId = crypto.randomUUID();
-      const now  = new Date().toISOString();
+      const txId      = crypto.randomUUID();
+      const now       = new Date().toISOString();
+      const merchant  = source.trim().toUpperCase() || 'EXTRA INCOME';
 
-      const { error } = await supabase.from('transactions').insert({
-        id:          txId,
-        user_id:     userId,
-        merchant:    source.trim().toUpperCase() || 'EXTRA INCOME',
+      const tx: Transaction = {
+        id:        txId,
+        merchant,
         amount,
-        category:    'INCOME',
-        is_flip:     false,
-        flip_amount: 0,
-        date:        now,
-      } as any);
-      if (error) return;
+        category:  'INCOME',
+        date:      now,
+        isFlip:    false,
+        flipAmount: 0,
+      };
 
+      // Optimistic local update — UI reacts instantly
       set((state: any) => {
-        const tx: Transaction = {
-          id:        txId,
-          merchant:  source.trim().toUpperCase() || 'EXTRA INCOME',
-          amount,
-          category:  'INCOME',
-          date:      now,
-          isFlip:    false,
-          flipAmount: 0,
-        };
         const nextState = {
           ...state,
           liquidAssets: state.liquidAssets + amount,
@@ -748,6 +849,18 @@ export const useStore = create<StoreState>()(
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+
+      // Fire-and-forget sync — background, never blocks UI
+      pushTransactions([{
+        id:          txId,
+        user_id:     userId,
+        merchant,
+        amount,
+        category:    'INCOME',
+        is_flip:     false,
+        flip_amount: 0,
+        date:        now,
+      }]).catch(() => {});
     },
 
     // ── Split ─────────────────────────────────────────────────────────────────
@@ -844,7 +957,10 @@ export const useStore = create<StoreState>()(
       });
       if (error) return;
 
-      set((state: any) => ({ debts: [...state.debts, newDebt] }));
+      set((state: any) => {
+        const nextState = { ...state, debts: [...state.debts, newDebt] };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
     },
 
     updateDebt: async (id, updates) => {
@@ -860,9 +976,10 @@ export const useStore = create<StoreState>()(
       const { error } = await (supabase.from('debts') as any).update(dbUpdates).eq('id', id);
       if (error) return;
 
-      set((state: any) => ({
-        debts: state.debts.map((d: Debt) => d.id === id ? { ...d, ...updates } : d),
-      }));
+      set((state: any) => {
+        const nextState = { ...state, debts: state.debts.map((d: Debt) => d.id === id ? { ...d, ...updates } : d) };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
     },
 
     removeDebt: async (id) => {
@@ -872,7 +989,10 @@ export const useStore = create<StoreState>()(
       const { error } = await (supabase.from('debts') as any).delete().eq('id', id);
       if (error) return;
 
-      set((state: any) => ({ debts: state.debts.filter((d: Debt) => d.id !== id) }));
+      set((state: any) => {
+        const nextState = { ...state, debts: state.debts.filter((d: Debt) => d.id !== id) };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
     },
 
     makeDebtPayment: async (debtId, extraAmount) => {
@@ -924,10 +1044,11 @@ export const useStore = create<StoreState>()(
       });
     },
 
-    updateBaseline: async (income, bills, savingsGoal) => {
-      const { userId } = get() as StoreState;
+    updateBaseline: async (income, savingsGoal) => {
+      const { userId, upcomingBills } = get() as StoreState;
       if (!userId) return;
 
+      const bills = upcomingBills ?? 0;
       const { error } = await (supabase.from('profiles') as any).update({
         monthly_take_home:    income,
         fixed_bills:          bills,
@@ -948,6 +1069,37 @@ export const useStore = create<StoreState>()(
       });
     },
 
+    saveFireConfig: async (config) => {
+      const { userId } = get() as StoreState;
+      if (!userId) return;
+      set((state: any) => ({ ...state, fireConfig: config }));
+      await (supabase.from('profiles') as any).update({ fire_config: config }).eq('id', userId);
+    },
+
+    clearFireConfig: async () => {
+      const { userId } = get() as StoreState;
+      if (!userId) return;
+      set((state: any) => ({ ...state, fireConfig: null }));
+      await (supabase.from('profiles') as any).update({ fire_config: null }).eq('id', userId);
+    },
+
+    addIncomeEntry: async (amount, label, date) => {
+      const { userId, incomeHistory } = get() as StoreState;
+      const entry: IncomeEntry = { id: crypto.randomUUID(), date, amount, label };
+      const next = [...incomeHistory, entry].sort((a, b) => a.date.localeCompare(b.date));
+      set((state: any) => ({ ...state, incomeHistory: next }));
+      if (!userId) return;
+      await (supabase.from('profiles') as any).update({ income_history: next }).eq('id', userId);
+    },
+
+    removeIncomeEntry: async (id) => {
+      const { userId, incomeHistory } = get() as StoreState;
+      const next = incomeHistory.filter(e => e.id !== id);
+      set((state: any) => ({ ...state, incomeHistory: next }));
+      if (!userId) return;
+      await (supabase.from('profiles') as any).update({ income_history: next }).eq('id', userId);
+    },
+
     // ── Vaults ────────────────────────────────────────────────────────────────
 
     addVault: async (name, target, asset_class) => {
@@ -960,19 +1112,6 @@ export const useStore = create<StoreState>()(
         asset_class,
       };
 
-      // Requires: ALTER TABLE vaults ADD COLUMN asset_class TEXT DEFAULT 'SINKING_FUND';
-      if (userId) {
-        await (supabase.from('vaults') as any).insert({
-          id:          newVault.id,
-          user_id:     userId,
-          name:        newVault.name,
-          target:      newVault.target,
-          current:     0,
-          asset_class: newVault.asset_class,
-          deleted:     false,
-        });
-      }
-
       set((state: any) => {
         const nextVaults = [...state.vaults, newVault];
         return {
@@ -980,6 +1119,18 @@ export const useStore = create<StoreState>()(
           primaryVaultBalance: calculatePrimaryVaultBalance(nextVaults),
         };
       });
+
+      // Requires: ALTER TABLE vaults ADD COLUMN asset_class TEXT DEFAULT 'SINKING_FUND';
+      if (userId) {
+        pushVaultInsert(userId, {
+          id:          newVault.id,
+          name:        newVault.name,
+          target:      newVault.target,
+          current:     0,
+          asset_class: newVault.asset_class,
+          deleted:     false,
+        }).catch(() => {});
+      }
     },
 
     addFundsToVault: async (vaultId, amount) => {
@@ -990,23 +1141,6 @@ export const useStore = create<StoreState>()(
 
       const txId = crypto.randomUUID();
       const now  = new Date().toISOString();
-
-      if (userId) {
-        await Promise.all([
-          (supabase.from('vaults') as any).update({ current: vault.current + amount }).eq('id', vaultId),
-          (supabase.from('profiles') as any).update({ liquid_assets: liquidAssets - amount }).eq('id', userId),
-          (supabase.from('transactions') as any).insert({
-            id:          txId,
-            user_id:     userId,
-            merchant:    `VAULT: ${vault.name}`,
-            amount,
-            category:    'VAULT_DEPOSIT',
-            is_flip:     false,
-            flip_amount: 0,
-            date:        now,
-          }),
-        ]);
-      }
 
       set((state: any) => {
         const nextVaults = state.vaults.map((v: any) =>
@@ -1029,6 +1163,21 @@ export const useStore = create<StoreState>()(
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+
+      if (userId) {
+        pushVaultUpdate(vaultId, { current: vault.current + amount }).catch(() => {});
+        pushProfileUpdate(userId, { liquid_assets: liquidAssets - amount }).catch(() => {});
+        pushTransactions([{
+          id:          txId,
+          user_id:     userId,
+          merchant:    `VAULT: ${vault.name}`,
+          amount,
+          category:    'VAULT_DEPOSIT',
+          is_flip:     false,
+          flip_amount: 0,
+          date:        now,
+        }]).catch(() => {});
+      }
     },
 
     transferVaultFunds: async (sourceId, destinationId, amount) => {
@@ -1036,36 +1185,16 @@ export const useStore = create<StoreState>()(
       const source = vaults.find(v => v.id === sourceId);
       if (!source || amount <= 0 || amount > source.current) return;
 
-      const toLiquid = destinationId === 'LIQUID';
+      const toLiquid  = destinationId === 'LIQUID';
       const destVault = toLiquid ? null : vaults.find(v => v.id === destinationId);
       if (!toLiquid && !destVault) return;
 
-      const txId = crypto.randomUUID();
-      const now  = new Date().toISOString();
+      const txId     = crypto.randomUUID();
+      const now      = new Date().toISOString();
       const merchant = toLiquid
         ? `WITHDRAWAL: ${source.name}`
         : `TRANSFER: ${source.name} → ${destVault!.name}`;
       const category = toLiquid ? 'VAULT_WITHDRAWAL' : 'VAULT_TRANSFER';
-
-      if (userId) {
-        const dbOps: Promise<unknown>[] = [
-          (supabase.from('vaults') as any).update({ current: source.current - amount }).eq('id', sourceId),
-          (supabase.from('transactions') as any).insert({
-            id: txId, user_id: userId, merchant, amount,
-            category, is_flip: false, flip_amount: 0, date: now,
-          }),
-        ];
-        if (toLiquid) {
-          dbOps.push(
-            (supabase.from('profiles') as any).update({ liquid_assets: liquidAssets + amount }).eq('id', userId)
-          );
-        } else {
-          dbOps.push(
-            (supabase.from('vaults') as any).update({ current: destVault!.current + amount }).eq('id', destinationId)
-          );
-        }
-        await Promise.all(dbOps);
-      }
 
       set((state: any) => {
         const nextVaults = state.vaults.map((v: Vault) => {
@@ -1085,27 +1214,31 @@ export const useStore = create<StoreState>()(
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+
+      if (userId) {
+        pushVaultUpdate(sourceId, { current: source.current - amount }).catch(() => {});
+        pushTransactions([{
+          id: txId, user_id: userId, merchant, amount,
+          category, is_flip: false, flip_amount: 0, date: now,
+        }]).catch(() => {});
+        if (toLiquid) {
+          pushProfileUpdate(userId, { liquid_assets: liquidAssets + amount }).catch(() => {});
+        } else {
+          pushVaultUpdate(destinationId, { current: destVault!.current + amount }).catch(() => {});
+        }
+      }
     },
 
     renameVault: async (id, name) => {
       const { userId } = get() as StoreState;
-      if (!userId) return;
-
-      const { error } = await (supabase.from('vaults') as any).update({ name: name.trim() }).eq('id', id);
-      if (error) return;
-
       set((state: any) => ({
         vaults: state.vaults.map((v: Vault) => v.id === id ? { ...v, name: name.trim() } : v),
       }));
+      if (userId) pushVaultUpdate(id, { name: name.trim() }).catch(() => {});
     },
 
     deleteVault: async (id) => {
       const { userId } = get() as StoreState;
-      if (!userId) return;
-
-      const { error } = await (supabase.from('vaults') as any).update({ deleted: true }).eq('id', id);
-      if (error) return;
-
       set((state: any) => {
         const vault = state.vaults.find((v: Vault) => v.id === id);
         if (!vault) return state;
@@ -1116,15 +1249,11 @@ export const useStore = create<StoreState>()(
           deletedVaults:       [vault, ...(state.deletedVaults || [])],
         };
       });
+      if (userId) pushVaultUpdate(id, { deleted: true }).catch(() => {});
     },
 
     restoreVault: async (id) => {
       const { userId } = get() as StoreState;
-      if (!userId) return;
-
-      const { error } = await (supabase.from('vaults') as any).update({ deleted: false }).eq('id', id);
-      if (error) return;
-
       set((state: any) => {
         const vault = (state.deletedVaults || []).find((v: Vault) => v.id === id);
         if (!vault) return state;
@@ -1135,6 +1264,7 @@ export const useStore = create<StoreState>()(
           primaryVaultBalance: calculatePrimaryVaultBalance(nextVaults),
         };
       });
+      if (userId) pushVaultUpdate(id, { deleted: false }).catch(() => {});
     },
 
     permanentlyDeleteVault: (id) => {
@@ -1147,59 +1277,147 @@ export const useStore = create<StoreState>()(
       }));
     },
 
-    processPayday: async () => {
-      const { userId, liquidAssets, monthlyTakeHome, nextPayday, isConfigured } = get() as StoreState;
-      if (!isConfigured || !nextPayday || monthlyTakeHome <= 0) return;
+    submitReconEntry: ({ rawSpend, action, impulseId, impulseSpend, taxAmount, surplus, tierId, tierMultiplier, tierLimit }) => {
+      const { userId, vaults, liquidAssets } = get() as StoreState;
 
-      const today = new Date();
-      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      if (todayKey < nextPayday) return;
+      const todayKey  = toLocalDateKey(new Date());
+      const timestamp = new Date().toISOString();
+      const entryId   = crypto.randomUUID();
 
-      const txId = crypto.randomUUID();
-      const now  = new Date().toISOString();
+      const stashAmount     = action === 'stash' && surplus > 0 ? surplus : 0;
+      const creditedToVault = stashAmount + taxAmount;
+      const firstVault      = vaults[0] ?? null;
 
-      // Advance by 1 calendar month (JS handles month overflow automatically)
-      const [py, pm, pd] = nextPayday.split('-').map(Number);
-      const nextDate = new Date(py, pm, pd); // pm is 1-based here, so this = month+1 (0-based)
-      const newNextPayday = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+      const newEntry: ReconEntry = {
+        id: entryId, date: todayKey, rawSpend, impulseSpend, taxAmount, surplus,
+        action, impulseId: impulseId || undefined, tier: tierId, tierMultiplier, tierLimit,
+      };
 
-      if (userId) {
-        await Promise.all([
-          (supabase.from('profiles') as any).update({
-            liquid_assets: liquidAssets + monthlyTakeHome,
-            next_payday:   newNextPayday,
-          }).eq('id', userId),
-          (supabase.from('transactions') as any).insert({
-            id:          txId,
-            user_id:     userId,
-            merchant:    'PAYDAY',
-            amount:      monthlyTakeHome,
-            category:    'INCOME',
-            is_flip:     false,
-            flip_amount: 0,
-            date:        now,
-          }),
-        ]);
+      const txInserts: Record<string, unknown>[] = [];
+      const newTxs: Transaction[] = [];
+
+      if (taxAmount > 0) {
+        const taxId = crypto.randomUUID();
+        const capId = crypto.randomUUID();
+        txInserts.push(
+          { id: taxId, merchant: 'RECON IMPULSE TAX', amount: 0, category: 'PENALTY', is_flip: true, flip_amount: taxAmount, date: timestamp },
+          { id: capId, merchant: 'RECON CAPTURE', amount: taxAmount, category: 'SAVINGS', is_flip: true, flip_amount: 0, date: timestamp },
+        );
+        newTxs.push(
+          { id: taxId, merchant: 'RECON IMPULSE TAX', amount: 0, category: 'PENALTY', date: timestamp, isFlip: true, flipAmount: taxAmount },
+          { id: capId, merchant: 'RECON CAPTURE', amount: taxAmount, category: 'SAVINGS', date: timestamp, isFlip: true, flipAmount: 0 },
+        );
       }
 
+      if (stashAmount > 0) {
+        const stashId = crypto.randomUUID();
+        txInserts.push({ id: stashId, merchant: 'RECON STASH', amount: stashAmount, category: 'VAULT_DEPOSIT', is_flip: false, flip_amount: 0, date: timestamp });
+        newTxs.push({ id: stashId, merchant: 'RECON STASH', amount: stashAmount, category: 'VAULT_DEPOSIT', date: timestamp, isFlip: false, flipAmount: 0 });
+      }
+
+      // Optimistic local update
       set((state: any) => {
+        const nextVaults = state.vaults.map((v: Vault, i: number) => {
+          if (i !== 0) return v;
+          if (action === 'roll' && taxAmount > 0) return { ...v, current: v.current + taxAmount };
+          if (action === 'stash' && creditedToVault > 0) return { ...v, current: v.current + creditedToVault };
+          return v;
+        });
+        const newExp   = (state.stats?.experience || 0) + (action === 'roll' && surplus > 0 ? 10 : 0);
         const nextState = {
           ...state,
-          liquidAssets: state.liquidAssets + state.monthlyTakeHome,
-          nextPayday:   newNextPayday,
-          transactions: [{
-            id:        txId,
-            merchant:  'PAYDAY',
-            amount:    state.monthlyTakeHome,
-            category:  'INCOME',
-            date:      now,
-            isFlip:    false,
-            flipAmount: 0,
-          }, ...state.transactions],
+          liquidAssets:        state.liquidAssets - creditedToVault,
+          primaryVaultBalance: calculatePrimaryVaultBalance(nextVaults),
+          vaults:              nextVaults,
+          transactions:        [...newTxs, ...state.transactions],
+          reconHistory:        [...state.reconHistory, newEntry],
+          stats: { ...state.stats, experience: newExp, level: Math.floor(newExp / 1000) + 1, lifetimeCapture: (state.stats?.lifetimeCapture || 0) + taxAmount },
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+
+      // Fire-and-forget Supabase sync
+      if (userId) {
+        if (txInserts.length > 0) {
+          pushTransactions(txInserts.map(t => ({ ...t, user_id: userId }))).catch(() => {});
+        }
+        if (creditedToVault > 0 && firstVault) {
+          const newBalance = action === 'roll'
+            ? firstVault.current + taxAmount
+            : firstVault.current + creditedToVault;
+          pushVaultUpdate(firstVault.id, { current: newBalance }).catch(() => {});
+        }
+        pushProfileUpdate(userId, { liquid_assets: liquidAssets - creditedToVault }).catch(() => {});
+        pushReconEntry(userId, {
+          id: entryId, date: todayKey,
+          raw_spend: rawSpend, impulse_spend: impulseSpend, tax_amount: taxAmount,
+          surplus, action, impulse_id: impulseId || null,
+          tier: tierId, tier_multiplier: tierMultiplier, tier_limit: tierLimit,
+        }).catch(() => {});
+      }
     },
+
+    processPayday: async () => {
+      if (_paydayProcessing) return;
+      _paydayProcessing = true;
+      try {
+        const { userId, liquidAssets, monthlyTakeHome, nextPayday, isConfigured } = get() as StoreState;
+        if (!isConfigured || !nextPayday || monthlyTakeHome <= 0) return;
+
+        const today = new Date();
+        const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        if (todayKey < nextPayday) return;
+
+        const txId = crypto.randomUUID();
+        const now  = new Date().toISOString();
+
+        // Advance by 1 calendar month (JS handles month overflow automatically)
+        const [py, pm, pd] = nextPayday.split('-').map(Number);
+        const nextDate = new Date(py, pm, pd); // pm is 1-based here, so this = month+1 (0-based)
+        const newNextPayday = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+
+        if (userId) {
+          await Promise.all([
+            (supabase.from('profiles') as any).update({
+              liquid_assets: liquidAssets + monthlyTakeHome,
+              next_payday:   newNextPayday,
+            }).eq('id', userId),
+            (supabase.from('transactions') as any).insert({
+              id:          txId,
+              user_id:     userId,
+              merchant:    'PAYDAY',
+              amount:      monthlyTakeHome,
+              category:    'INCOME',
+              is_flip:     false,
+              flip_amount: 0,
+              date:        now,
+            }),
+          ]);
+        }
+
+        set((state: any) => {
+          const nextState = {
+            ...state,
+            liquidAssets: state.liquidAssets + state.monthlyTakeHome,
+            nextPayday:   newNextPayday,
+            transactions: [{
+              id:        txId,
+              merchant:  'PAYDAY',
+              amount:    state.monthlyTakeHome,
+              category:  'INCOME',
+              date:      now,
+              isFlip:    false,
+              flipAmount: 0,
+            }, ...state.transactions],
+          };
+          return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState), paydayBanner: { amount: state.monthlyTakeHome } };
+        });
+      } finally {
+        _paydayProcessing = false;
+      }
+    },
+
+    dismissPaydayBanner: () => set({ paydayBanner: null } as any),
 
     // ── Squad & Presets (local) ───────────────────────────────────────────────
 
@@ -1235,6 +1453,7 @@ export const useStore = create<StoreState>()(
     // ── Bill Queue (local) ────────────────────────────────────────────────────
 
     payBillFromQueue: (id) => {
+      const { userId } = get() as StoreState;
       set((state: any) => {
         const bill = (state.billQueue || []).find((b: BillQueueItem) => b.id === id);
         if (!bill) return state;
@@ -1242,9 +1461,14 @@ export const useStore = create<StoreState>()(
           ...state,
           billQueue:     (state.billQueue || []).filter((b: BillQueueItem) => b.id !== id),
           upcomingBills: Math.max(0, (state.upcomingBills || 0) - bill.amount),
+          liquidAssets:  Math.max(0, state.liquidAssets - bill.amount),
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+      if (userId) {
+        const { liquidAssets, upcomingBills } = get() as StoreState;
+        pushProfileUpdate(userId, { liquid_assets: liquidAssets, upcoming_bills: upcomingBills }).catch(() => {});
+      }
     },
 
     collectIou: (id) => {

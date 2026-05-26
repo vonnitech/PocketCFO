@@ -3,20 +3,19 @@ import type { Session } from '@supabase/supabase-js';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { useStore } from './store/useStore';
+import { useStore, INITIAL_STATE } from './store/useStore';
 import { initDB } from './db';
 import { supabase, isSupabaseConfigured } from './core/supabase';
 import { AuthGate } from './components/AuthGate';
 import { ScreenLock } from './components/ScreenLock';
 import { FeatureTour, useFeatureTour } from './components/FeatureTour';
+import { PaydayBanner } from './components/PaydayBanner';
+import { runPaydayCheck } from './core/lifecycle';
 
 // Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const TacticalSplitter = lazy(() =>
   import('./pages/TacticalSplitter').then(module => ({ default: module.TacticalSplitter }))
-);
-const SquadAudit = lazy(() =>
-  import('./pages/Audit').then(module => ({ default: module.Audit }))
 );
 const TrueCost = lazy(() =>
   import('./pages/TrueCost').then(module => ({ default: module.TrueCost }))
@@ -31,12 +30,16 @@ const Config = lazy(() => import('./pages/Config'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Recon = lazy(() => import('./pages/Recon'));
 const Vaults = lazy(() => import('./pages/Vaults'));
-const Strategy = lazy(() => import('./pages/Strategy'));
 const ActiveSubs = lazy(() => import('./pages/ActiveSubs'));
 const CompoundGrowth = lazy(() =>
   import('./pages/CompoundGrowth').then(module => ({ default: module.CompoundGrowth }))
 );
 const Fire = lazy(() => import('./pages/Fire'));
+const IncomeTracker = lazy(() => import('./pages/IncomeTracker'));
+const Transactions = lazy(() => import('./pages/Transactions'));
+const Breakdown = lazy(() =>
+  import('./pages/Audit').then(module => ({ default: module.Audit }))
+);
 
 // Components
 const Navigation = lazy(() => import('./components/Navigation'));
@@ -113,14 +116,6 @@ function withPageWrapper(element: React.ReactNode) {
   );
 }
 
-function checkPaydayCycle() {
-  const { isConfigured, nextPayday, monthlyTakeHome, processPayday } = useStore.getState();
-  if (!isConfigured || !nextPayday || monthlyTakeHome <= 0) return;
-  const t = new Date();
-  const todayKey = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-  if (todayKey >= nextPayday) processPayday();
-}
-
 function App() {
   const dataLoaded            = useStore(s => s.dataLoaded);
   const fetchUserData         = useStore(s => s.fetchUserData);
@@ -137,22 +132,33 @@ function App() {
     initDB();
   }, []);
 
-  // Lock screen when app is backgrounded + payday check on foreground
+  // Lock screen when app is backgrounded
   useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        if (useStore.getState().lockEnabled) useStore.getState().setState({ isLocked: true });
-      } else {
-        if (useStore.getState().dataLoaded) checkPaydayCycle();
+    const onHide = () => {
+      if (document.visibilityState === 'hidden' && useStore.getState().lockEnabled) {
+        useStore.getState().setState({ isLocked: true });
       }
     };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
   }, []);
 
-  // Payday lifecycle check after data loads
+  // Payday lifecycle: run on mount and each time app comes to foreground
   useEffect(() => {
-    if (dataLoaded) checkPaydayCycle();
+    runPaydayCheck(useStore.getState() as any);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        runPaydayCheck(useStore.getState() as any);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
+  // Also run after initial data load (mount fires before Supabase data arrives)
+  useEffect(() => {
+    if (dataLoaded) runPaydayCheck(useStore.getState() as any);
   }, [dataLoaded]);
 
   // Establish session on mount and subscribe to auth changes
@@ -162,9 +168,16 @@ function App() {
       setSessionLoaded(true);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      if (!s) setSessionLoaded(true); // ensure gate unblocks on sign-out
+      if (!s) setSessionLoaded(true);
+      // Only wipe on an explicit sign-out — not on INITIAL_SESSION or TOKEN_REFRESHED
+      // events that may fire with null before Supabase loads the stored session.
+      // Wiping on INITIAL_SESSION was causing hasCompletedOnboarding to reset,
+      // hiding the LOG SPEND button on every page load.
+      if (event === 'SIGNED_OUT') {
+        useStore.getState().setState({ ...INITIAL_STATE });
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -244,6 +257,7 @@ function App() {
         )}
       </AnimatePresence>
       <Router>
+        <PaydayBanner />
         <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">
           <div className="md:w-64 shrink-0 z-50">
             <Suspense fallback={<NavigationFallback />}>
@@ -255,17 +269,19 @@ function App() {
             <div className="max-w-4xl mx-auto">
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />
-                <Route path="/audit"           element={withPageWrapper(<SquadAudit />)} />
+                <Route path="/audit"           element={<Navigate to="/transactions" replace />} />
                 <Route path="/split"           element={withPageWrapper(<TacticalSplitter />)} />
                 <Route path="/true-cost"       element={withPageWrapper(<TrueCost />)} />
                 <Route path="/debt-destroyer"  element={withPageWrapper(<DebtDestroyer />)} />
                 <Route path="/tactical-command" element={withPageWrapper(<TacticalCommand />)} />
                 <Route path="/recon"           element={withPageWrapper(<Recon />)} />
                 <Route path="/vaults"          element={withPageWrapper(<Vaults />)} />
-                <Route path="/strategy"        element={withPageWrapper(<Strategy />)} />
                 <Route path="/subscriptions"   element={withPageWrapper(<ActiveSubs />)} />
                 <Route path="/compound-growth" element={withPageWrapper(<CompoundGrowth />)} />
                 <Route path="/fire"            element={withPageWrapper(<Fire />)} />
+                <Route path="/income"          element={withPageWrapper(<IncomeTracker />)} />
+                <Route path="/transactions"    element={withPageWrapper(<Transactions />)} />
+                <Route path="/breakdown"      element={withPageWrapper(<Breakdown />)} />
                 <Route path="/config"          element={withPageWrapper(<Config />)} />
                 <Route path="/settings"        element={withPageWrapper(<Settings />)} />
                 <Route path="*"                element={<Navigate to="/" replace />} />

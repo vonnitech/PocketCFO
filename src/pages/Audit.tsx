@@ -71,9 +71,10 @@ export const Audit: React.FC = () => {
   const { totalOutflow, wealthCaptured, totalAllocated, chartData, rankedCategories, allocatedItems } = useMemo(() => {
     let total = 0;
     const ALLOCATED_CATEGORIES = new Set(['VAULT_DEPOSIT', 'DEBT_PAYMENT']);
+    const INTERNAL_CATEGORIES  = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
     const grouped = filteredTransactions
-      .filter(tx => tx.category !== 'SAVINGS' && !ALLOCATED_CATEGORIES.has(tx.category) && tx.category !== 'INCOME')
+      .filter(tx => tx.category !== 'SAVINGS' && !ALLOCATED_CATEGORIES.has(tx.category) && tx.category !== 'INCOME' && !INTERNAL_CATEGORIES.has(tx.category))
       .reduce((acc, tx) => {
         const key = CATEGORY_LABELS[tx.category] ?? tx.category;
         if (!acc[key]) acc[key] = { name: key, base: 0, impulse: 0 };
@@ -133,7 +134,7 @@ export const Audit: React.FC = () => {
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const EXCLUDED = new Set(['INCOME', 'SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT']);
+    const EXCLUDED = new Set(['INCOME', 'SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
     const spendFor = (start: Date, end: Date) => {
       const cats: Record<string, number> = {};
@@ -169,7 +170,7 @@ export const Audit: React.FC = () => {
     return filteredTransactions
       .filter(tx => {
         const q = searchQuery.trim().toLowerCase();
-        const matchesSearch = q === '' || tx.merchant.toLowerCase().includes(q);
+        const matchesSearch = q === '' || tx.merchant.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q);
         const matchesCategory = categoryFilter === null || tx.category === categoryFilter;
         return matchesSearch && matchesCategory;
       })
@@ -386,8 +387,9 @@ export const Audit: React.FC = () => {
       )}
 
       {/* Breakdown */}
-      <div className="space-y-3">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expense Analysis</p>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3">Expense Analysis</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {rankedCategories.map(category => (
           <div
             key={category.name}
@@ -414,11 +416,12 @@ export const Audit: React.FC = () => {
         ))}
 
         {rankedCategories.length === 0 && (
-          <div className="text-center py-16 bg-surface border-4 border-dashed border-border rounded-3xl">
+          <div className="text-center py-16 bg-surface border-4 border-dashed border-border rounded-3xl md:col-span-2">
             <Activity size={48} className="mx-auto mb-4 text-text-muted opacity-30" />
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No transactions logged yet.</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Transaction Search + Filter */}
@@ -428,23 +431,23 @@ export const Audit: React.FC = () => {
 
           {/* Search input */}
           <div className="relative">
-            <Search size={15} strokeWidth={2.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <Search size={16} strokeWidth={2.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
               type="search"
               inputMode="search"
-              placeholder="Search merchant..."
+              placeholder="Search merchant or category..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-10 bg-input border-2 border-border rounded-2xl text-[13px] font-bold text-text-main placeholder:text-text-muted/60 focus:outline-none focus:border-black transition-colors"
+              className="w-full h-14 bg-input border-4 border-black rounded-2xl pl-12 pr-4 font-black text-sm text-text-main placeholder:text-text-muted focus:bg-surface focus:border-action-capture outline-none transition-colors mb-4 tabular-nums"
             />
             {searchQuery && (
               <button
                 type="button"
                 title="Clear search"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main"
+                className="absolute right-4 top-[calc(50%-0.5rem)] -translate-y-1/2 text-text-muted hover:text-text-main"
               >
-                <X size={14} strokeWidth={2.5} />
+                <X size={15} strokeWidth={2.5} />
               </button>
             )}
           </div>
@@ -531,9 +534,13 @@ export const Audit: React.FC = () => {
             })}
 
             {displayTransactions.length === 0 && hasActiveFilter && (
-              <div className="text-center py-12 bg-surface border-2 border-dashed border-border rounded-3xl">
+              <div className="text-center py-12 bg-surface border-2 border-dashed border-border rounded-3xl px-6">
                 <Search size={36} className="mx-auto mb-3 text-text-muted opacity-30" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No transactions match your filter.</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-text-muted">
+                  {searchQuery.trim()
+                    ? `No matches for "${searchQuery.trim()}"`
+                    : 'No transactions match your filter.'}
+                </p>
               </div>
             )}
           </div>

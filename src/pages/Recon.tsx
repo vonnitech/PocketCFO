@@ -1,8 +1,8 @@
 ﻿import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap, AlertCircle, Lock, LockOpen } from 'lucide-react';
+import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap, AlertCircle, Lock } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { useStore, Impulse, ReconEntry } from '../store/useStore';
+import { useStore, Impulse } from '../store/useStore';
 import { BottomSheet } from '../components/BottomSheet';
 import {
   calculateTrueSafeSpend,
@@ -43,7 +43,7 @@ function getTierLock(): TierLock | null {
 
 export default function Recon() {
   const state = useStore();
-  const { privacyMode, updateState, impulses, reconHistory, setState, nextPayday } = state;
+  const { privacyMode, impulses, reconHistory, setState, nextPayday, submitReconEntry } = state;
 
   const [step, setStep] = useState<Step>('RAW_SPEND');
   const [rawSpend, setRawSpend] = useState('');
@@ -63,8 +63,8 @@ export default function Recon() {
     ? Math.max(0, Math.ceil((new Date(tierLock.lockedUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
 
-  const lockTier = () => {
-    const lockedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const lockTier = (days: number) => {
+    const lockedUntil = new Date(Date.now() + days * 86400000).toISOString();
     const lock: TierLock = { tierId: selectedTierId, lockedUntil };
     localStorage.setItem(TIER_LOCK_KEY, JSON.stringify(lock));
     setTierLock(lock);
@@ -114,11 +114,12 @@ export default function Recon() {
   const totalDrain = spendAmount + taxAmount;
   const surplus = useMemo(() => calculateDailySurplus(safeSpendLimit, totalDrain), [safeSpendLimit, totalDrain]);
   const dangerProgress = useMemo(() => calculateDangerProgress(totalDrain, tierLimit), [totalDrain, tierLimit]);
-  const remaining = safeSpendLimit - recordedDailyDrain;
-  const pulsePercent = safeSpendLimit > 0 ? Math.min(100, (recordedDailyDrain / safeSpendLimit) * 100) : 0;
-  const pulseColor = recordedDailyDrain > safeSpendLimit ? 'bg-action-bleed' : pulsePercent > 80 ? 'bg-action-primary' : 'bg-action-capture';
-  const pulseStatus = recordedDailyDrain > safeSpendLimit ? 'Over' : pulsePercent > 80 ? 'Near Limit' : 'On Track';
-  const pulseStatusColor = recordedDailyDrain > safeSpendLimit ? 'bg-action-bleed text-white' : pulsePercent > 80 ? 'bg-action-primary text-black' : 'bg-action-capture text-black';
+  const effectiveLimit = tierLimit > 0 ? tierLimit : safeSpendLimit;
+  const remaining = effectiveLimit - recordedDailyDrain;
+  const pulsePercent = effectiveLimit > 0 ? Math.min(100, (recordedDailyDrain / effectiveLimit) * 100) : 0;
+  const pulseColor = recordedDailyDrain > effectiveLimit ? 'bg-action-bleed' : pulsePercent > 80 ? 'bg-action-primary' : 'bg-action-capture';
+  const pulseStatus = recordedDailyDrain > effectiveLimit ? 'Over' : pulsePercent > 80 ? 'Near Limit' : 'On Track';
+  const pulseStatusColor = recordedDailyDrain > effectiveLimit ? 'bg-action-bleed text-white' : pulsePercent > 80 ? 'bg-action-primary text-black' : 'bg-action-capture text-black';
 
   const pastDays = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
@@ -138,75 +139,16 @@ export default function Recon() {
     'bg-action-bleed';
 
   const handleAction = (action: 'roll' | 'stash') => {
-    const finalSpend = parseFloat(displayRawSpend);
-    const timestamp = new Date().toISOString();
-    const newEntry: ReconEntry = {
-      id: Math.random().toString(36).substr(2, 9),
-      date: todayKey,
-      rawSpend: finalSpend,
-      impulseSpend: parseFloat(impulseSpend || '0'),
+    submitReconEntry({
+      rawSpend:       parseFloat(displayRawSpend),
+      action,
+      impulseId:      selectedImpulseId,
+      impulseSpend:   parseFloat(impulseSpend || '0'),
       taxAmount,
       surplus,
-      action,
-      impulseId: selectedImpulseId || undefined,
-      tier: selectedTierId,
+      tierId:         selectedTierId,
       tierMultiplier: activeTier.multiplier,
       tierLimit,
-    };
-    updateState(prev => {
-      const nextVaults = [...prev.vaults];
-      const stashAmount = action === 'stash' && surplus > 0 ? surplus : 0;
-      const creditedToVault = stashAmount + taxAmount;
-      const newTransactions = [];
-
-      if (taxAmount > 0) {
-        newTransactions.push({
-          id: crypto.randomUUID(),
-          merchant: 'RECON IMPULSE TAX',
-          amount: 0,
-          category: 'PENALTY',
-          date: timestamp,
-          isFlip: true,
-          flipAmount: taxAmount,
-        });
-        newTransactions.push({
-          id: crypto.randomUUID(),
-          merchant: 'RECON CAPTURE',
-          amount: taxAmount,
-          category: 'SAVINGS',
-          date: timestamp,
-          isFlip: true,
-          flipAmount: 0,
-        });
-      }
-
-      if (stashAmount > 0) {
-        newTransactions.push({
-          id: crypto.randomUUID(),
-          merchant: 'RECON STASH',
-          amount: stashAmount,
-          category: 'VAULT_DEPOSIT',
-          date: timestamp,
-          isFlip: false,
-          flipAmount: 0,
-        });
-      }
-
-      if (action === 'roll') {
-        if (taxAmount > 0 && nextVaults.length > 0) nextVaults[0].current = Math.max(0, nextVaults[0].current + taxAmount);
-      } else {
-        if (nextVaults.length > 0) nextVaults[0].current = Math.max(0, nextVaults[0].current + creditedToVault);
-      }
-      const newExp = (prev.stats?.experience || 0) + (action === 'roll' && surplus > 0 ? 10 : 0);
-      return {
-        ...prev,
-        liquidAssets: prev.liquidAssets - creditedToVault,
-        primaryVaultBalance: prev.primaryVaultBalance + creditedToVault,
-        vaults: nextVaults,
-        transactions: [...newTransactions, ...prev.transactions],
-        reconHistory: [...prev.reconHistory, newEntry],
-        stats: { ...prev.stats, experience: newExp, level: Math.floor(newExp / 1000) + 1, lifetimeCapture: (prev.stats?.lifetimeCapture || 0) + taxAmount },
-      };
     });
     setCompleted(true);
   };
@@ -233,7 +175,7 @@ export default function Recon() {
             <div className="flex items-end gap-4 mb-3">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Daily Limit</p>
-                <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(safeSpendLimit, privacyMode)}</p>
+                <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(effectiveLimit, privacyMode)}</p>
               </div>
               <div className="flex-1 text-right">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Logged Today</p>
@@ -379,59 +321,76 @@ export default function Recon() {
 
             {/* Tier Selector */}
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-              <div className="flex items-center justify-between mb-4">
-                <div className="inline-flex px-3 py-1 bg-[#c084fc] border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase">
-                  CHOOSE YOUR CHALLENGE
-                </div>
-                <button
-                  type="button"
-                  title={isLocked ? 'Unlock tier for this week' : 'Lock this tier for 7 days'}
-                  onClick={isLocked ? () => setShowConfession(true) : lockTier}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 border-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    isLocked
-                      ? 'bg-black border-black text-action-primary'
-                      : 'bg-input border-border text-text-muted hover:border-black hover:text-text-main'
-                  }`}
-                >
-                  {isLocked ? <Lock size={11} strokeWidth={2.5} /> : <LockOpen size={11} strokeWidth={2.5} />}
-                  {isLocked ? 'Locked' : 'Lock'}
-                </button>
+              <div className="inline-flex px-3 py-1 bg-[#c084fc] border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase mb-4">
+                CHOOSE YOUR CHALLENGE
               </div>
 
-              {isLocked && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 mb-3 px-3 py-2 bg-black/5 border-2 border-black/10 rounded-xl"
-                >
-                  <Lock size={10} strokeWidth={2.5} className="text-text-muted shrink-0" />
-                  <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">
-                    Locked until {new Date(tierLock!.lockedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · tap Locked to release
-                  </p>
-                </motion.div>
+              {!isLocked ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {SPEND_TIERS.map(tier => (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        onClick={() => setSelectedTierId(tier.id)}
+                        className={`flex items-center justify-center p-3 border-4 rounded-2xl transition-all
+                          ${selectedTierId === tier.id
+                            ? `${tier.color} border-black shadow-brutal-sm ${tier.textColor}`
+                            : 'bg-input border-border text-text-muted hover:border-black'
+                          }`}
+                      >
+                        <span className="font-black text-xs uppercase">{tier.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">Lock in for</p>
+                    <div className="flex gap-2">
+                      {[7, 14, 30].map(days => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => lockTier(days)}
+                          className="flex-1 h-10 bg-input border-2 border-border rounded-xl text-[10px] font-black uppercase tracking-widest text-text-muted hover:border-black hover:text-text-main transition-all"
+                        >
+                          {days}d
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="border-4 border-black bg-black rounded-2xl p-4 mb-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Lock size={12} strokeWidth={2.5} className="text-action-primary shrink-0" />
+                      <p className="text-[10px] font-black uppercase tracking-widest text-action-primary">Active Lock</p>
+                    </div>
+                    <p className="text-2xl font-black italic uppercase text-action-primary leading-none mb-1">
+                      {activeTier.label} Mode
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                      Until {new Date(tierLock!.lockedUntil).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                    <div className="mt-3 pt-3 border-t-2 border-white/10 flex items-center justify-between">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Remaining</p>
+                      <p className="text-sm font-black text-white">{daysLeft} day{daysLeft !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowConfession(true)}
+                    className="w-full h-9 border-2 border-border rounded-xl text-[10px] font-black uppercase tracking-widest text-text-muted hover:border-action-bleed hover:text-action-bleed transition-colors"
+                  >
+                    Break Lock
+                  </button>
+                </>
               )}
 
-              <div className="grid grid-cols-2 gap-2">
-                {SPEND_TIERS.map(tier => (
-                  <button
-                    key={tier.id}
-                    type="button"
-                    onClick={() => !isLocked && setSelectedTierId(tier.id)}
-                    disabled={isLocked && tier.id !== selectedTierId}
-                    className={`flex items-center justify-center p-3 border-4 rounded-2xl transition-all
-                      ${selectedTierId === tier.id
-                        ? `${tier.color} border-black shadow-brutal-sm ${tier.textColor}`
-                        : isLocked
-                          ? 'bg-input border-border text-text-muted opacity-30 cursor-not-allowed'
-                          : 'bg-input border-border text-text-muted hover:border-black'
-                      }`}
-                  >
-                    <span className="font-black text-xs uppercase">{tier.label}</span>
-                  </button>
-                ))}
-              </div>
               {breakCount > 0 && (
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/50 text-center -mt-1">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/50 text-center mt-3">
                   Broke early {breakCount}×
                 </p>
               )}

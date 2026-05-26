@@ -26,16 +26,16 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 380, damping: 40 }}
-            className="fixed bottom-0 left-0 right-0 z-70 bg-surface border-t-4 border-black rounded-t-3xl shadow-[0px_-4px_0px_0px_rgba(0,0,0,0.12)] max-h-[88vh] overflow-y-auto"
+            className="fixed bottom-0 left-0 right-0 z-70 bg-surface border-t-4 border-black rounded-t-3xl shadow-[0px_-4px_0px_0px_rgba(0,0,0,0.12)] max-h-[90dvh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-surface pt-3 pb-2 px-6 z-10">
+            <div className="shrink-0 bg-surface pt-3 pb-2 px-6 z-10 rounded-t-3xl">
               <div className="w-10 h-1 bg-border rounded-full mx-auto mb-3" />
               {title && (
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">{title}</p>
               )}
             </div>
-            <div className="px-6 pb-24 md:pb-10">
+            <div className="overflow-y-auto px-6 pt-2 bottom-sheet-scroll">
               {children}
             </div>
           </motion.div>

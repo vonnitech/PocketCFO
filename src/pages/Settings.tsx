@@ -39,6 +39,7 @@ export default function Settings() {
         </p>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
       {/* Display */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
         <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-1">Display</p>
@@ -128,6 +129,7 @@ export default function Settings() {
                   </div>
                   <button
                     type="button"
+                    title={`${visible ? 'Hide' : 'Show'} ${widget.label}`}
                     onClick={() => toggleWidget(widget.id)}
                     className={`w-12 h-6 rounded-full border-[3px] border-black relative transition-colors shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
                       visible ? 'bg-action-capture' : 'bg-input'
@@ -148,6 +150,8 @@ export default function Settings() {
         <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-4 pt-4 border-t-2 border-border/30">
           Hidden widgets are saved to your profile · toggle anytime.
         </p>
+      </div>
+
       </div>
 
       {/* Financial Config link */}

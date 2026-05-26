@@ -94,7 +94,7 @@ export default function ActiveSubs() {
       </div>
 
       {/* List */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:items-start">
         <AnimatePresence>
           {state.subscriptions.map(sub => (
             <motion.div
@@ -152,7 +152,7 @@ export default function ActiveSubs() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-16 bg-surface border-4 border-dashed border-action-capture rounded-3xl"
+              className="text-center py-16 bg-surface border-4 border-dashed border-action-capture rounded-3xl md:col-span-2"
             >
               <ShieldCheck size={56} className="mx-auto mb-4 text-action-capture" />
               <h3 className="text-2xl font-black italic uppercase text-action-capture">All Clear</h3>
@@ -163,7 +163,7 @@ export default function ActiveSubs() {
 
         {/* Add New */}
         {isAddingSub ? (
-          <div className="bg-surface border-4 border-action-primary rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
+          <div className="md:col-span-2 bg-surface border-4 border-action-primary rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
             <input
               autoFocus
               type="text"
@@ -208,7 +208,7 @@ export default function ActiveSubs() {
             type="button"
             whileTap={{ scale: 0.98 }}
             onClick={() => setIsAddingSub(true)}
-            className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+            className="md:col-span-2 w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
           >
             <Plus size={18} strokeWidth={3} /> ADD SUBSCRIPTION
           </motion.button>

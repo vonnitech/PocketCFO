@@ -1,26 +1,27 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Terminal, ShieldCheck, List, Zap, Compass, Settings, Search, Users, Calculator, Sun, Moon, CalendarDays, Scissors, MoreHorizontal, X, Eye, EyeOff, TrendingUp, LogOut, Flame } from 'lucide-react';
+import { Terminal, ShieldCheck, PieChart, Zap, Compass, Settings, Search, Users, Calculator, Sun, Moon, Scissors, MoreHorizontal, X, Eye, EyeOff, TrendingUp, LogOut, Flame, Receipt, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../core/supabase';
 
 const coreTools = [
-  { path: '/', icon: Terminal, label: 'Dashboard', shortLabel: 'Home' },
-  { path: '/recon', icon: Search, label: 'Daily Log', shortLabel: 'Log' },
-  { path: '/vaults', icon: ShieldCheck, label: 'Savings', shortLabel: 'Vaults' },
-  { path: '/audit', icon: List, label: 'History', shortLabel: 'History' },
-  { path: '/subscriptions', icon: Scissors, label: 'Subscriptions', shortLabel: 'Subs' },
+  { path: '/',              icon: Terminal,    label: 'Dashboard',    shortLabel: 'Home' },
+  { path: '/recon',         icon: Search,      label: 'Daily Log',    shortLabel: 'Log' },
+  { path: '/vaults',        icon: ShieldCheck, label: 'Vaults',       shortLabel: 'Vaults' },
+  { path: '/transactions',  icon: Receipt,     label: 'Ledger',       shortLabel: 'Ledger' },
+  { path: '/breakdown',     icon: PieChart,    label: 'Audit Log',    shortLabel: 'Stats' },
+  { path: '/subscriptions', icon: Scissors,    label: 'Subscriptions', shortLabel: 'Subs' },
 ];
 
 const calculatorTools = [
-  { path: '/split',            icon: Users,        label: 'Bill Splitter',    subtitle: 'Divide expenses and track who owes what' },
-  { path: '/true-cost',        icon: Calculator,   label: 'True Cost',        subtitle: 'Calculate the real price of purchases over time' },
-  { path: '/debt-destroyer',   icon: Zap,          label: 'Debt Payoff',      subtitle: 'Optimize your avalanche or snowball strategy' },
-  { path: '/tactical-command', icon: Compass,      label: 'Savings Goals',    subtitle: 'Track progress for large future purchases' },
-  { path: '/strategy',         icon: CalendarDays, label: 'Budget Planner',   subtitle: 'Map out your monthly fixed and variable limits' },
-  { path: '/compound-growth',  icon: TrendingUp,   label: 'Wealth Growth',    subtitle: 'Project your long-term net worth' },
-  { path: '/fire',             icon: Flame,        label: 'FIRE Calculator',  subtitle: 'Financial Independence & Early Retirement projection' },
+  { path: '/split',            icon: Users,        label: 'Bill Splitter',   subtitle: 'Divide expenses and track who owes what' },
+  { path: '/true-cost',        icon: Calculator,   label: 'True Cost',       subtitle: 'Calculate the real price of purchases over time' },
+  { path: '/debt-destroyer',   icon: Zap,          label: 'Debt Payoff',     subtitle: 'Optimize your avalanche or snowball strategy' },
+  { path: '/tactical-command', icon: Compass,      label: 'Savings Goals',   subtitle: 'Track progress for large future purchases' },
+  { path: '/compound-growth',  icon: TrendingUp,   label: 'Wealth Growth',   subtitle: 'Project your long-term net worth' },
+  { path: '/fire',             icon: Flame,        label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection' },
+  { path: '/income',           icon: DollarSign,   label: 'Income Tracker',  subtitle: 'Log income milestones & find your FIRE savings rate' },
 ];
 
 const mobilePrimary = [coreTools[0], coreTools[1], coreTools[2], coreTools[4]];
@@ -248,8 +249,10 @@ export default function Navigation() {
 
               <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50 mb-2">Manage</p>
               <div className="grid grid-cols-2 gap-2 mb-4">
-                <SheetLink path="/audit" icon={List} label="History" onClick={close} />
-                <SheetLink path="/settings" icon={Settings} label="Settings" onClick={close} />
+                <SheetLink path="/breakdown"     icon={PieChart}  label="Audit Log"      onClick={close} />
+                <SheetLink path="/transactions"  icon={Receipt}   label="Ledger"         onClick={close} />
+                <SheetLink path="/subscriptions" icon={Scissors}  label="Subscriptions"  onClick={close} />
+                <SheetLink path="/settings"      icon={Settings}  label="Settings"       onClick={close} />
               </div>
 
               <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50 mb-2">Tools</p>

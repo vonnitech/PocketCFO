@@ -9,7 +9,7 @@ import { OnboardingModal } from '../components/Onboarding';
 import { BottomSheet } from '../components/BottomSheet';
 import { TransactionForm } from '../components/TransactionForm';
 
-const HIDDEN_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'PENALTY']);
+const HIDDEN_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'PENALTY', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
 const SPEND_CATEGORIES = [
   { key: 'FOOD', label: 'Food' },
@@ -166,7 +166,7 @@ export default function Dashboard() {
     >
       {/* Header */}
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main truncate">
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
           {(() => {
             const h = new Date().getHours();
             const salutation = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : 'Good evening';
@@ -231,7 +231,7 @@ export default function Dashboard() {
           className="flex items-center gap-4 bg-black border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all group"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest text-action-primary mb-0.5">Horizon Not Set</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-action-primary mb-0.5">Pay Cycle Not Set</p>
             <p className="text-white font-black uppercase text-sm">Set your bank balance & next payday →</p>
             <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mt-1">Your daily limit can't calculate without it</p>
           </div>
@@ -239,8 +239,10 @@ export default function Dashboard() {
         </Link>
       )}
 
+      {/* ── Hero Row: Safe Spend (2/3) + Payday Countdown (1/3) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:items-start">
       {/* Safe Spend Hero */}
-      {widgetVisible('safe-spend') && <div className="bg-surface border-4 border-border rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden">
+      {widgetVisible('safe-spend') && <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Daily Safe Spend</p>
         </div>
@@ -251,7 +253,7 @@ export default function Dashboard() {
           <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-0.5">You can safely spend</p>
             <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-5xl md:text-6xl font-black italic tracking-tighter leading-none text-text-main tabular-nums break-all min-w-0">
+              <span className="text-5xl font-black italic tracking-tighter leading-none text-text-main tabular-nums break-all min-w-0">
                 {maskBal(safeSpendLimit)}
               </span>
               <span className="text-text-muted text-sm font-bold uppercase tracking-widest shrink-0">today</span>
@@ -338,6 +340,7 @@ export default function Dashboard() {
           </div>
         );
       })()}
+      </div>
 
       {/* Bill Queue */}
       {widgetVisible('alert') && nextPayday && billQueue && billQueue.length > 0 && (
@@ -396,13 +399,23 @@ export default function Dashboard() {
             <TrendingUp size={18} className="text-action-capture shrink-0" strokeWidth={2.5} />
           </div>
           <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums break-all min-w-0">{maskBal(liquidAssets)}</p>
-          <p className="text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">Available cash</p>
+          {upcomingBills > 0 ? (
+            <div className="mt-2 space-y-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">−{maskBal(upcomingBills)} bills reserved</p>
+              <p className="text-[10px] font-black uppercase tracking-wide text-action-capture tabular-nums">{maskBal(Math.max(0, liquidAssets - upcomingBills))} free</p>
+            </div>
+          ) : (
+            <p className="text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">Available cash</p>
+          )}
         </div>
       </div>}
 
+      {/* ── Body Grid: 2-col masonry ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
+
       {/* Net Worth */}
       {!isFirstTime && (liquidAssets > 0 || totalVaulted > 0 || totalDebt > 0) && (
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Net Worth</p>
             <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border-2 border-black ${netWorth >= 0 ? 'bg-action-capture text-black' : 'bg-action-bleed text-white'}`}>
@@ -598,7 +611,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
+          className="md:col-span-2 bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
         >
           <div className="inline-flex px-3 py-1 bg-action-primary border-2 border-action-primary rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
             YOUR FIRST MOVE
@@ -631,7 +644,7 @@ export default function Dashboard() {
 
       {/* Top Categories */}
       {!isFirstTime && topCategories.length > 0 && (
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Where It Went</p>
             <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">This Month</span>
@@ -664,7 +677,7 @@ export default function Dashboard() {
       {!isFirstTime && !loggedToday && streak > 0 && (
         <Link
           to="/recon"
-          className="flex items-center gap-4 bg-action-primary border-4 border-black rounded-[28px] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1.5 hover:translate-y-1.5 transition-all group"
+          className="md:col-span-2 flex items-center gap-4 bg-action-primary border-4 border-black rounded-[28px] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1.5 hover:translate-y-1.5 transition-all group"
         >
           <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shrink-0">
             <Zap size={18} strokeWidth={3} className="text-action-primary" />
@@ -677,6 +690,8 @@ export default function Dashboard() {
         </Link>
       )}
 
+      </div>{/* end body grid */}
+
       {/* Actions */}
       <div className="flex gap-4 flex-wrap">
         <button
@@ -687,7 +702,7 @@ export default function Dashboard() {
           ADD INCOME
         </button>
         <Link
-          to="/audit"
+          to="/transactions"
           className="flex-1 min-w-25 flex items-center justify-center border-4 border-border bg-surface text-text-main font-black uppercase tracking-widest text-sm rounded-full h-14 shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
         >
           HISTORY
@@ -705,7 +720,7 @@ export default function Dashboard() {
         <div className="bg-surface border-4 border-border rounded-3xl overflow-hidden shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between px-5 pt-4 pb-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Recent Activity</p>
-            <Link to="/audit" className="text-[10px] font-black uppercase tracking-widest text-text-main hover:text-action-capture transition-colors flex items-center gap-1">
+            <Link to="/transactions" className="text-[10px] font-black uppercase tracking-widest text-text-main hover:text-action-capture transition-colors flex items-center gap-1">
               All <ChevronRight size={12} strokeWidth={3} />
             </Link>
           </div>

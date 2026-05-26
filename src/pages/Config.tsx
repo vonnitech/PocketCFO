@@ -6,11 +6,12 @@ import { Link } from 'react-router-dom';
 import { INITIAL_STATE, Debt, BillQueueItem } from '../store/useStore';
 import { useStore } from '../store/useStore';
 import { supabase } from '../core/supabase';
+import { calculateTrueSafeSpend } from '../core/math';
 
 const buildImportedState = (payload: unknown) => {
   const json = (payload && typeof payload === 'object') ? payload as Record<string, any> : {};
 
-  return {
+  const built = {
     ...INITIAL_STATE,
     ...json,
     salary: {
@@ -33,6 +34,11 @@ const buildImportedState = (payload: unknown) => {
     splitHistory: Array.isArray(json.splitHistory) ? json.splitHistory : INITIAL_STATE.splitHistory,
     customSplitPresets: Array.isArray(json.customSplitPresets) ? json.customSplitPresets : INITIAL_STATE.customSplitPresets,
   };
+
+  // Recalculate derived budget value so the dashboard never starts with a stale zero
+  built.safeSpendLimit = calculateTrueSafeSpend(built as any);
+
+  return built;
 };
 
 const DEFAULT_PRIMARY = '#facc15';
@@ -54,7 +60,7 @@ function Card({ children, badge, badgeColor = 'bg-black', badgeTextColor = 'text
 
 export default function Config() {
   const state = useStore();
-  const { privacyMode, setPrivacyMode, theme, setTheme, setState, setHorizon, updateBaseline, addDebt, updateDebt, removeDebt } = state;
+  const { privacyMode, setPrivacyMode, theme, setTheme, setState, setHorizon, updateBaseline, addDebt, updateDebt, removeDebt, setImpulses } = state;
 
 
   const { isInstallable, isInstalled, install } = usePWAInstall();
@@ -76,9 +82,8 @@ export default function Config() {
   const [newBillAmount, setNewBillAmount] = useState('');
   const [isAddingBill, setIsAddingBill] = useState(false);
 
-  // Bill tracking state — string so empty field shows blank not "0"
+  // Monthly Baseline state — string so empty field shows blank not "0"
   const [baselineIncome, setBaselineIncome] = useState(() => state.monthlyTakeHome || '');
-  const [baselineBills, setBaselineBills] = useState(() => state.fixedBills || '');
   const [baselineSavings, setBaselineSavings] = useState(() => state.monthlySavingsGoal || '');
   const [baselineSaved, setBaselineSaved] = useState(false);
 
@@ -281,17 +286,18 @@ export default function Config() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card badge="AESTHETIC CONFIG" badgeColor="bg-[#c084fc]" badgeTextColor="text-white">
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-input border-4 border-black rounded-2xl">
-              <div>
-                <h4 className="font-black uppercase tracking-tighter text-text-main flex items-center gap-2 text-sm">
-                  {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />} BASE THEME
-                </h4>
+            <div className="flex items-center gap-3 p-4 bg-input border-4 border-black rounded-2xl">
+              <div className="w-9 h-9 rounded-xl bg-surface border-2 border-black flex items-center justify-center shrink-0">
+                {theme === 'dark' ? <Moon size={15} strokeWidth={2.5} /> : <Sun size={15} strokeWidth={2.5} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-black uppercase tracking-tighter text-text-main text-sm">Base Theme</h4>
                 <p className="text-[10px] font-bold uppercase text-text-muted">Toggle dark/light mode</p>
               </div>
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`w-14 h-8 rounded-full flex items-center px-1 transition-all border-2 border-black ${theme === 'dark' ? 'bg-action-capture' : 'bg-input'}`}
+                className={`w-14 h-8 rounded-full flex items-center px-1 transition-all border-2 border-black shrink-0 ${theme === 'dark' ? 'bg-action-capture' : 'bg-input'}`}
               >
                 <motion.div animate={{ x: theme === 'dark' ? 24 : 0 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="w-5 h-5 rounded-full bg-surface border-2 border-black" />
               </motion.button>
@@ -381,17 +387,18 @@ export default function Config() {
         <Card badge="SECURITY & DATA" badgeColor="bg-action-bleed" badgeTextColor="text-white">
           <div className="space-y-4">
 
-            <div className="flex items-center justify-between p-4 bg-input border-4 border-black rounded-2xl">
-              <div>
-                <h4 className="font-black uppercase tracking-tighter text-text-main flex items-center gap-2 text-sm">
-                  <Shield size={16} /> PRIVACY MODE
-                </h4>
+            <div className="flex items-center gap-3 p-4 bg-input border-4 border-black rounded-2xl">
+              <div className="w-9 h-9 rounded-xl bg-surface border-2 border-black flex items-center justify-center shrink-0">
+                <Shield size={15} strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-black uppercase tracking-tighter text-text-main text-sm">Privacy Mode</h4>
                 <p className="text-[10px] font-bold uppercase text-text-muted">Mask all balances</p>
               </div>
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setPrivacyMode(!privacyMode)}
-                className={`w-14 h-8 rounded-full flex items-center px-1 transition-all border-2 border-black ${privacyMode ? 'bg-action-capture' : 'bg-input'}`}
+                className={`w-14 h-8 rounded-full flex items-center px-1 transition-all border-2 border-black shrink-0 ${privacyMode ? 'bg-action-capture' : 'bg-input'}`}
               >
                 <motion.div animate={{ x: privacyMode ? 24 : 0 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="w-5 h-5 rounded-full bg-surface border-2 border-black" />
               </motion.button>
@@ -434,8 +441,8 @@ export default function Config() {
         </Card>
       </div>
 
-      {/* Horizon Settings */}
-      <Card badge="HORIZON SETTINGS" badgeColor="bg-action-capture" badgeTextColor="text-text-main">
+      {/* Pay Cycle */}
+      <Card badge="PAY CYCLE" badgeColor="bg-action-capture" badgeTextColor="text-text-main">
         <div className="space-y-4">
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Your real bank balance, next payday, and upcoming bills drive your daily limit</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -556,7 +563,7 @@ export default function Config() {
             </div>
           </div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted -mt-1">
-            These reload automatically every time you save a new Horizon · no re-entry needed each cycle.
+            These reload automatically every time you save a new Pay Cycle · no re-entry needed each cycle.
           </p>
 
           <div>
@@ -591,16 +598,16 @@ export default function Config() {
             }}
             className="h-12 px-8 border-4 border-black rounded-full bg-action-capture text-black font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
           >
-            {horizonSaved ? <><Check size={14} /> SAVED</> : 'Save Horizon'}
+            {horizonSaved ? <><Check size={14} /> SAVED</> : 'Save Pay Cycle'}
           </button>
         </div>
       </Card>
 
-      {/* Bill Tracking (for subscription & savings rate widgets) */}
-      <Card badge="BILL TRACKING" badgeColor="bg-[#c084fc]" badgeTextColor="text-white">
+      {/* Monthly Baseline (for subscription & savings rate widgets) */}
+      <Card badge="MONTHLY BASELINE" badgeColor="bg-[#c084fc]" badgeTextColor="text-white">
         <div className="space-y-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Monthly income & bills · used by Active Subs and savings rate widget only</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Monthly income & savings goal · bills are pulled automatically from your Pay Cycle recurring bills</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Monthly Take-Home ($)</label>
               <input
@@ -610,18 +617,6 @@ export default function Config() {
                 value={baselineIncome}
                 onFocus={e => e.target.select()}
                 onChange={e => setBaselineIncome(e.target.value)}
-                className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-text-main outline-none focus:border-[#c084fc] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Monthly Fixed Bills ($)</label>
-              <input
-                type="number"
-                title="Monthly Fixed Bills"
-                min="0"
-                value={baselineBills}
-                onFocus={e => e.target.select()}
-                onChange={e => setBaselineBills(e.target.value)}
                 className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-text-main outline-none focus:border-[#c084fc] transition-colors"
               />
             </div>
@@ -641,13 +636,13 @@ export default function Config() {
           <button
             type="button"
             onClick={() => {
-              updateBaseline(parseFloat(String(baselineIncome)) || 0, parseFloat(String(baselineBills)) || 0, parseFloat(String(baselineSavings)) || 0);
+              updateBaseline(parseFloat(String(baselineIncome)) || 0, parseFloat(String(baselineSavings)) || 0);
               setBaselineSaved(true);
               setTimeout(() => setBaselineSaved(false), 2000);
             }}
             className="h-12 px-8 border-4 border-black rounded-full bg-[#c084fc] text-white font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
           >
-            {baselineSaved ? <><Check size={14} /> SAVED</> : 'Save Tracking'}
+            {baselineSaved ? <><Check size={14} /> SAVED</> : 'Save Baseline'}
           </button>
         </div>
       </Card>
@@ -738,11 +733,11 @@ export default function Config() {
                   onChange={e => setImpulseRates(r => ({ ...r, [impulse.id]: e.target.value }))}
                   onBlur={e => {
                     const val = Math.max(0, parseFloat(e.target.value) || 0);
-                    setState({ impulses: state.impulses.map(imp => imp.id === impulse.id ? { ...imp, taxRate: val / 100 } : imp) });
+                    setImpulses(state.impulses.map(imp => imp.id === impulse.id ? { ...imp, taxRate: val / 100 } : imp));
                     setImpulseRates(r => ({ ...r, [impulse.id]: String(val) }));
                   }}
                 />
-                <button type="button" aria-label="Delete habit" onClick={() => setState({ impulses: state.impulses.filter(imp => imp.id !== impulse.id) })} className="p-2 text-action-bleed hover:bg-action-bleed/10 rounded-xl transition-colors">
+                <button type="button" aria-label="Delete habit" onClick={() => setImpulses(state.impulses.filter(imp => imp.id !== impulse.id))} className="p-2 text-action-bleed hover:bg-action-bleed/10 rounded-xl transition-colors">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -763,7 +758,7 @@ export default function Config() {
                   type="button"
                   onClick={() => {
                     if (newConfigImpulseName.trim()) {
-                      setState({ impulses: [...(state.impulses || []), { id: Math.random().toString(36).substr(2, 9), name: newConfigImpulseName.trim(), taxRate: 0.5 }] });
+                      setImpulses([...(state.impulses || []), { id: Math.random().toString(36).substr(2, 9), name: newConfigImpulseName.trim(), taxRate: 0.5 }]);
                       setIsAddingConfigImpulse(false); setNewConfigImpulseName('');
                     }
                   }}
@@ -791,15 +786,15 @@ export default function Config() {
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Configure active widgets</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {(state.dashboardWidgets || []).map(widget => (
-              <div key={widget.id} className="flex items-center justify-between p-4 bg-input border-4 border-black rounded-2xl">
-                <div>
+              <div key={widget.id} className="flex items-center gap-3 p-4 bg-input border-4 border-black rounded-2xl">
+                <div className="flex-1 min-w-0">
                   <h4 className="font-black italic uppercase text-xs tracking-widest text-text-main">{widget.id.replace('-', ' ')}</h4>
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{widget.visible ? 'ACTIVE' : 'OFFLINE'}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{widget.visible ? 'Active' : 'Hidden'}</p>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setState({ dashboardWidgets: state.dashboardWidgets.map(w => w.id === widget.id ? { ...w, visible: !w.visible } : w) })}
-                  className={`w-12 h-6 rounded-full flex items-center px-1 transition-all border-2 border-black ${widget.visible ? 'bg-action-capture' : 'bg-input'}`}
+                  className={`w-12 h-6 rounded-full flex items-center px-1 transition-all border-2 border-black shrink-0 ${widget.visible ? 'bg-action-capture' : 'bg-input'}`}
                 >
                   <motion.div animate={{ x: widget.visible ? 24 : 0 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="w-3 h-3 rounded-full bg-surface border-2 border-black" />
                 </motion.button>

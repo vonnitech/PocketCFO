@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Flame, Target, TrendingUp, RotateCcw, ShieldCheck, Zap, Link as LinkIcon, Anchor } from 'lucide-react';
+import { Flame, Target, TrendingUp, RotateCcw, ShieldCheck, Zap, Link as LinkIcon, Anchor, Lock, LockOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 
@@ -24,6 +24,24 @@ function fv(assets: number, monthly: number, months: number): number {
   if (months <= 0) return assets;
   const g = Math.pow(1 + R, months);
   return monthly === 0 ? assets * g : assets * g + monthly * (g - 1) / R;
+}
+
+// Month-by-month simulation when income grows over time
+function fvWithGrowth(assets: number, monthlyStart: number, months: number, annualGrowth: number): number {
+  if (annualGrowth === 0 || months <= 0) return fv(assets, monthlyStart, months);
+  let portfolio = assets;
+  for (let m = 0; m < months; m++) {
+    portfolio = portfolio * (1 + R) + monthlyStart * Math.pow(1 + annualGrowth, m / 12);
+  }
+  return portfolio;
+}
+
+function yearsToFireWithGrowth(assets: number, monthlyStart: number, target: number, annualGrowth: number): number | null {
+  if (annualGrowth === 0) return yearsToFire(assets, monthlyStart, target);
+  for (let y = 0; y <= 80; y++) {
+    if (fvWithGrowth(assets, monthlyStart, y * 12, annualGrowth) >= target) return y;
+  }
+  return null;
 }
 
 function yearsToFire(assets: number, monthly: number, target: number): number | null {
@@ -193,16 +211,25 @@ export function FireCalculator() {
   const monthlyTakeHome    = useStore(s => s.monthlyTakeHome);
   const fixedBills         = useStore(s => s.fixedBills);
   const isConfigured       = useStore(s => s.isConfigured);
+  const fireConfig         = useStore(s => s.fireConfig);
+  const saveFireConfig     = useStore(s => s.saveFireConfig);
+  const clearFireConfig    = useStore(s => s.clearFireConfig);
 
-  const monthlyContrib = monthlySavingsGoal > 0
+  const monthlyContribBase = monthlySavingsGoal > 0
     ? monthlySavingsGoal
     : Math.max(0, monthlyTakeHome - fixedBills) * 0.2;
 
-  const [ca, setCaRaw]           = useState(() => loadSaved().currentAge);
-  const [ta, setTaRaw]           = useState(() => loadSaved().targetAge);
-  const [ae, setAeRaw]           = useState(() => loadSaved().annualExpenses);
-  const [ptIncome, setPtIncomeRaw] = useState(() => loadSaved().partTimeIncome);
-  const [strategy, setStrategyRaw] = useState<FireStrategy>(() => loadSaved().strategy);
+  const [monthlyOverride, setMonthlyOverride] = useState('');
+  const [incomeGrowthRaw, setIncomeGrowthRaw] = useState('');
+  const monthlyContrib   = monthlyOverride !== '' ? (parseFloat(monthlyOverride) || 0) : monthlyContribBase;
+  const incomeGrowthRate = incomeGrowthRaw !== '' ? (parseFloat(incomeGrowthRaw) || 0) / 100 : 0;
+
+  // Init from Supabase fireConfig first, then sessionStorage, then defaults
+  const [ca, setCaRaw]           = useState(() => useStore.getState().fireConfig?.currentAge    ?? loadSaved().currentAge);
+  const [ta, setTaRaw]           = useState(() => useStore.getState().fireConfig?.targetAge     ?? loadSaved().targetAge);
+  const [ae, setAeRaw]           = useState(() => useStore.getState().fireConfig?.annualExpenses ?? loadSaved().annualExpenses);
+  const [ptIncome, setPtIncomeRaw] = useState(() => useStore.getState().fireConfig?.partTimeIncome ?? loadSaved().partTimeIncome);
+  const [strategy, setStrategyRaw] = useState<FireStrategy>(() => (useStore.getState().fireConfig?.strategy as FireStrategy) ?? loadSaved().strategy);
 
   const setCa      = (v: string) => { setCaRaw(v);      saveField('currentAge',    v); };
   const setTa      = (v: string) => { setTaRaw(v);      saveField('targetAge',     v); };
@@ -217,7 +244,29 @@ export function FireCalculator() {
     setAeRaw(DEFAULTS.annualExpenses);
     setPtIncomeRaw(DEFAULTS.partTimeIncome);
     setStrategyRaw('STANDARD');
+    setMonthlyOverride('');
+    setIncomeGrowthRaw('');
   };
+
+  const handleLockIn = () => {
+    saveFireConfig({
+      strategy,
+      currentAge: ca,
+      targetAge: ta,
+      annualExpenses: ae,
+      partTimeIncome: ptIncome,
+      lockedAt: new Date().toISOString(),
+    });
+  };
+
+  // True if current form state matches the saved lock
+  const isDirty = !fireConfig || (
+    fireConfig.strategy !== strategy ||
+    fireConfig.currentAge !== ca ||
+    fireConfig.targetAge !== ta ||
+    fireConfig.annualExpenses !== ae ||
+    fireConfig.partTimeIncome !== ptIncome
+  );
 
   const currentStrategy = STRATEGIES.find(s => s.id === strategy)!;
 
@@ -281,19 +330,19 @@ export function FireCalculator() {
     if (targetAge <= currentAge) return null;
 
     const yearsToTarget = targetAge - currentAge;
-    const projAtTarget  = fv(totalVaulted, monthlyContrib, yearsToTarget * 12);
+    const projAtTarget  = fvWithGrowth(totalVaulted, monthlyContrib, yearsToTarget * 12, incomeGrowthRate);
     const progressPct   = Math.min(100, (totalVaulted / fireNumber) * 100);
     const projPct       = Math.min(100, (projAtTarget / fireNumber) * 100);
     const onTrack       = projAtTarget >= fireNumber;
-    const yearsToFIRE   = yearsToFire(totalVaulted, monthlyContrib, fireNumber);
+    const yearsToFIRE   = yearsToFireWithGrowth(totalVaulted, monthlyContrib, fireNumber, incomeGrowthRate);
     const fireAge       = yearsToFIRE !== null ? currentAge + yearsToFIRE : null;
-    const reqMonthly    = onTrack ? null : neededMonthly(totalVaulted, fireNumber, yearsToTarget * 12);
+    const reqMonthly    = neededMonthly(totalVaulted, fireNumber, yearsToTarget * 12);
     const surplus       = onTrack ? projAtTarget - fireNumber : 0;
 
     const displayYears = Math.min(80, Math.max(yearsToTarget + 12, yearsToFIRE ? yearsToFIRE + 5 : yearsToTarget + 20, 20));
     const chartData = Array.from({ length: displayYears + 1 }, (_, i) => ({
       age:   currentAge + i,
-      value: fv(totalVaulted, monthlyContrib, i * 12),
+      value: fvWithGrowth(totalVaulted, monthlyContrib, i * 12, incomeGrowthRate),
     }));
 
     return {
@@ -314,7 +363,7 @@ export function FireCalculator() {
       targetAge,
       yearsToFIRE,
     };
-  }, [ca, ta, ae, strategy, ptIncome, totalVaulted, monthlyContrib]);
+  }, [ca, ta, ae, strategy, ptIncome, totalVaulted, monthlyContrib, incomeGrowthRate]);
 
   // ── Setup prompt ─────────────────────────────────────────────────────────
   if (!isConfigured || (totalVaulted === 0 && monthlySavingsGoal === 0)) {
@@ -322,7 +371,7 @@ export function FireCalculator() {
       <div className="space-y-6">
         <div>
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
-            FIRE Calc
+            FIRE CALCULATOR
           </h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
             Financial Independence · 4% Safe Withdrawal · 7% Real Return
@@ -354,23 +403,53 @@ export function FireCalculator() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
-            FIRE Calc
+            FIRE CALCULATOR
           </h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
-            {currentStrategy.tag} · {strategy === 'COAST' ? '7% Compound · No Contributions' : '4% Return · 25× Rule'}
+            {currentStrategy.tag} · {strategy === 'COAST' ? '7% Growth · No Contributions' : '7% Growth · 4% SWR · 25× Rule'}
           </p>
+          {fireConfig && !isDirty && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-action-capture border-2 border-black rounded-full">
+                <Lock size={10} strokeWidth={3} className="text-black shrink-0" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-black">
+                  {STRATEGIES.find(s => s.id === fireConfig.strategy)?.tag ?? fireConfig.strategy} locked
+                </span>
+              </div>
+            </div>
+          )}
+          {fireConfig && isDirty && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-action-primary/20 border-2 border-action-primary/40 rounded-full">
+                <LockOpen size={10} strokeWidth={3} className="text-text-muted shrink-0" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">unsaved changes</span>
+              </div>
+            </div>
+          )}
         </div>
-        <button
-          type="button"
-          title="Reset to defaults"
-          onClick={reset}
-          className="w-9 h-9 flex items-center justify-center border-2 border-border rounded-xl text-text-muted hover:bg-input hover:text-text-main transition-colors"
-        >
-          <RotateCcw size={15} strokeWidth={2.5} />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0 mt-1">
+          {fireConfig && (
+            <button
+              type="button"
+              title="Clear locked strategy"
+              onClick={clearFireConfig}
+              className="w-9 h-9 flex items-center justify-center border-2 border-border rounded-xl text-text-muted hover:bg-action-bleed/10 hover:text-action-bleed hover:border-action-bleed/30 transition-colors"
+            >
+              <LockOpen size={14} strokeWidth={2.5} />
+            </button>
+          )}
+          <button
+            type="button"
+            title="Reset to defaults"
+            onClick={reset}
+            className="w-9 h-9 flex items-center justify-center border-2 border-border rounded-xl text-text-muted hover:bg-input hover:text-text-main transition-colors"
+          >
+            <RotateCcw size={15} strokeWidth={2.5} />
+          </button>
+        </div>
       </div>
 
       {/* Hero */}
@@ -460,10 +539,10 @@ export function FireCalculator() {
             <div className="flex items-center gap-1.5 mb-2">
               <Zap size={12} strokeWidth={2.5} className="text-action-primary shrink-0" />
               <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">
-                {monthlySavingsGoal > 0 ? 'Savings Goal' : 'Est. Savings'}
+                {monthlyOverride !== '' ? 'Override' : monthlySavingsGoal > 0 ? 'Savings Goal' : 'Est. Savings'}
               </p>
             </div>
-            <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{fmtFull(monthlyContrib)}</p>
+            <p className={`text-2xl font-black italic tracking-tighter tabular-nums ${monthlyOverride !== '' ? 'text-action-primary' : 'text-text-main'}`}>{fmtFull(monthlyContrib)}</p>
             <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted mt-1">per month</p>
           </div>
         </div>
@@ -537,6 +616,53 @@ export function FireCalculator() {
 
         <Field label="Annual Expenses in Retirement" prefix="$" value={ae} onChange={setAe} />
 
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Monthly Vault Contribution</p>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none select-none text-lg">$</span>
+            <input
+              type="number"
+              title="Monthly vault contribution override"
+              inputMode="decimal"
+              min="0"
+              value={monthlyOverride}
+              placeholder={String(Math.round(monthlyContribBase))}
+              onChange={e => setMonthlyOverride(e.target.value.replace(/[^0-9.]/g, ''))}
+              onFocus={e => e.target.select()}
+              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted/40"
+            />
+          </div>
+          {monthlyOverride !== '' && (
+            <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary mt-1.5">
+              Overriding profile goal of {fmtFull(monthlyContribBase)}/mo
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Annual Income Growth Rate</p>
+          <div className="relative">
+            <input
+              type="number"
+              title="Annual income growth rate"
+              inputMode="decimal"
+              min="0"
+              max="100"
+              value={incomeGrowthRaw}
+              placeholder="0"
+              onChange={e => setIncomeGrowthRaw(e.target.value.replace(/[^0-9.]/g, ''))}
+              onFocus={e => e.target.select()}
+              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-9 pl-4 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted/40"
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none text-lg">%</span>
+          </div>
+          {incomeGrowthRate > 0 && (
+            <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary mt-1.5">
+              Contributions compound {incomeGrowthRaw}%/yr — projections grow faster over time
+            </p>
+          )}
+        </div>
+
         {strategy === 'BARISTA' && (
           <Field label="Expected Part-Time Income (annual)" prefix="$" value={ptIncome} onChange={setPtIncome} />
         )}
@@ -544,9 +670,26 @@ export function FireCalculator() {
         {(strategy === 'FAT' || strategy === 'LEAN' || strategy === 'BARISTA') && calc && (
           <div className="flex items-center justify-between px-3 py-2 bg-input border-2 border-border rounded-xl">
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-              {strategy === 'BARISTA' ? 'Net portfolio target' : 'Adjusted expenses'}
+              {strategy === 'BARISTA' ? 'Portfolio covers' : 'Adjusted expenses'}
             </p>
             <p className="text-[11px] font-black text-text-main tabular-nums">{fmtFull(calc.effectiveExpenses)}/yr</p>
+          </div>
+        )}
+
+        {/* Lock In Strategy */}
+        {isDirty ? (
+          <button
+            type="button"
+            onClick={handleLockIn}
+            className="w-full h-12 flex items-center justify-center gap-2 border-4 border-black rounded-2xl bg-black text-action-capture font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+          >
+            <Lock size={14} strokeWidth={3} />
+            {fireConfig ? 'Update Locked Strategy' : 'Lock In Strategy'}
+          </button>
+        ) : (
+          <div className="w-full h-12 flex items-center justify-center gap-2 border-4 border-action-capture/40 rounded-2xl bg-action-capture/10 text-action-capture font-black uppercase tracking-widest text-[11px]">
+            <Lock size={14} strokeWidth={3} />
+            Strategy Locked
           </div>
         )}
       </div>
@@ -615,9 +758,11 @@ export function FireCalculator() {
               accent: calc.onTrack ? 'text-action-capture' : 'text-action-bleed',
             },
             {
-              label: 'Need / Mo',
-              value: calc.reqMonthly !== null ? fmt(calc.reqMonthly) : '—',
-              sub: calc.onTrack ? 'on track!' : 'to hit FIRE',
+              label: calc.onTrack ? 'Min / Mo' : 'Need / Mo',
+              value: calc.reqMonthly !== null && isFinite(calc.reqMonthly) ? fmt(calc.reqMonthly) : '—',
+              sub: calc.onTrack
+                ? `saving ${fmt(monthlyContrib)} · ${fmt(monthlyContrib - (calc.reqMonthly ?? 0))} above min`
+                : `${fmt((calc.reqMonthly ?? 0) - monthlyContrib)} more than now`,
               accent: calc.onTrack ? 'text-action-capture' : 'text-action-bleed',
             },
           ]).map(s => (
@@ -668,7 +813,10 @@ export function FireCalculator() {
                     }
                   </p>
                   <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
-                    Keep your ${fmtFull(monthlyContrib)}/mo savings rate consistent · compounding does the heavy lifting from here.
+                    {calc.reqMonthly !== null && isFinite(calc.reqMonthly)
+                      ? `Minimum needed: ${fmtFull(calc.reqMonthly)}/mo · you're saving ${fmtFull(monthlyContrib)}/mo · ${fmtFull(monthlyContrib - calc.reqMonthly)} above minimum.`
+                      : `Keep your ${fmtFull(monthlyContrib)}/mo savings rate consistent · compounding does the heavy lifting from here.`
+                    }
                   </p>
                 </>
               ) : (
