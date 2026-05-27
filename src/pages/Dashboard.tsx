@@ -184,7 +184,7 @@ export default function Dashboard() {
           type="button"
           whileTap={{ scale: 0.97 }}
           onClick={() => setLogSheetOpen(true)}
-          className="w-full h-14 flex items-center justify-center gap-2 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+          className="w-full h-12 flex items-center justify-center gap-2 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
         >
           + LOG SPEND
         </motion.button>

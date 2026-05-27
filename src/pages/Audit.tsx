@@ -25,19 +25,19 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  FOOD: 'bg-orange-100 text-orange-800 border-orange-300',
-  TRANSPORT: 'bg-blue-100 text-blue-800 border-blue-300',
-  FUN: 'bg-purple-100 text-purple-800 border-purple-300',
-  SHOPPING: 'bg-pink-100 text-pink-800 border-pink-300',
-  HEALTH: 'bg-green-100 text-green-800 border-green-300',
-  HOME: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  WORK: 'bg-cyan-100 text-cyan-800 border-cyan-300',
-  SOCIAL: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-  PENALTY: 'bg-red-100 text-red-800 border-red-300',
+  FOOD:      'bg-input text-text-muted border-border',
+  TRANSPORT: 'bg-input text-text-muted border-border',
+  FUN:       'bg-input text-text-muted border-border',
+  SHOPPING:  'bg-input text-text-muted border-border',
+  HEALTH:    'bg-input text-text-muted border-border',
+  HOME:      'bg-input text-text-muted border-border',
+  WORK:      'bg-input text-text-muted border-border',
+  SOCIAL:    'bg-input text-text-muted border-border',
+  PENALTY:   'bg-action-bleed/20 text-action-bleed border-action-bleed/40',
   VAULT_DEPOSIT: 'bg-action-capture/20 text-action-capture border-action-capture/40',
-  DEBT_PAYMENT: 'bg-action-primary/20 text-black border-action-primary/40',
-  INCOME: 'bg-action-capture/20 text-action-capture border-action-capture/40',
-  SAVINGS: 'bg-action-capture/20 text-action-capture border-action-capture/40',
+  DEBT_PAYMENT:  'bg-action-primary/20 text-black border-action-primary/40',
+  INCOME:    'bg-action-capture/20 text-action-capture border-action-capture/40',
+  SAVINGS:   'bg-action-capture/20 text-action-capture border-action-capture/40',
 };
 
 function catBadge(category: string) {

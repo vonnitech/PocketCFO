@@ -250,6 +250,7 @@ interface StoreActions {
   setPrivacyMode: (mode: boolean) => void;
   togglePrivacyMode: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
+  setThemeColors: (primary: string, capture: string) => Promise<void>;
   updateDashboardWidgets: (widgets: { id: string; visible: boolean }[]) => void;
   setState: (state: Partial<AppState>) => void;
   updateState: (fn: (prev: AppState) => AppState) => void;
@@ -461,6 +462,18 @@ export const useStore = create<StoreState>()(
       set({ theme } as any);
       if (!userId) return;
       await (supabase.from('profiles') as any).update({ theme }).eq('id', userId);
+    },
+
+    setThemeColors: async (primary, capture) => {
+      const { userId } = get() as StoreState;
+      set((state: any) => ({ ...state, themeColors: { primary, secondary: capture } }));
+      document.documentElement.style.setProperty('--color-action-primary', primary);
+      document.documentElement.style.setProperty('--color-action-capture', capture);
+      if (!userId) return;
+      await (supabase.from('profiles') as any).update({
+        theme_primary_color: primary,
+        theme_capture_color: capture,
+      }).eq('id', userId);
     },
 
     updateDashboardWidgets: async (widgets) => {

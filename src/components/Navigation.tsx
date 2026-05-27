@@ -115,7 +115,7 @@ export default function Navigation() {
   return (
     <>
       {/* ── Desktop Sidebar ── */}
-      <nav className="hidden md:flex flex-col h-screen bg-surface border-r-[3px] border-border px-4 py-5 transition-colors duration-300">
+      <nav className="hidden md:flex flex-col h-screen bg-surface border-r-4 border-border px-4 py-5 transition-colors duration-300">
 
         {/* Brand */}
         <div className="flex items-center justify-between mb-7 px-1">
@@ -224,7 +224,7 @@ export default function Navigation() {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 420, damping: 40 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 38 }}
               className="fixed bottom-0 left-0 right-0 z-70 bg-surface border-t-[3px] border-border rounded-t-3xl px-5 pt-4 sheet-pb-safe md:hidden max-h-[90vh] overflow-y-auto"
             >
               {/* Drag handle */}

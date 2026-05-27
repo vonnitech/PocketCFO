@@ -170,11 +170,11 @@ export default function Vaults() {
       <div className="grid grid-cols-2 gap-3">
         {/* Total Vaulted */}
         <div className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
-          <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Total Vaulted</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Total Vaulted</p>
           <p className="text-2xl font-black italic tabular-nums text-text-main leading-none">
             {formatCurrency(totalVaulted, privacyMode)}
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted/60 mt-1">Across all vaults</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">Across all vaults</p>
         </div>
 
         {/* Monthly Savings Goal + Progress */}
@@ -213,10 +213,10 @@ export default function Vaults() {
             <div key={stat.label} className="bg-surface border-4 border-border rounded-2xl p-3 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
               <div className="flex items-center gap-1.5 mb-1">
                 <div className={`w-2 h-2 rounded-full ${stat.dot} border border-black/20 shrink-0`} />
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">{stat.label}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">{stat.label}</p>
               </div>
               <p className="text-base font-black italic tabular-nums text-text-main">{formatCurrency(stat.value, privacyMode)}</p>
-              {stat.note && <p className="text-[8px] font-bold uppercase tracking-widest text-text-muted/60 mt-0.5">{stat.note}</p>}
+              {stat.note && <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-0.5">{stat.note}</p>}
             </div>
           ))}
         </div>

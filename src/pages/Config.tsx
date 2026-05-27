@@ -43,6 +43,21 @@ const buildImportedState = (payload: unknown) => {
 
 const DEFAULT_PRIMARY = '#facc15';
 const DEFAULT_CAPTURE = '#00CC55';
+
+const COLOR_THEMES = [
+  { id: 'default',         name: 'Original',         primary: '#facc15', capture: '#00CC55' },
+  { id: 'sky-kelly',       name: 'Sky & Kelly',       primary: '#4BBFD4', capture: '#2EAA5C' },
+  { id: 'pink-sky',        name: 'Pink & Sky',        primary: '#FF5C9E', capture: '#4BBFD4' },
+  { id: 'blush-orange',    name: 'Blush & Orange',    primary: '#F9A7B2', capture: '#FF7A3A' },
+  { id: 'lavender-purple', name: 'Lavender & Purple', primary: '#B8A8D8', capture: '#7733BB' },
+  { id: 'blue-yellow',     name: 'Blue & Sunshine',   primary: '#4455CC', capture: '#FFD600' },
+  { id: 'pool-poppy',      name: 'Pool & Poppy',      primary: '#00AACC', capture: '#FF3344' },
+  { id: 'lime-royal',      name: 'Lime & Royal',      primary: '#88CC22', capture: '#3355CC' },
+  { id: 'orange-royal',    name: 'Orange & Royal',    primary: '#FF8800', capture: '#3355CC' },
+  { id: 'turquoise-teal',  name: 'Turquoise & Teal',  primary: '#22CCBB', capture: '#007799' },
+  { id: 'ballet-cherry',   name: 'Ballet & Cherry',   primary: '#F5A0B8', capture: '#CC1133' },
+  { id: 'ballet-navy',     name: 'Ballet & Navy',     primary: '#F5A0B8', capture: '#1E3A8A' },
+] as const;
 const isValidHex = (v: string) => /^#[0-9A-Fa-f]{6}$/.test(v);
 const safeHex = (v: string | undefined, fallback: string) =>
   v && isValidHex(v) ? v : fallback;
@@ -60,7 +75,7 @@ function Card({ children, badge, badgeColor = 'bg-black', badgeTextColor = 'text
 
 export default function Config() {
   const state = useStore();
-  const { privacyMode, setPrivacyMode, theme, setTheme, setState, setHorizon, updateBaseline, addDebt, updateDebt, removeDebt, setImpulses } = state;
+  const { privacyMode, setPrivacyMode, theme, setTheme, setState, setHorizon, updateBaseline, addDebt, updateDebt, removeDebt, setImpulses, setThemeColors } = state;
 
 
   const { isInstallable, isInstalled, install } = usePWAInstall();
@@ -311,12 +326,41 @@ export default function Config() {
                   onClick={() => {
                     setPrimaryColor(DEFAULT_PRIMARY);
                     setCaptureColor(DEFAULT_CAPTURE);
-                    setState({ themeColors: { primary: DEFAULT_PRIMARY, secondary: DEFAULT_CAPTURE } });
+                    setThemeColors(DEFAULT_PRIMARY, DEFAULT_CAPTURE);
                   }}
                   className="text-[11px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
                 >
                   Reset defaults
                 </button>
+              </div>
+
+              {/* Color presets */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {COLOR_THEMES.map(t => {
+                  const isActive = primaryColor === t.primary && captureColor === t.capture;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setPrimaryColor(t.primary);
+                        setCaptureColor(t.capture);
+                        setThemeColors(t.primary, t.capture);
+                      }}
+                      className={`swatch-${t.id} flex flex-col items-center gap-1 p-2 rounded-xl border-4 transition-all ${
+                        isActive ? 'border-black shadow-brutal-sm' : 'border-transparent hover:border-border'
+                      }`}
+                    >
+                      <div className="flex gap-0.5">
+                        <div className="swatch-dot-primary w-4 h-4 rounded-full border border-black/20" />
+                        <div className="swatch-dot-capture w-4 h-4 rounded-full border border-black/20" />
+                      </div>
+                      <span className="text-[8px] font-black uppercase tracking-wide text-text-muted leading-tight text-center line-clamp-1">
+                        {t.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2 block">Primary Color</label>
@@ -341,7 +385,7 @@ export default function Config() {
                       const raw = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`;
                       if (isValidHex(raw)) {
                         setPrimaryColor(raw);
-                        setState({ themeColors: { ...state.themeColors, primary: raw } });
+                        setThemeColors(raw, captureColor);
                       } else {
                         setPrimaryColor(state.themeColors?.primary && isValidHex(state.themeColors.primary) ? state.themeColors.primary : DEFAULT_PRIMARY);
                       }
@@ -372,7 +416,7 @@ export default function Config() {
                       const raw = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`;
                       if (isValidHex(raw)) {
                         setCaptureColor(raw);
-                        setState({ themeColors: { ...state.themeColors, secondary: raw } });
+                        setThemeColors(primaryColor, raw);
                       } else {
                         setCaptureColor(state.themeColors?.secondary && isValidHex(state.themeColors.secondary) ? state.themeColors.secondary : DEFAULT_CAPTURE);
                       }

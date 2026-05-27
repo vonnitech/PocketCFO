@@ -87,6 +87,23 @@
   .label-xs {
     @apply text-[10px] font-bold uppercase tracking-wider text-text-muted;
   }
+
+  /* Color theme swatches — avoids inline styles for dynamic palette preview */
+  .swatch-default         { --tp: #facc15; --tc: #00CC55; }
+  .swatch-sky-kelly       { --tp: #4BBFD4; --tc: #2EAA5C; }
+  .swatch-pink-sky        { --tp: #FF5C9E; --tc: #4BBFD4; }
+  .swatch-blush-orange    { --tp: #F9A7B2; --tc: #FF7A3A; }
+  .swatch-lavender-purple { --tp: #B8A8D8; --tc: #7733BB; }
+  .swatch-blue-yellow     { --tp: #4455CC; --tc: #FFD600; }
+  .swatch-pool-poppy      { --tp: #00AACC; --tc: #FF3344; }
+  .swatch-lime-royal      { --tp: #88CC22; --tc: #3355CC; }
+  .swatch-orange-royal    { --tp: #FF8800; --tc: #3355CC; }
+  .swatch-turquoise-teal  { --tp: #22CCBB; --tc: #007799; }
+  .swatch-ballet-cherry   { --tp: #F5A0B8; --tc: #CC1133; }
+  .swatch-ballet-navy     { --tp: #F5A0B8; --tc: #1E3A8A; }
+
+  .swatch-dot-primary  { background: var(--tp); }
+  .swatch-dot-capture  { background: var(--tc); }
 }
 
 /* Safe-area padding for bottom-nav devices (iPhone home indicator) */
