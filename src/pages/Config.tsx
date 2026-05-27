@@ -1,19 +1,49 @@
 ﻿import { useState } from 'react';
-import { motion } from 'motion/react';
-import { Trash2, User, Plus, Check, X, Edit2, ArrowLeft } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Trash2, User, Plus, Check, X, Edit2, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Debt, BillQueueItem } from '../store/useStore';
 import { useStore } from '../store/useStore';
 import { supabase } from '../core/supabase';
 
 
-function Card({ children, badge, badgeColor = 'bg-black', badgeTextColor = 'text-action-primary' }: { children: React.ReactNode; badge: string; badgeColor?: string; badgeTextColor?: string }) {
+function Card({ children, badge, badgeColor = 'bg-black', badgeTextColor = 'text-action-primary', defaultOpen = true }: {
+  children: React.ReactNode;
+  badge: string;
+  badgeColor?: string;
+  badgeTextColor?: string;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-      <div className={`inline-flex px-3 py-1 ${badgeColor} border-2 border-black rounded-full ${badgeTextColor} text-[10px] font-black tracking-widest uppercase mb-4`}>
-        {badge}
-      </div>
-      {children}
+    <div className="bg-surface border-4 border-border rounded-3xl shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-3 px-5 py-4"
+      >
+        <div className={`inline-flex px-3 py-1 ${badgeColor} border-2 border-black rounded-full ${badgeTextColor} text-[10px] font-black tracking-widest uppercase`}>
+          {badge}
+        </div>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ type: 'spring', stiffness: 380, damping: 38 }}>
+          <ChevronDown size={16} strokeWidth={2.5} className="text-text-muted" />
+        </motion.div>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="px-5 pb-5">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
