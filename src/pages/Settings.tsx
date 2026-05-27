@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Eye, EyeOff, Sun, Moon, SlidersHorizontal, ChevronRight, Lock, LockOpen,
   Download, Upload, Trash2, Smartphone, RefreshCw, Zap, Trophy, Shield, Medal,
+  User, Check, ChevronDown,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
@@ -39,47 +40,52 @@ const buildImportedState = (payload: unknown) => {
 };
 
 const COLOR_THEMES = [
+  // Original
   { id: 'default',           name: 'Original',           primary: '#facc15', capture: '#00CC55' },
-  { id: 'sky-kelly',         name: 'Sky & Kelly',         primary: '#4BBFD4', capture: '#2EAA5C' },
-  { id: 'pink-sky',          name: 'Pink & Sky',          primary: '#FF5C9E', capture: '#4BBFD4' },
-  { id: 'blush-orange',      name: 'Blush & Orange',      primary: '#F9A7B2', capture: '#FF7A3A' },
-  { id: 'lavender-purple',   name: 'Lavender & Purple',   primary: '#B8A8D8', capture: '#7733BB' },
-  { id: 'blue-yellow',       name: 'Blue & Sunshine',     primary: '#4455CC', capture: '#FFD600' },
-  { id: 'pool-poppy',        name: 'Pool & Poppy',        primary: '#00AACC', capture: '#FF3344' },
-  { id: 'lime-royal',        name: 'Lime & Royal',        primary: '#88CC22', capture: '#3355CC' },
-  { id: 'orange-royal',      name: 'Orange & Royal',      primary: '#FF8800', capture: '#3355CC' },
-  { id: 'turquoise-teal',    name: 'Turquoise & Teal',    primary: '#22CCBB', capture: '#007799' },
-  { id: 'ballet-cherry',     name: 'Ballet & Cherry',     primary: '#F5A0B8', capture: '#CC1133' },
-  { id: 'ballet-navy',       name: 'Ballet & Navy',       primary: '#F5A0B8', capture: '#1E3A8A' },
-  { id: 'bubblegum',         name: 'Bubblegum',           primary: '#EDC2CB', capture: '#57798F' },
-  { id: 'coral-lemon',       name: 'Coral & Lemon',       primary: '#FF5960', capture: '#FFE783' },
-  { id: 'midnight-ocean',    name: 'Midnight Ocean',      primary: '#122C4F', capture: '#5B88B2' },
-  { id: 'blue-choc',         name: 'Blue & Choc',         primary: '#7CA7EB', capture: '#402924' },
-  { id: 'saffron-steel',     name: 'Saffron & Steel',     primary: '#E8C547', capture: '#4F7CAC' },
+  // Pinks — vivid → soft → pale
   { id: 'hot-magenta',       name: 'Hot Magenta',         primary: '#FF006E', capture: '#FFD60A' },
-  { id: 'cyprus-jade',       name: 'Cyprus & Jade',       primary: '#004643', capture: '#ABD1C6' },
-  { id: 'hibiscus-cola',     name: 'Hibiscus Cola',       primary: '#E0A4B0', capture: '#7C0116' },
-  { id: 'cobalt-butter',     name: 'Cobalt & Butter',     primary: '#0F52BB', capture: '#FFFF9A' },
-  { id: 'sunlit-wine',       name: 'Sunlit Wine',         primary: '#F4E7AF', capture: '#551424' },
-  { id: 'raspberry-lemon',   name: 'Raspberry Lemon',     primary: '#C8154B', capture: '#FFF8B6' },
-  { id: 'yam-tide',          name: 'Yam & High Tide',     primary: '#EA9216', capture: '#313841' },
-  { id: 'chili-flare',       name: 'Chili Flare',         primary: '#FFD9A1', capture: '#BE2717' },
-  { id: 'sunny-spark',       name: 'Sunny Spark',         primary: '#DE4818', capture: '#ECDC80' },
-  { id: 'retro-earth',       name: 'Retro Earth',         primary: '#ED5351', capture: '#1C180A' },
-  { id: 'deep-roots',        name: 'Deep Roots',          primary: '#FB884C', capture: '#3A1A0A' },
-  { id: 'sweet-ocean',       name: 'Sweet Ocean',         primary: '#F8C6F2', capture: '#01006C' },
-  { id: 'deep-mariner',      name: 'Deep Mariner',        primary: '#014770', capture: '#E9E5D2' },
-  { id: 'blush-abyss',       name: 'Blush Abyss',         primary: '#F5D0D0', capture: '#4A0011' },
-  { id: 'gold-vintage',      name: 'Gold Vintage',        primary: '#A77E16', capture: '#1A2800' },
-  { id: 'amber-flamingo',    name: 'Amber & Flamingo',    primary: '#FFBF00', capture: '#F0563A' },
-  { id: 'barley-orange',     name: 'Barley & Orange',     primary: '#FFF4CC', capture: '#FF8C00' },
-  { id: 'avocado-chiffon',   name: 'Avocado & Chiffon',   primary: '#568203', capture: '#FFF8B9' },
-  { id: 'olive-foliage',     name: 'Olive & Foliage',     primary: '#D2DB76', capture: '#2D371D' },
-  { id: 'butter-crumble',    name: 'Butter Crumble',      primary: '#F2E6B3', capture: '#4B2E21' },
-  { id: 'matcha-honey',      name: 'Matcha Honey',        primary: '#9CA764', capture: '#F1E8C7' },
-  { id: 'strawberry-matcha', name: 'Strawberry Matcha',   primary: '#F9D1D9', capture: '#838F58' },
-  { id: 'cherry-blossom',    name: 'Cherry Blossom',      primary: '#FAFFC7', capture: '#F8A8B9' },
+  { id: 'pink-sky',          name: 'Pink & Sky',          primary: '#FF5C9E', capture: '#4BBFD4' },
   { id: 'blush-butter',      name: 'Blush & Butter',      primary: '#E36887', capture: '#F3D98F' },
+  { id: 'ballet-cherry',     name: 'Ballet & Cherry',     primary: '#F5A0B8', capture: '#CC1133' },
+  { id: 'hibiscus-cola',     name: 'Hibiscus Cola',       primary: '#E0A4B0', capture: '#7C0116' },
+  { id: 'bubblegum',         name: 'Sand & Steel',        primary: '#E8C29A', capture: '#57798F' },
+  { id: 'sweet-ocean',       name: 'Sweet Ocean',         primary: '#F8C6F2', capture: '#01006C' },
+  // Reds
+  { id: 'raspberry-lemon',   name: 'Raspberry Lemon',     primary: '#C8154B', capture: '#FFF8B6' },
+  { id: 'coral-lemon',       name: 'Coral & Lemon',       primary: '#FF5960', capture: '#FFE783' },
+  { id: 'retro-earth',       name: 'Retro Earth',         primary: '#ED5351', capture: '#1C180A' },
+  { id: 'sunny-spark',       name: 'Sunny Spark',         primary: '#DE4818', capture: '#ECDC80' },
+  // Oranges
+  { id: 'deep-roots',        name: 'Deep Roots',          primary: '#FB884C', capture: '#3A1A0A' },
+  { id: 'orange-royal',      name: 'Orange & Royal',      primary: '#FF8800', capture: '#3355CC' },
+  { id: 'yam-tide',          name: 'Yam & High Tide',     primary: '#EA9216', capture: '#313841' },
+  { id: 'amber-flamingo',    name: 'Amber & Flamingo',    primary: '#FFBF00', capture: '#F0563A' },
+  { id: 'chili-flare',       name: 'Chili Flare',         primary: '#FFD9A1', capture: '#BE2717' },
+  { id: 'barley-orange',     name: 'Barley & Orange',     primary: '#FFF4CC', capture: '#FF8C00' },
+  // Yellows & Golds
+  { id: 'saffron-steel',     name: 'Saffron & Steel',     primary: '#E8C547', capture: '#4F7CAC' },
+  { id: 'gold-vintage',      name: 'Gold Vintage',        primary: '#A77E16', capture: '#1A2800' },
+  { id: 'sunlit-wine',       name: 'Sunlit Wine',         primary: '#F4E7AF', capture: '#551424' },
+  { id: 'cherry-blossom',    name: 'Cherry Blossom',      primary: '#FAFFC7', capture: '#F8A8B9' },
+  // Olives & Yellow-Greens
+  { id: 'olive-foliage',     name: 'Olive & Foliage',     primary: '#D2DB76', capture: '#2D371D' },
+  { id: 'matcha-honey',      name: 'Matcha Honey',        primary: '#9CA764', capture: '#F1E8C7' },
+  // Greens
+  { id: 'lime-royal',        name: 'Lime & Royal',        primary: '#88CC22', capture: '#3355CC' },
+  { id: 'avocado-chiffon',   name: 'Avocado & Chiffon',   primary: '#568203', capture: '#FFF8B9' },
+  { id: 'cyprus-jade',       name: 'Cyprus & Jade',       primary: '#004643', capture: '#ABD1C6' },
+  // Teals & Cyans
+  { id: 'turquoise-teal',    name: 'Turquoise & Teal',    primary: '#22CCBB', capture: '#007799' },
+  { id: 'pool-poppy',        name: 'Pool & Poppy',        primary: '#00AACC', capture: '#FF3344' },
+  { id: 'sky-kelly',         name: 'Sky & Kelly',         primary: '#4BBFD4', capture: '#2EAA5C' },
+  // Blues & Navies
+  { id: 'blue-choc',         name: 'Blue & Choc',         primary: '#7CA7EB', capture: '#402924' },
+  { id: 'cobalt-butter',     name: 'Cobalt & Butter',     primary: '#0F52BB', capture: '#FFFF9A' },
+  { id: 'blue-yellow',       name: 'Blue & Sunshine',     primary: '#4455CC', capture: '#FFD600' },
+  { id: 'midnight-ocean',    name: 'Midnight Ocean',      primary: '#122C4F', capture: '#5B88B2' },
+  { id: 'deep-mariner',      name: 'Deep Mariner',        primary: '#014770', capture: '#E9E5D2' },
+  // Purples
+  { id: 'lavender-purple',   name: 'Lavender & Purple',   primary: '#B8A8D8', capture: '#7733BB' },
 ];
 
 const WIDGET_META = [
@@ -104,6 +110,26 @@ export default function Settings() {
 
   const [primaryColor, setPrimaryColor] = useState(() => safeHex(state.themeColors?.primary, DEFAULT_PRIMARY));
   const [captureColor, setCaptureColor] = useState(() => safeHex(state.themeColors?.secondary, DEFAULT_CAPTURE));
+  const [accentOpen, setAccentOpen] = useState(true);
+
+  const [firstName, setFirstName] = useState(state.firstName || '');
+  const [firstNameSaved, setFirstNameSaved] = useState(false);
+  const xpProgress = ((state.stats.experience || 0) % 1000) / 10;
+  const xpBarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    xpBarRef.current?.style.setProperty('--bar-fill', `${xpProgress}%`);
+  }, [xpProgress]);
+
+  const saveFirstName = async () => {
+    const userId = state.userId;
+    if (!userId) return;
+    await (supabase.from('profiles') as any)
+      .update({ first_name: firstName.trim() || null })
+      .eq('id', userId);
+    setState({ firstName: firstName.trim() } as any);
+    setFirstNameSaved(true);
+    setTimeout(() => setFirstNameSaved(false), 2000);
+  };
 
   const [wiping, setWiping] = useState(false);
   const [wipeArmed, setWipeArmed] = useState(false);
@@ -174,6 +200,43 @@ export default function Settings() {
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
           Display, security & app preferences
         </p>
+      </div>
+
+      {/* Profile */}
+      <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-4">Profile</p>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-14 h-14 bg-action-primary border-4 border-black rounded-xl flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] shrink-0">
+            <User size={26} strokeWidth={3} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">User Level</div>
+            <div className="text-2xl font-black italic text-text-main">LVL {state.stats.level}</div>
+            <div className="w-full h-2 bg-input rounded-full mt-1 overflow-hidden border border-border">
+              <div ref={xpBarRef} className="h-full bg-action-capture bar-fill" />
+            </div>
+          </div>
+        </div>
+        <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">Your First Name</label>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            autoComplete="given-name"
+            placeholder="e.g. Alex"
+            value={firstName}
+            onChange={e => setFirstName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && saveFirstName()}
+            className="flex-1 bg-input border-4 border-black rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none focus:border-action-capture transition-colors"
+          />
+          <button
+            type="button"
+            onClick={saveFirstName}
+            className="h-12 px-6 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase text-xs tracking-widest flex items-center gap-2 shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+          >
+            {firstNameSaved ? <><Check size={13} /> Saved</> : 'Save'}
+          </button>
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Shows in your dashboard greeting</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
@@ -271,77 +334,6 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Accent Colors */}
-      <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Accent Colors</p>
-          <button
-            type="button"
-            onClick={() => { setPrimaryColor(DEFAULT_PRIMARY); setCaptureColor(DEFAULT_CAPTURE); setThemeColors(DEFAULT_PRIMARY, DEFAULT_CAPTURE); }}
-            className="text-[11px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
-          >
-            Reset defaults
-          </button>
-        </div>
-        <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-1.5 mb-4">
-          {COLOR_THEMES.map(t => {
-            const isActive = primaryColor === t.primary && captureColor === t.capture;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => { setPrimaryColor(t.primary); setCaptureColor(t.capture); setThemeColors(t.primary, t.capture); }}
-                className={`swatch-${t.id} flex flex-col items-center gap-1 p-2 rounded-xl border-4 transition-all ${isActive ? 'border-black shadow-brutal-sm' : 'border-transparent hover:border-border'}`}
-              >
-                <div className="flex gap-0.5">
-                  <div className="swatch-dot-primary w-4 h-4 rounded-full border border-black/20" />
-                  <div className="swatch-dot-capture w-4 h-4 rounded-full border border-black/20" />
-                </div>
-                <span className="text-[8px] font-black uppercase tracking-wide text-text-muted leading-tight text-center line-clamp-1">{t.name}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2 block">Primary Color</label>
-            <div className="flex items-center gap-2">
-              <input type="color" title="Primary Color Picker"
-                value={isValidHex(primaryColor) ? primaryColor : DEFAULT_PRIMARY}
-                onChange={e => { setPrimaryColor(e.target.value); setState({ themeColors: { ...state.themeColors, primary: e.target.value } }); }}
-                className="w-12 h-10 p-1 rounded-xl bg-input border-4 border-black cursor-pointer" />
-              <input type="text" title="Primary Color Hex"
-                className="flex-1 bg-input border-4 border-black rounded-xl p-2 font-black text-sm uppercase text-text-main outline-none"
-                value={primaryColor}
-                onChange={e => setPrimaryColor(e.target.value)}
-                onBlur={e => {
-                  const raw = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`;
-                  if (isValidHex(raw)) { setPrimaryColor(raw); setThemeColors(raw, captureColor); }
-                  else { setPrimaryColor(safeHex(state.themeColors?.primary, DEFAULT_PRIMARY)); }
-                }} />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2 block">Capture Color</label>
-            <div className="flex items-center gap-2">
-              <input type="color" title="Capture Color Picker"
-                value={isValidHex(captureColor) ? captureColor : DEFAULT_CAPTURE}
-                onChange={e => { setCaptureColor(e.target.value); setState({ themeColors: { ...state.themeColors, secondary: e.target.value } }); }}
-                className="w-12 h-10 p-1 rounded-xl bg-input border-4 border-black cursor-pointer" />
-              <input type="text" title="Capture Color Hex"
-                className="flex-1 bg-input border-4 border-black rounded-xl p-2 font-black text-sm uppercase text-text-main outline-none"
-                value={captureColor}
-                onChange={e => setCaptureColor(e.target.value)}
-                onBlur={e => {
-                  const raw = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`;
-                  if (isValidHex(raw)) { setCaptureColor(raw); setThemeColors(primaryColor, raw); }
-                  else { setCaptureColor(safeHex(state.themeColors?.secondary, DEFAULT_CAPTURE)); }
-                }} />
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
         {/* Achievements */}
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
@@ -401,6 +393,100 @@ export default function Settings() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Accent Colors — collapsible */}
+      <div className="bg-surface border-4 border-border rounded-3xl shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <button
+          type="button"
+          onClick={() => setAccentOpen(o => !o)}
+          className="w-full flex items-center justify-between gap-3 px-5 py-4"
+        >
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Accent Colors</p>
+          <motion.div animate={{ rotate: accentOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 380, damping: 38 }}>
+            <ChevronDown size={16} strokeWidth={2.5} className="text-text-muted" />
+          </motion.div>
+        </button>
+        <AnimatePresence initial={false}>
+          {accentOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div className="px-5 pb-5">
+                <div className="flex justify-end mb-3">
+                  <button
+                    type="button"
+                    onClick={() => { setPrimaryColor(DEFAULT_PRIMARY); setCaptureColor(DEFAULT_CAPTURE); setThemeColors(DEFAULT_PRIMARY, DEFAULT_CAPTURE); }}
+                    className="text-[11px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+                  >
+                    Reset defaults
+                  </button>
+                </div>
+                <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-1.5 mb-4">
+                  {COLOR_THEMES.map(t => {
+                    const isActive = primaryColor === t.primary && captureColor === t.capture;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => { setPrimaryColor(t.primary); setCaptureColor(t.capture); setThemeColors(t.primary, t.capture); }}
+                        className={`swatch-${t.id} flex flex-col items-center gap-1 p-2 rounded-xl border-4 transition-all ${isActive ? 'border-black shadow-brutal-sm' : 'border-transparent hover:border-border'}`}
+                      >
+                        <div className="flex gap-0.5">
+                          <div className="swatch-dot-primary w-4 h-4 rounded-full border-2 border-black/30" />
+                          <div className="swatch-dot-capture w-4 h-4 rounded-full border-2 border-black/30" />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-wide text-text-muted leading-tight text-center line-clamp-1">{t.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2 block">Primary Color</label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" title="Primary Color Picker"
+                        value={isValidHex(primaryColor) ? primaryColor : DEFAULT_PRIMARY}
+                        onChange={e => { setPrimaryColor(e.target.value); setState({ themeColors: { ...state.themeColors, primary: e.target.value } }); }}
+                        className="w-12 h-10 p-1 rounded-xl bg-input border-4 border-black cursor-pointer" />
+                      <input type="text" title="Primary Color Hex"
+                        className="flex-1 bg-input border-4 border-black rounded-xl p-2 font-black text-sm uppercase text-text-main outline-none"
+                        value={primaryColor}
+                        onChange={e => setPrimaryColor(e.target.value)}
+                        onBlur={e => {
+                          const raw = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`;
+                          if (isValidHex(raw)) { setPrimaryColor(raw); setThemeColors(raw, captureColor); }
+                          else { setPrimaryColor(safeHex(state.themeColors?.primary, DEFAULT_PRIMARY)); }
+                        }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2 block">Capture Color</label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" title="Capture Color Picker"
+                        value={isValidHex(captureColor) ? captureColor : DEFAULT_CAPTURE}
+                        onChange={e => { setCaptureColor(e.target.value); setState({ themeColors: { ...state.themeColors, secondary: e.target.value } }); }}
+                        className="w-12 h-10 p-1 rounded-xl bg-input border-4 border-black cursor-pointer" />
+                      <input type="text" title="Capture Color Hex"
+                        className="flex-1 bg-input border-4 border-black rounded-xl p-2 font-black text-sm uppercase text-text-main outline-none"
+                        value={captureColor}
+                        onChange={e => setCaptureColor(e.target.value)}
+                        onBlur={e => {
+                          const raw = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`;
+                          if (isValidHex(raw)) { setCaptureColor(raw); setThemeColors(primaryColor, raw); }
+                          else { setCaptureColor(safeHex(state.themeColors?.secondary, DEFAULT_CAPTURE)); }
+                        }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Financial Config link */}

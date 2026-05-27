@@ -204,6 +204,19 @@ function App() {
     }
   }, [themeColors]);
 
+  // Keep --shadow-color in sync with capture color so dark-mode glow matches the active theme
+  useEffect(() => {
+    if (theme === 'dark') {
+      const cap = themeColors?.secondary ?? '#00CC55';
+      const r = parseInt(cap.slice(1, 3), 16);
+      const g = parseInt(cap.slice(3, 5), 16);
+      const b = parseInt(cap.slice(5, 7), 16);
+      document.documentElement.style.setProperty('--shadow-color', `rgba(${r}, ${g}, ${b}, 0.22)`);
+    } else {
+      document.documentElement.style.removeProperty('--shadow-color');
+    }
+  }, [theme, themeColors?.secondary]);
+
   // Supabase env vars missing — show setup instructions
   if (!isSupabaseConfigured) {
     return (

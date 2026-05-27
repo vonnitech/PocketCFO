@@ -1,10 +1,10 @@
 ﻿import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Trash2, User, Plus, Check, X, Edit2, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Trash2, Plus, Check, X, Edit2, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Debt, BillQueueItem } from '../store/useStore';
 import { useStore } from '../store/useStore';
-import { supabase } from '../core/supabase';
+
 
 
 function Card({ children, badge, badgeColor = 'bg-black', badgeTextColor = 'text-action-primary', defaultOpen = true }: {
@@ -48,9 +48,19 @@ function Card({ children, badge, badgeColor = 'bg-black', badgeTextColor = 'text
   );
 }
 
+function contrastText(hex?: string): string {
+  if (!hex || hex.length < 7) return 'text-black';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? 'text-black' : 'text-white';
+}
+
 export default function Config() {
   const state = useStore();
   const { setState, setHorizon, updateBaseline, addDebt, updateDebt, removeDebt, setImpulses } = state;
+  const captureTxt = contrastText(state.themeColors?.secondary);
+  const primaryTxt  = contrastText(state.themeColors?.primary);
 
   const [isAddingConfigImpulse, setIsAddingConfigImpulse] = useState(false);
   const [newConfigImpulseName, setNewConfigImpulseName] = useState('');
@@ -74,10 +84,6 @@ export default function Config() {
   const [baselineSavings, setBaselineSavings] = useState(() => state.monthlySavingsGoal || '');
   const [baselineSaved, setBaselineSaved] = useState(false);
 
-  // Local color state — avoids per-keypress store updates breaking the color picker
-  const [primaryColor, setPrimaryColor] = useState(() => safeHex(state.themeColors?.primary, DEFAULT_PRIMARY));
-  const [captureColor, setCaptureColor] = useState(() => safeHex(state.themeColors?.secondary, DEFAULT_CAPTURE));
-
   // Local impulse rate state — avoids per-keypress store updates that stomp cursor
   const [impulseRates, setImpulseRates] = useState<Record<string, string>>(() =>
     Object.fromEntries((state.impulses || []).map(g => [g.id, String(g.taxRate * 100)]))
@@ -92,24 +98,6 @@ export default function Config() {
   const [editingDebtId, setEditingDebtId] = useState<string | null>(null);
   const [editDebtFields, setEditDebtFields] = useState<Partial<Omit<Debt, 'id'>>>({});
 
-  const [firstName, setFirstName]       = useState(state.firstName || '');
-  const [firstNameSaved, setFirstNameSaved] = useState(false);
-
-  const saveFirstName = async () => {
-    const userId = state.userId;
-    if (!userId) return;
-    await (supabase.from('profiles') as any)
-      .update({ first_name: firstName.trim() || null })
-      .eq('id', userId);
-    setState({ firstName: firstName.trim() } as any);
-    setFirstNameSaved(true);
-    setTimeout(() => setFirstNameSaved(false), 2000);
-  };
-
-  const currentXP = state.stats.experience || 0;
-  const progress = (currentXP % 1000) / 10;
-
-
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
       {/* Back + Header + Level */}
@@ -122,55 +110,13 @@ export default function Config() {
           Back to Settings
         </Link>
       </div>
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Finances</h1>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Income, bills & budget</p>
-        </div>
-        <div className="flex items-center gap-4 bg-surface border-4 border-black rounded-3xl p-4 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <div className="w-14 h-14 bg-action-primary border-4 border-black rounded-xl flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-            <User size={28} strokeWidth={3} />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">User Level</div>
-            <div className="text-3xl font-black italic text-text-main">LVL {state.stats.level}</div>
-            <div className="w-28 h-2 bg-input rounded-full mt-1 overflow-hidden border border-border">
-              <div className="h-full bg-action-capture" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* First Name */}
-      <div className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-        <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">
-          Your First Name
-        </label>
-        <div className="flex gap-3">
-          <input
-            type="text"
-            autoComplete="given-name"
-            placeholder="e.g. Alex"
-            value={firstName}
-            onChange={e => setFirstName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && saveFirstName()}
-            className="flex-1 bg-input border-4 border-black rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none focus:border-action-capture transition-colors"
-          />
-          <button
-            type="button"
-            onClick={saveFirstName}
-            className="h-12 px-6 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase text-xs tracking-widest flex items-center gap-2 shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
-          >
-            {firstNameSaved ? <><Check size={13} /> Saved</> : 'Save'}
-          </button>
-        </div>
-        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">
-          Shows in your dashboard greeting
-        </p>
+      <div>
+        <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Finances</h1>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Income, bills & budget</p>
       </div>
 
       {/* Stats */}
-      <Card badge="TOTAL SAVINGS" badgeColor="bg-action-capture" badgeTextColor="text-text-main">
+      <Card badge="TOTAL SAVINGS" badgeColor="bg-action-capture" badgeTextColor={captureTxt}>
         <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2">Total Value Protected</p>
         <div className="text-3xl sm:text-4xl font-black italic text-action-capture tracking-tighter tabular-nums">
           ${(state.stats.lifetimeCapture || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -180,7 +126,7 @@ export default function Config() {
 
 
       {/* Pay Cycle */}
-      <Card badge="PAY CYCLE" badgeColor="bg-action-capture" badgeTextColor="text-text-main">
+      <Card badge="PAY CYCLE" badgeColor="bg-action-capture" badgeTextColor={captureTxt}>
         <div className="space-y-4">
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Your real bank balance, next payday, and upcoming bills drive your daily limit</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -275,7 +221,7 @@ export default function Config() {
                         }
                       }}
                       title="Confirm bill"
-                      className="h-10 w-10 bg-action-capture border-4 border-black rounded-2xl flex items-center justify-center shrink-0"
+                      className={`h-10 w-10 bg-action-capture border-4 border-black rounded-2xl flex items-center justify-center shrink-0 ${captureTxt}`}
                     >
                       <Check size={14} strokeWidth={3} />
                     </button>
@@ -334,7 +280,7 @@ export default function Config() {
               setHorizonSaved(true);
               setTimeout(() => setHorizonSaved(false), 2000);
             }}
-            className="h-12 px-8 border-4 border-black rounded-full bg-action-capture text-black font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
+            className={`h-12 px-8 border-4 border-black rounded-full bg-action-capture ${captureTxt} font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2`}
           >
             {horizonSaved ? <><Check size={14} /> SAVED</> : 'Save Pay Cycle'}
           </button>
@@ -342,7 +288,7 @@ export default function Config() {
       </Card>
 
       {/* Monthly Baseline (for subscription & savings rate widgets) */}
-      <Card badge="MONTHLY BASELINE" badgeColor="bg-[#c084fc]" badgeTextColor="text-white">
+      <Card badge="MONTHLY BASELINE" badgeColor="bg-action-primary" badgeTextColor={primaryTxt}>
         <div className="space-y-4">
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Monthly income & savings goal · bills are pulled automatically from your Pay Cycle recurring bills</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -355,7 +301,7 @@ export default function Config() {
                 value={baselineIncome}
                 onFocus={e => e.target.select()}
                 onChange={e => setBaselineIncome(e.target.value)}
-                className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-text-main outline-none focus:border-[#c084fc] transition-colors"
+                className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-text-main outline-none focus:border-action-primary transition-colors"
               />
             </div>
             <div>
@@ -367,7 +313,7 @@ export default function Config() {
                 value={baselineSavings}
                 onFocus={e => e.target.select()}
                 onChange={e => setBaselineSavings(e.target.value)}
-                className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-text-main outline-none focus:border-[#c084fc] transition-colors"
+                className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-text-main outline-none focus:border-action-primary transition-colors"
               />
             </div>
           </div>
@@ -378,7 +324,7 @@ export default function Config() {
               setBaselineSaved(true);
               setTimeout(() => setBaselineSaved(false), 2000);
             }}
-            className="h-12 px-8 border-4 border-black rounded-full bg-[#c084fc] text-white font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
+            className={`h-12 px-8 border-4 border-black rounded-full bg-action-primary ${primaryTxt} font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2`}
           >
             {baselineSaved ? <><Check size={14} /> SAVED</> : 'Save Baseline'}
           </button>
@@ -400,7 +346,7 @@ export default function Config() {
                     <input title="Min Payment" type="number" min="0" value={editDebtFields.minPayment ?? debt.minPayment} onChange={e => setEditDebtFields(f => ({ ...f, minPayment: Number(e.target.value) }))} className="bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" placeholder="Min Payment" />
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => { updateDebt(debt.id, editDebtFields); setEditingDebtId(null); setEditDebtFields({}); }} className="flex items-center gap-1 px-4 h-11 bg-action-capture border-4 border-black rounded-full text-[10px] font-black uppercase"><Check size={12} /> Save</button>
+                    <button type="button" onClick={() => { updateDebt(debt.id, editDebtFields); setEditingDebtId(null); setEditDebtFields({}); }} className={`flex items-center gap-1 px-4 h-11 bg-action-capture border-4 border-black rounded-full text-[10px] font-black uppercase ${captureTxt}`}><Check size={12} /> Save</button>
                     <button type="button" onClick={() => { setEditingDebtId(null); setEditDebtFields({}); }} className="flex items-center gap-1 px-4 h-11 bg-surface border-4 border-black rounded-full text-[10px] font-black uppercase"><X size={12} /> Cancel</button>
                   </div>
                 </div>
@@ -500,7 +446,7 @@ export default function Config() {
                       setIsAddingConfigImpulse(false); setNewConfigImpulseName('');
                     }
                   }}
-                  className="px-4 h-12 bg-action-capture border-4 border-black rounded-2xl text-[10px] font-black uppercase text-text-main"
+                  className={`px-4 h-12 bg-action-capture border-4 border-black rounded-2xl text-[10px] font-black uppercase ${captureTxt}`}
                 >
                   Add
                 </button>
