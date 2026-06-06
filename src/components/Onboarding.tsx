@@ -8,6 +8,7 @@ export function OnboardingModal() {
   const hasCompletedOnboarding = useStore(s => s.hasCompletedOnboarding);
   const userId                 = useStore(s => s.userId);
   const setState               = useStore(s => s.setState);
+  const setHorizon             = useStore(s => s.setHorizon);
 
   const [firstName, setFirstName] = useState('');
   const [balance,   setBalance]   = useState('');
@@ -26,6 +27,11 @@ export function OnboardingModal() {
     ? `${payYear}-${payMonth.padStart(2, '0')}-${payDay.padStart(2, '0')}`
     : '';
   const canSubmit = numBalance >= 0 && numTakeHome > 0 && !!payday && !!userId;
+
+  const daysInMonth = (month: string, year: string): number => {
+    if (!month) return 31;
+    return new Date(parseInt(year) || new Date().getFullYear(), parseInt(month), 0).getDate();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,12 +56,12 @@ export function OnboardingModal() {
 
     setState({
       firstName:               firstName.trim(),
-      liquidAssets:            numBalance,
       monthlyTakeHome:         numTakeHome,
-      nextPayday:              payday,
       isConfigured:            true,
       hasCompletedOnboarding:  true,
     });
+    // Properly computes safeSpendLimit, bill queue, and all derived values
+    setHorizon(numBalance, payday, 0, 0, []);
   };
 
   const inputClass =
@@ -159,11 +165,15 @@ export function OnboardingModal() {
             <div className="grid grid-cols-3 gap-2">
               <select title="Day" value={payDay} onChange={e => setPayDay(e.target.value)} className={selectClass}>
                 <option value="">Day</option>
-                {Array.from({ length: 31 }, (_, i) => (
+                {Array.from({ length: daysInMonth(payMonth, payYear) }, (_, i) => (
                   <option key={i + 1} value={String(i + 1)}>{i + 1}</option>
                 ))}
               </select>
-              <select title="Month" value={payMonth} onChange={e => setPayMonth(e.target.value)} className={selectClass}>
+              <select title="Month" value={payMonth} onChange={e => {
+                setPayMonth(e.target.value);
+                const max = daysInMonth(e.target.value, payYear);
+                if (parseInt(payDay) > max) setPayDay(String(max));
+              }} className={selectClass}>
                 <option value="">Month</option>
                 {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
                   <option key={i} value={String(i + 1)}>{m}</option>

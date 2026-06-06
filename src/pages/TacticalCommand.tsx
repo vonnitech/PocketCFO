@@ -2,8 +2,17 @@
 import { AlertTriangle, Clock, Flame, TrendingUp, Zap } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
+function contrastText(hex?: string): string {
+  if (!hex || hex.length < 7) return 'text-black';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? 'text-black' : 'text-white';
+}
+
 export const TacticalCommand: React.FC = () => {
-  const { liquidAssets, fixedBills } = useStore();
+  const { liquidAssets, fixedBills, themeColors } = useStore();
+  const captureTxt = contrastText(themeColors?.secondary);
   const [liquidCapital, setLiquidCapital] = useState<number>(() => liquidAssets);
   const [baselineBurn, setBaselineBurn] = useState<number>(() => fixedBills);
   const [annualRaise, setAnnualRaise] = useState<number>(6000);
@@ -78,31 +87,37 @@ export const TacticalCommand: React.FC = () => {
           </div>
         </div>
 
-        <div className={`${runwayColor} border-4 border-black rounded-2xl p-5 flex items-center justify-between`}>
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-widest text-black/60 mb-1">Runway</p>
-            <div className="flex items-baseline gap-2">
-              <span className="font-black text-5xl italic text-black tabular-nums">
-                {runwayMonths === Infinity ? '∞' : runwayMonths.toFixed(1)}
-              </span>
-              <span className="text-black/60 font-black uppercase text-sm">months</span>
-            </div>
-          </div>
-          <div className="text-right">
-            {runwayStatus === 'critical' && (
-              <div className="flex flex-col items-end gap-1">
-                <AlertTriangle size={20} className="text-text-main" strokeWidth={3} />
-                <p className="text-[11px] font-black uppercase text-black/70 leading-tight">CRITICAL<br />LOW</p>
+        {(() => {
+          const ct = runwayStatus === 'safe' ? captureTxt : 'text-black';
+          const ctMuted = runwayStatus === 'safe' ? captureTxt : 'text-black';
+          return (
+            <div className={`${runwayColor} border-4 border-black rounded-2xl p-5 flex items-center justify-between`}>
+              <div>
+                <p className={`text-[11px] font-black uppercase tracking-widest opacity-60 mb-1 ${ct}`}>Runway</p>
+                <div className="flex items-baseline gap-2">
+                  <span className={`font-black text-5xl italic tabular-nums ${ct}`}>
+                    {runwayMonths === Infinity ? '∞' : runwayMonths.toFixed(1)}
+                  </span>
+                  <span className={`opacity-60 font-black uppercase text-sm ${ct}`}>months</span>
+                </div>
               </div>
-            )}
-            {runwayStatus === 'warning' && (
-              <p className="text-[11px] font-black uppercase text-black/70 leading-tight text-right">BELOW<br />6-MO TARGET</p>
-            )}
-            {runwayStatus === 'safe' && (
-              <p className="text-[11px] font-black uppercase text-black/70 leading-tight text-right">SOLID<br />RESERVES</p>
-            )}
-          </div>
-        </div>
+              <div className="text-right">
+                {runwayStatus === 'critical' && (
+                  <div className="flex flex-col items-end gap-1">
+                    <AlertTriangle size={20} className="text-text-main" strokeWidth={3} />
+                    <p className="text-[11px] font-black uppercase text-black/70 leading-tight">CRITICAL<br />LOW</p>
+                  </div>
+                )}
+                {runwayStatus === 'warning' && (
+                  <p className="text-[11px] font-black uppercase text-black/70 leading-tight text-right">BELOW<br />6-MO TARGET</p>
+                )}
+                {runwayStatus === 'safe' && (
+                  <p className={`text-[11px] font-black uppercase opacity-70 leading-tight text-right ${ctMuted}`}>SOLID<br />RESERVES</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-3 text-center">
           Pre-filled from settings · edit to run scenarios
@@ -110,7 +125,7 @@ export const TacticalCommand: React.FC = () => {
       </div>
 
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase mb-4">
           <TrendingUp size={11} /> RAISE REDIRECTOR
         </div>
 
@@ -134,7 +149,7 @@ export const TacticalCommand: React.FC = () => {
           <div>
             <div className="flex justify-between mb-2">
               <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Vault Rate</label>
-              <span className="font-black text-action-capture text-sm">{redirectPercent}%</span>
+              <span className="font-black text-capture-readable text-sm">{redirectPercent}%</span>
             </div>
             <input
               type="range"
@@ -172,7 +187,7 @@ export const TacticalCommand: React.FC = () => {
           <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mb-2">Your raise splits into</p>
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <p className="text-[8px] font-black uppercase text-action-capture mb-0.5">Vaulted</p>
+              <p className="text-[8px] font-black uppercase text-capture-readable mb-0.5">Vaulted</p>
               <p className="text-xl font-black text-text-main">${leverMath.annualVaulted.toLocaleString()}<span className="text-sm text-text-muted">/yr</span></p>
             </div>
             <div className="text-lg font-black text-black/20">|</div>
@@ -186,23 +201,23 @@ export const TacticalCommand: React.FC = () => {
         <div className="bg-action-capture border-4 border-black rounded-2xl p-5 mb-3">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-black/60 mb-1">If you invest it - 10yr</p>
-              <p className="text-4xl font-black italic text-text-main tabular-nums">
+              <p className={`text-[11px] font-black uppercase tracking-widest opacity-60 mb-1 ${captureTxt}`}>If you invest it - 10yr</p>
+              <p className={`text-4xl font-black italic tabular-nums ${captureTxt}`}>
                 ${leverMath.futureValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
-            <Zap size={20} className="text-black/30 mt-1" strokeWidth={3} />
+            <Zap size={20} className={`opacity-30 mt-1 ${captureTxt}`} strokeWidth={3} />
           </div>
           <div className="grid grid-cols-2 gap-3 pt-3 border-t-[3px] border-black/20">
             <div>
-              <p className="text-[8px] font-black uppercase text-black/50 mb-0.5">You put in</p>
-              <p className="text-sm font-black text-text-main">
+              <p className={`text-[8px] font-black uppercase opacity-50 mb-0.5 ${captureTxt}`}>You put in</p>
+              <p className={`text-sm font-black ${captureTxt}`}>
                 ${leverMath.totalContributed.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
             <div>
-              <p className="text-[8px] font-black uppercase text-black/50 mb-0.5">Market adds</p>
-              <p className="text-sm font-black text-text-main">
+              <p className={`text-[8px] font-black uppercase opacity-50 mb-0.5 ${captureTxt}`}>Market adds</p>
+              <p className={`text-sm font-black ${captureTxt}`}>
                 +${leverMath.compoundGain.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>

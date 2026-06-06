@@ -13,7 +13,11 @@ interface Props {
 export function FundVaultSheet({ vaultId, vaultName, onClose }: Props) {
   const addFundsToVault = useStore(s => s.addFundsToVault);
   const liquidAssets    = useStore(s => s.liquidAssets);
+  const upcomingBills   = useStore(s => s.upcomingBills);
   const privacyMode     = useStore(s => s.privacyMode);
+
+  // Only the cash NOT earmarked for bills is truly available to redirect
+  const available = Math.max(0, liquidAssets - (upcomingBills || 0));
 
   const [amount, setAmount] = useState('');
 
@@ -22,7 +26,7 @@ export function FundVaultSheet({ vaultId, vaultName, onClose }: Props) {
   }, [vaultId]);
 
   const amtNum  = parseFloat(amount) || 0;
-  const exceeds = amtNum > liquidAssets;
+  const exceeds = amtNum > available;
   const isValid = amtNum > 0 && !exceeds;
 
   const submit = async () => {
@@ -31,8 +35,8 @@ export function FundVaultSheet({ vaultId, vaultName, onClose }: Props) {
     onClose();
   };
 
-  const quickAmounts = liquidAssets > 0
-    ? [0.25, 0.5, 1].map(pct => ({ label: pct === 1 ? 'All' : `${pct * 100}%`, value: Math.floor(liquidAssets * pct) }))
+  const quickAmounts = available > 0
+    ? [0.25, 0.5, 1].map(pct => ({ label: pct === 1 ? 'All' : `${pct * 100}%`, value: Math.floor(available * pct) }))
     : [];
 
   return (
@@ -74,7 +78,7 @@ export function FundVaultSheet({ vaultId, vaultName, onClose }: Props) {
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-text-muted">
               <Wallet size={10} strokeWidth={2.5} />
-              Available: {formatCurrency(liquidAssets, privacyMode)}
+              Available: {formatCurrency(available, privacyMode)}
             </div>
             {exceeds && (
               <p className="text-[10px] font-black uppercase tracking-widest text-action-bleed">Exceeds balance</p>
@@ -102,7 +106,7 @@ export function FundVaultSheet({ vaultId, vaultName, onClose }: Props) {
           type="button"
           onClick={submit}
           disabled={!isValid}
-          className="w-full h-14 border-4 border-black rounded-2xl bg-action-capture text-black font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          className="w-full h-14 border-4 border-black rounded-2xl bg-action-capture text-capture-contrast font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
         >
           Fund Vault
         </button>

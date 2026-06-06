@@ -34,10 +34,10 @@ const CATEGORY_COLORS: Record<string, string> = {
   WORK:      'bg-input text-text-muted border-border',
   SOCIAL:    'bg-input text-text-muted border-border',
   PENALTY:   'bg-action-bleed/20 text-action-bleed border-action-bleed/40',
-  VAULT_DEPOSIT: 'bg-action-capture/20 text-action-capture border-action-capture/40',
+  VAULT_DEPOSIT: 'bg-action-capture/20 text-capture-readable border-action-capture/40',
   DEBT_PAYMENT:  'bg-action-primary/20 text-black border-action-primary/40',
-  INCOME:    'bg-action-capture/20 text-action-capture border-action-capture/40',
-  SAVINGS:   'bg-action-capture/20 text-action-capture border-action-capture/40',
+  INCOME:    'bg-action-capture/20 text-capture-readable border-action-capture/40',
+  SAVINGS:   'bg-action-capture/20 text-capture-readable border-action-capture/40',
 };
 
 function catBadge(category: string) {
@@ -244,10 +244,10 @@ export const Audit: React.FC = () => {
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Pure spend + penalties</p>
         </div>
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase mb-3">
             <ShieldCheck size={11} /> WEALTH CAPTURED
           </div>
-          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-action-capture tabular-nums">+${wealthCaptured.toFixed(2)}</p>
+          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-capture-readable tabular-nums">+${wealthCaptured.toFixed(2)}</p>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Captured penalties and savings transfers</p>
         </div>
       </div>
@@ -274,21 +274,23 @@ export const Audit: React.FC = () => {
             </div>
           </div>
 
-          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border-2 border-black mb-5 ${
-            spendingComparison.delta <= 0 ? 'bg-action-capture text-black' : 'bg-action-bleed text-white'
-          }`}>
-            {spendingComparison.delta <= 0
-              ? <TrendingDown size={13} strokeWidth={2.5} />
-              : <TrendingUp size={13} strokeWidth={2.5} />
-            }
-            <span className="text-[10px] font-black uppercase tracking-widest">
+          {spendingComparison.lastMonth > 0 && (
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border-2 border-black mb-5 ${
+              spendingComparison.delta <= 0 ? 'bg-action-capture text-capture-contrast' : 'bg-action-bleed text-white'
+            }`}>
               {spendingComparison.delta <= 0
-                ? `$${Math.abs(spendingComparison.delta).toFixed(2)} under`
-                : `$${Math.abs(spendingComparison.delta).toFixed(2)} over`
+                ? <TrendingDown size={13} strokeWidth={2.5} />
+                : <TrendingUp size={13} strokeWidth={2.5} />
               }
-              {spendingComparison.pct !== null && ` (${Math.abs(spendingComparison.pct).toFixed(0)}%)`}
-            </span>
-          </div>
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                {spendingComparison.delta <= 0
+                  ? `$${Math.abs(spendingComparison.delta).toFixed(2)} under`
+                  : `$${Math.abs(spendingComparison.delta).toFixed(2)} over`
+                }
+                {spendingComparison.pct !== null && ` (${Math.abs(spendingComparison.pct).toFixed(0)}%)`}
+              </span>
+            </div>
+          )}
 
           {spendingComparison.categories.length > 0 && (
             <div className="space-y-3 border-t-2 border-border/30 pt-4">
@@ -368,7 +370,7 @@ export const Audit: React.FC = () => {
       {/* Capital Allocated */}
       {allocatedItems.length > 0 && (
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-primary border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase mb-3">
             <ArrowUpRight size={11} /> CAPITAL ALLOCATED
           </div>
           <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-text-main tabular-nums mb-1">
@@ -522,7 +524,7 @@ export const Audit: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`font-black text-sm tabular-nums ${isIncome ? 'text-action-capture' : 'text-text-main'}`}>
+                    <p className={`font-black text-sm tabular-nums ${isIncome ? 'text-capture-readable' : 'text-text-main'}`}>
                       {isIncome ? '+' : '-'}${tx.amount.toFixed(2)}
                     </p>
                     {tx.flipAmount > 0 && (

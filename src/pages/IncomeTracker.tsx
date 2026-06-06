@@ -175,7 +175,7 @@ export default function IncomeTracker() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Income growth · savings rate lab</p>
         </div>
         <div className="bg-surface border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
-          <TrendingUp size={32} className="text-action-capture" strokeWidth={2.5} />
+          <TrendingUp size={32} className="text-capture-readable" strokeWidth={2.5} />
           <p className="font-black uppercase text-sm text-text-main">Set up your income to unlock the savings rate lab.</p>
           <Link to="/config" className="flex items-center justify-between px-4 py-3 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-[11px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
             Configure income & savings
@@ -205,7 +205,7 @@ export default function IncomeTracker() {
           <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-2">Monthly Income</p>
           <p className="text-2xl font-black italic tracking-tighter text-action-primary tabular-nums leading-none">{mask(monthlyTakeHome)}</p>
           {chartPoints.length >= 2 && totalGrowthPct > 0 && (
-            <p className="text-[9px] font-black uppercase tracking-wide text-action-capture mt-1.5">+{totalGrowthPct.toFixed(0)}% since start</p>
+            <p className="text-[9px] font-black uppercase tracking-wide text-capture-readable mt-1.5">+{totalGrowthPct.toFixed(0)}% since start</p>
           )}
         </div>
         <div className={`border-4 rounded-3xl p-4 ${currentRate >= neededRate && neededRate > 0 ? 'border-action-capture bg-action-capture/5' : 'border-border bg-surface'} shadow-[4px_4px_0px_0px_var(--shadow-color)]`}>
@@ -258,7 +258,7 @@ export default function IncomeTracker() {
             <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1">{mask(Math.round(simMonthly))}/mo saved</p>
           </div>
           <div className="text-right">
-            <p className={`text-2xl font-black italic tracking-tighter tabular-nums leading-none ${simOnTrack ? 'text-action-capture' : 'text-action-bleed'}`}>
+            <p className={`text-2xl font-black italic tracking-tighter tabular-nums leading-none ${simOnTrack ? 'text-capture-readable' : 'text-action-bleed'}`}>
               {simFIREAge !== null ? `Age ${simFIREAge}` : '80+'}
             </p>
             <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1">
@@ -287,7 +287,7 @@ export default function IncomeTracker() {
               style={{ left: `${Math.min(100, (currentRate / 80) * 100)}%` }}
             >
               <div className="w-px h-3 bg-action-capture" />
-              <span className="text-[8px] font-black uppercase tracking-wide text-action-capture whitespace-nowrap">now</span>
+              <span className="text-[8px] font-black uppercase tracking-wide text-capture-readable whitespace-nowrap">now</span>
             </div>
             {/* FIRE rate marker */}
             {neededRate > 0 && neededRate <= 80 && (
@@ -343,7 +343,7 @@ export default function IncomeTracker() {
             {[...incomeHistory].reverse().map(entry => (
               <div key={entry.id} className="flex items-center gap-3 px-4 py-3 bg-input border-4 border-black rounded-2xl">
                 <div className="w-8 h-8 bg-black rounded-xl flex items-center justify-center shrink-0">
-                  <Zap size={14} strokeWidth={2.5} className="text-action-capture" />
+                  <Zap size={14} strokeWidth={2.5} className="text-capture-readable" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-black uppercase tracking-wider text-text-main truncate">{entry.label}</p>
@@ -461,7 +461,7 @@ export default function IncomeTracker() {
                     type="button"
                     onClick={handleSubmit}
                     disabled={!formAmount || !formLabel.trim() || !formDate}
-                    className="flex-1 h-12 border-4 border-black rounded-2xl bg-black text-action-capture font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-capture)]"
+                    className="flex-1 h-12 border-4 border-black rounded-2xl bg-black text-capture-readable font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-capture)]"
                   >
                     <div className="flex items-center justify-center gap-2">
                       <Target size={14} strokeWidth={3} />

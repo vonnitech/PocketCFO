@@ -59,7 +59,7 @@ export default function ActiveSubs() {
   };
 
   const usageBadge = (usage: string) => {
-    if (usage === 'Active') return 'bg-action-capture border-action-capture text-black';
+    if (usage === 'Active') return 'bg-action-capture border-action-capture text-capture-contrast';
     if (usage === 'Low Use') return 'bg-action-primary border-action-primary text-black';
     return 'bg-action-bleed border-action-bleed text-white';
   };
@@ -154,8 +154,8 @@ export default function ActiveSubs() {
               animate={{ opacity: 1 }}
               className="text-center py-16 bg-surface border-4 border-dashed border-action-capture rounded-3xl md:col-span-2"
             >
-              <ShieldCheck size={56} className="mx-auto mb-4 text-action-capture" />
-              <h3 className="text-2xl font-black italic uppercase text-action-capture">All Clear</h3>
+              <ShieldCheck size={56} className="mx-auto mb-4 text-capture-readable" />
+              <h3 className="text-2xl font-black italic uppercase text-capture-readable">All Clear</h3>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">No active subscriptions.</p>
             </motion.div>
           )}

@@ -119,7 +119,7 @@ export default function Recon() {
   const pulsePercent = effectiveLimit > 0 ? Math.min(100, (recordedDailyDrain / effectiveLimit) * 100) : 0;
   const pulseColor = recordedDailyDrain > effectiveLimit ? 'bg-action-bleed' : pulsePercent > 80 ? 'bg-action-primary' : 'bg-action-capture';
   const pulseStatus = recordedDailyDrain > effectiveLimit ? 'Over' : pulsePercent > 80 ? 'Near Limit' : 'On Track';
-  const pulseStatusColor = recordedDailyDrain > effectiveLimit ? 'bg-action-bleed text-white' : pulsePercent > 80 ? 'bg-action-primary text-black' : 'bg-action-capture text-black';
+  const pulseStatusColor = recordedDailyDrain > effectiveLimit ? 'bg-action-bleed text-white' : pulsePercent > 80 ? 'bg-action-primary text-black' : 'bg-action-capture text-capture-contrast';
 
   const pastDays = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
@@ -192,7 +192,7 @@ export default function Recon() {
             </div>
             <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
               <span className="text-text-muted">{formatCurrency(recordedDailyDrain, privacyMode)} logged</span>
-              <span className={remaining < 0 ? 'text-action-bleed font-black' : 'text-action-capture font-black'}>
+              <span className={remaining < 0 ? 'text-action-bleed font-black' : 'text-capture-readable font-black'}>
                 {remaining < 0 ? `${formatCurrency(Math.abs(remaining), privacyMode)} over` : `${formatCurrency(remaining, privacyMode)} remaining`}
               </span>
             </div>
@@ -232,7 +232,7 @@ export default function Recon() {
               )}
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
                 <span className="text-text-muted">Surplus {todayEntry.action === 'stash' ? '→ Vault' : '→ Rolled Over'}</span>
-                <span className="text-action-capture">{formatCurrency(todayEntry.surplus, privacyMode)}</span>
+                <span className="text-capture-readable">{formatCurrency(todayEntry.surplus, privacyMode)}</span>
               </div>
             </div>
           )}
@@ -254,7 +254,7 @@ export default function Recon() {
                         {day.entry.tier}
                       </div>
                       <span className="text-[10px] font-black tabular-nums text-text-main">{formatCurrency(day.entry.rawSpend, privacyMode)}</span>
-                      <span className={`text-[10px] font-black tabular-nums ${day.entry.surplus > 0 ? 'text-action-capture' : 'text-action-bleed'}`}>
+                      <span className={`text-[10px] font-black tabular-nums ${day.entry.surplus > 0 ? 'text-capture-readable' : 'text-action-bleed'}`}>
                         {day.entry.surplus > 0 ? '+' : ''}{formatCurrency(day.entry.surplus, privacyMode)}
                       </span>
                     </>
@@ -306,7 +306,7 @@ export default function Recon() {
           </div>
           <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
             <span className="text-text-muted">{formatCurrency(recordedDailyDrain, privacyMode)} logged</span>
-            <span className={remaining < 0 ? 'text-action-bleed font-black' : 'text-action-capture font-black'}>
+            <span className={remaining < 0 ? 'text-action-bleed font-black' : 'text-capture-readable font-black'}>
               {remaining < 0 ? `${formatCurrency(Math.abs(remaining), privacyMode)} over` : `${formatCurrency(remaining, privacyMode)} remaining`}
             </span>
           </div>
@@ -321,7 +321,7 @@ export default function Recon() {
 
             {/* Tier Selector */}
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-              <div className="inline-flex px-3 py-1 bg-[#c084fc] border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase mb-4">
+              <div className="inline-flex px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase mb-4">
                 CHOOSE YOUR CHALLENGE
               </div>
 
@@ -416,7 +416,7 @@ export default function Recon() {
                   type="number"
                   min="0"
                   title="Total Spent Today"
-                  className="w-full bg-input border-4 border-black rounded-2xl p-5 pl-12 text-3xl font-black italic outline-none text-center focus:border-[#c084fc] focus:bg-surface transition-colors text-text-main"
+                  className="w-full bg-input border-4 border-black rounded-2xl p-5 pl-12 text-3xl font-black italic outline-none text-center focus:border-action-primary focus:bg-surface transition-colors text-text-main"
                   placeholder="0.00"
                   value={displayRawSpend}
                   onFocus={e => e.target.select()}
@@ -486,7 +486,7 @@ export default function Recon() {
                   type="button"
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setStep('SUMMARY')}
-                  className="h-16 border-4 border-border rounded-full font-black uppercase tracking-widest text-lg bg-surface text-text-main hover:bg-action-capture hover:text-black transition-all shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+                  className="h-16 border-4 border-border rounded-full font-black uppercase tracking-widest text-lg bg-surface text-text-main hover:bg-action-capture hover:text-capture-contrast transition-all shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
                 >
                   No
                 </motion.button>
@@ -630,7 +630,7 @@ export default function Recon() {
                 )}
                 <div className="flex justify-between items-center pt-1 gap-2">
                   <span className="text-sm font-black italic uppercase text-text-main shrink-0">Surplus</span>
-                  <span className={`text-2xl sm:text-3xl font-black italic tabular-nums text-right ${surplus >= 0 ? 'text-action-capture' : 'text-action-bleed'}`}>
+                  <span className={`text-2xl sm:text-3xl font-black italic tabular-nums text-right ${surplus >= 0 ? 'text-capture-readable' : 'text-action-bleed'}`}>
                     {formatCurrency(Math.abs(surplus), privacyMode)}
                     <span className="text-base ml-1">{surplus >= 0 ? 'left' : 'over'}</span>
                   </span>

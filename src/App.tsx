@@ -196,26 +196,63 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    if (themeColors?.primary) {
-      document.documentElement.style.setProperty('--color-action-primary', themeColors.primary);
-    }
-    if (themeColors?.secondary) {
-      document.documentElement.style.setProperty('--color-action-capture', themeColors.secondary);
-    }
-  }, [themeColors]);
+    // Boost a color's brightness proportionally when it's too dark for dark mode
+    const boostForDark = (hex: string): string => {
+      if (theme !== 'dark') return hex;
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      const toLinear = (c: number) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+      const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+      if (L >= 0.18) return hex;
+      const scale = Math.sqrt(0.22 / Math.max(L, 0.001));
+      const ch = (v: number) => Math.min(255, Math.round(v * scale)).toString(16).padStart(2, '0');
+      return `#${ch(r)}${ch(g)}${ch(b)}`;
+    };
 
-  // Keep --shadow-color in sync with capture color so dark-mode glow matches the active theme
-  useEffect(() => {
-    if (theme === 'dark') {
-      const cap = themeColors?.secondary ?? '#00CC55';
-      const r = parseInt(cap.slice(1, 3), 16);
-      const g = parseInt(cap.slice(3, 5), 16);
-      const b = parseInt(cap.slice(5, 7), 16);
-      document.documentElement.style.setProperty('--shadow-color', `rgba(${r}, ${g}, ${b}, 0.22)`);
-    } else {
-      document.documentElement.style.removeProperty('--shadow-color');
+    const contrastFor = (hex: string): string => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? '#000000' : '#ffffff';
+    };
+
+    // Darken a color that's too light to read as text on a light surface
+    const readableOnLight = (hex: string): string => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      if (lum <= 0.35) return hex;
+      const scale = 0.3 / lum;
+      const ch = (v: number) => Math.round(v * scale).toString(16).padStart(2, '0');
+      return `#${ch(r)}${ch(g)}${ch(b)}`;
+    };
+
+    const primary = themeColors?.primary || '#facc15';
+    const secondary = themeColors?.secondary || '#00CC55';
+
+    {
+      const p = boostForDark(primary);
+      document.documentElement.style.setProperty('--color-action-primary', p);
+      document.documentElement.style.setProperty('--primary-contrast', contrastFor(p));
+      document.documentElement.style.setProperty('--primary-readable', readableOnLight(p));
     }
-  }, [theme, themeColors?.secondary]);
+    {
+      const boosted = boostForDark(secondary);
+      document.documentElement.style.setProperty('--color-action-capture', boosted);
+      document.documentElement.style.setProperty('--capture-contrast', contrastFor(boosted));
+      document.documentElement.style.setProperty('--capture-readable', readableOnLight(boosted));
+      if (theme === 'dark') {
+        const r = parseInt(boosted.slice(1, 3), 16);
+        const g = parseInt(boosted.slice(3, 5), 16);
+        const b = parseInt(boosted.slice(5, 7), 16);
+        document.documentElement.style.setProperty('--shadow-color', `rgba(${r}, ${g}, ${b}, 0.22)`);
+      } else {
+        document.documentElement.style.removeProperty('--shadow-color');
+      }
+    }
+  }, [themeColors, theme]);
 
   // Supabase env vars missing — show setup instructions
   if (!isSupabaseConfigured) {
@@ -232,8 +269,8 @@ function App() {
             Create a <span className="text-text-main">.env.local</span> file in the project root with your Supabase credentials:
           </p>
           <div className="bg-black rounded-2xl p-4 space-y-1">
-            <p className="text-[11px] font-mono text-action-capture">VITE_SUPABASE_URL=https://your-project.supabase.co</p>
-            <p className="text-[11px] font-mono text-action-capture">VITE_SUPABASE_ANON_KEY=your-anon-key</p>
+            <p className="text-[11px] font-mono text-capture-readable">VITE_SUPABASE_URL=https://your-project.supabase.co</p>
+            <p className="text-[11px] font-mono text-capture-readable">VITE_SUPABASE_ANON_KEY=your-anon-key</p>
           </div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
             Find these in: Supabase Dashboard → Project Settings → API

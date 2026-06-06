@@ -4,8 +4,18 @@ import { useStore } from '../store/useStore';
 import { ChevronRight, ChevronLeft, Wallet, CalendarDays, Receipt, Zap, ArrowRight, Scissors, ShieldCheck, Plus, X, Check } from 'lucide-react';
 import { calculateDaysUntilPayday } from '../core/math';
 
+function contrastText(hex?: string): string {
+  if (!hex || hex.length < 7) return 'text-black';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? 'text-black' : 'text-white';
+}
+
 export default function Onboarding() {
   const setHorizon = useStore(s => s.setHorizon);
+  const themeColors = useStore(s => s.themeColors);
+  const captureTxt = contrastText(themeColors?.secondary);
   const [phase, setPhase] = useState(0);
 
   const [capital, setCapital] = useState('');
@@ -95,7 +105,7 @@ export default function Onboarding() {
             {[
               { icon: Zap, color: 'bg-action-bleed', text: 'Spend less today?', sub: 'Tomorrow\'s limit rises automatically' },
               { icon: ShieldCheck, color: 'bg-action-capture', text: 'Surplus left over?', sub: 'Stash it in a vault toward real goals' },
-              { icon: Scissors, color: 'bg-[#c084fc]', text: 'Leaking money?', sub: 'Kill dead subscriptions in seconds' },
+              { icon: Scissors, color: 'bg-action-primary', text: 'Leaking money?', sub: 'Kill dead subscriptions in seconds' },
             ].map(({ icon: Icon, color, text, sub }) => (
               <div key={text} className="flex items-center gap-4 px-5 py-4">
                 <div className={`w-9 h-9 ${color} border-2 border-black rounded-xl flex items-center justify-center shrink-0`}>
@@ -143,7 +153,7 @@ export default function Onboarding() {
           <div className="px-2">
             <h1 className="text-5xl md:text-6xl font-black uppercase tracking-tighter leading-[0.9]">
               <div className="text-text-main italic">LOCK IN</div>
-              <div className="text-action-capture italic">YOUR HORIZON.</div>
+              <div className="text-capture-readable italic">YOUR HORIZON.</div>
             </h1>
             <div className="mt-8">
               <div className="flex justify-between items-center mb-2 px-1">
@@ -167,12 +177,12 @@ export default function Onboarding() {
             {/* ── PHASE 1: BANK BALANCE ── */}
             {phase === 1 && (
               <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col gap-6">
-                <div className="self-start px-3 py-1 bg-[#c084fc] border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase">
+                <div className="self-start px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
                   STEP 01: LIQUID CAPITAL
                 </div>
                 <div>
                   <h2 className="text-4xl font-black uppercase leading-none tracking-tight flex items-center gap-3 italic text-text-main">
-                    <Wallet className="text-[#c084fc] shrink-0" size={32} strokeWidth={3} />
+                    <Wallet className="text-action-primary shrink-0" size={32} strokeWidth={3} />
                     CURRENT<br />BANK BALANCE
                   </h2>
                   <p className="mt-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Check your banking app. A rough estimate works · you can update it anytime in Settings.</p>
@@ -183,7 +193,7 @@ export default function Onboarding() {
                   </div>
                   <input
                     type="number" title="Current Bank Balance" placeholder="0"
-                    className="w-full bg-input border-4 border-black rounded-2xl p-6 pl-14 text-4xl font-black outline-none focus:border-[#c084fc] focus:bg-surface transition-colors text-text-main"
+                    className="w-full bg-input border-4 border-black rounded-2xl p-6 pl-14 text-4xl font-black outline-none focus:border-action-primary focus:bg-surface transition-colors text-text-main"
                     value={capital} onChange={e => setCapital(e.target.value)} onFocus={e => e.target.select()} autoFocus
                   />
                 </div>
@@ -222,12 +232,12 @@ export default function Onboarding() {
             {/* ── PHASE 3: UPCOMING BILLS ── */}
             {phase === 3 && (
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col gap-5">
-                <div className="self-start px-3 py-1 bg-action-primary border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase">
+                <div className="self-start px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
                   STEP 03: THE BLEED
                 </div>
                 <div>
                   <h2 className="text-4xl font-black uppercase leading-none tracking-tight flex items-center gap-3 italic text-text-main">
-                    <Receipt className="text-action-capture shrink-0" size={32} strokeWidth={4} />
+                    <Receipt className="text-capture-readable shrink-0" size={32} strokeWidth={4} />
                     BILLS DUE<br />BEFORE PAYDAY
                   </h2>
                   <p className="mt-3 text-[10px] font-bold text-text-muted uppercase tracking-widest">
@@ -311,7 +321,7 @@ export default function Onboarding() {
             {/* ── PHASE 4: LAUNCH PREVIEW ── */}
             {phase === 4 && (
               <motion.div key="launch" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col gap-5 flex-1">
-                <div className="self-start px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase">
+                <div className="self-start px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase">
                   SYSTEM ARMED
                 </div>
                 <h2 className="text-4xl font-black uppercase leading-[0.9] tracking-tighter italic text-text-main">
@@ -319,8 +329,8 @@ export default function Onboarding() {
                 </h2>
                 <div className="space-y-3 flex-1">
                   <div className="bg-action-capture border-4 border-black rounded-3xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-black/60 mb-1">Your safe-to-spend today</p>
-                    <p className="text-5xl font-black italic tracking-tighter text-text-main tabular-nums">${previewDailyLimit.toFixed(2)}</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1 ${captureTxt}`}>Your safe-to-spend today</p>
+                    <p className={`text-5xl font-black italic tracking-tighter tabular-nums ${captureTxt}`}>${previewDailyLimit.toFixed(2)}</p>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-input border-4 border-black rounded-2xl p-4">
@@ -339,7 +349,7 @@ export default function Onboarding() {
                   <div className="border-2 border-border rounded-2xl p-4 bg-surface">
                     <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1">How it works</p>
                     <p className="text-sm font-bold text-text-main leading-relaxed">
-                      Spend less today → tomorrow's limit <span className="text-action-capture font-black">rises</span>. Spend more → it drops. The formula adjusts every day until payday.
+                      Spend less today → tomorrow's limit <span className="text-capture-readable font-black">rises</span>. Spend more → it drops. The formula adjusts every day until payday.
                     </p>
                   </div>
                 </div>
@@ -378,7 +388,7 @@ export default function Onboarding() {
               type="button"
               onClick={() => setPhase(4)}
               disabled={!payday}
-              className="flex-1 flex items-center justify-center gap-2 border-4 border-black bg-action-capture text-black font-black uppercase tracking-widest text-xl rounded-full h-16 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+              className="flex-1 flex items-center justify-center gap-2 border-4 border-black bg-action-capture text-capture-contrast font-black uppercase tracking-widest text-xl rounded-full h-16 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
             >
               CALCULATE <Zap strokeWidth={4} size={24} />
             </button>

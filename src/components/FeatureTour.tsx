@@ -29,7 +29,7 @@ const STEPS = [
   },
   {
     icon: Scissors,
-    color: 'bg-[#c084fc]',
+    color: 'bg-action-capture',
     title: 'Kill Subscriptions',
     body: 'Open the Subs tab to audit every recurring payment. Mark anything as Idle or Low Use to spot what to cancel. Dead subscriptions are silent leaks.',
   },

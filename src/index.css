@@ -7,6 +7,10 @@
   --color-border: var(--border-primary);
   --color-text-main: var(--text-primary);
   --color-text-muted: var(--text-secondary);
+  --color-capture-contrast: var(--capture-contrast);
+  --color-primary-contrast: var(--primary-contrast);
+  --color-capture-readable: var(--capture-readable);
+  --color-primary-readable: var(--primary-readable);
 
   --color-action-capture: #00C853;
   --color-action-bleed: #E8174B;
@@ -32,13 +36,17 @@
   --text-secondary: #666666;
   --shadow-color: rgba(0, 0, 0, 0.88);
   --dot-color: rgba(0, 0, 0, 0.13);
+  --capture-contrast: #000000;
+  --primary-contrast: #000000;
+  --capture-readable: #000000;
+  --primary-readable: #000000;
 }
 
 .dark {
   --bg-primary: #0F0F0F;
   --bg-secondary: #1A1A1A;
   --bg-input: #242424;
-  --border-primary: #303030;
+  --border-primary: #4A4A4A;
   --text-primary: #F0F0F0;
   --text-secondary: #888888;
   --shadow-color: rgba(0, 200, 80, 0.22);
@@ -57,6 +65,17 @@
 
   h2, h3 {
     @apply font-bold tracking-tight uppercase;
+  }
+
+  /* Strip browser-native spinner arrows from all number inputs app-wide */
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 }
 
@@ -110,20 +129,18 @@
   .swatch-cyprus-jade      { --tp: #004643; --tc: #ABD1C6; }
   .swatch-hibiscus-cola    { --tp: #E0A4B0; --tc: #7C0116; }
   .swatch-cobalt-butter    { --tp: #0F52BB; --tc: #FFFF9A; }
-  .swatch-sunlit-wine      { --tp: #F4E7AF; --tc: #551424; }
   .swatch-raspberry-lemon  { --tp: #C8154B; --tc: #FFF8B6; }
   .swatch-yam-tide         { --tp: #EA9216; --tc: #313841; }
   .swatch-chili-flare      { --tp: #FFD9A1; --tc: #BE2717; }
   .swatch-sunny-spark      { --tp: #DE4818; --tc: #ECDC80; }
-  .swatch-retro-earth      { --tp: #ED5351; --tc: #1C180A; }
+
   .swatch-deep-roots       { --tp: #FB884C; --tc: #3A1A0A; }
   .swatch-sweet-ocean      { --tp: #F8C6F2; --tc: #01006C; }
   .swatch-deep-mariner     { --tp: #014770; --tc: #E9E5D2; }
 
   .swatch-gold-vintage     { --tp: #A77E16; --tc: #1A2800; }
   .swatch-amber-flamingo   { --tp: #FFBF00; --tc: #F0563A; }
-  .swatch-barley-orange    { --tp: #FFF4CC; --tc: #FF8C00; }
-  .swatch-avocado-chiffon  { --tp: #568203; --tc: #FFF8B9; }
+  .swatch-avocado-chiffon  { --tp: #568203; --tc: #7B3F00; }
   .swatch-olive-foliage    { --tp: #D2DB76; --tc: #2D371D; }
 
   .swatch-matcha-honey     { --tp: #9CA764; --tc: #F1E8C7; }

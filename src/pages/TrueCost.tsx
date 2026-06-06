@@ -1,7 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { Flame, AlertOctagon, RotateCcw } from 'lucide-react';
+import { useStore } from '../store/useStore';
+
+function contrastText(hex?: string): string {
+  if (!hex || hex.length < 7) return 'text-black';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? 'text-black' : 'text-white';
+}
 
 export const TrueCost: React.FC = () => {
+  const { themeColors } = useStore();
+  const captureTxt = contrastText(themeColors?.secondary);
   const [price, setPrice] = useState('');
   const [apr, setApr] = useState('');
   const [term, setTerm] = useState('');
@@ -112,7 +123,7 @@ export const TrueCost: React.FC = () => {
             </div>
           ) : (
             <div className="bg-action-capture border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-              <p className="text-black font-black uppercase tracking-widest text-sm">Zero interest · clean deal</p>
+              <p className={`font-black uppercase tracking-widest text-sm ${captureTxt}`}>Zero interest · clean deal</p>
             </div>
           )}
 

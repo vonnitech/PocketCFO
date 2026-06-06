@@ -22,6 +22,14 @@ const SPEND_CATEGORIES = [
   { key: 'OTHER', label: 'Other' },
 ];
 
+function contrastText(hex?: string): string {
+  if (!hex || hex.length < 7) return 'text-black';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? 'text-black' : 'text-white';
+}
+
 function relativeDate(iso: string) {
   const d = new Date(iso);
   const now = new Date();
@@ -32,7 +40,8 @@ function relativeDate(iso: string) {
 }
 
 export default function Dashboard() {
-  const { safeSpendLimit, liquidAssets, privacyMode, addIncome, vaults, debts, transactions, reconHistory, monthlyTakeHome, fixedBills, monthlySavingsGoal, nextPayday, upcomingBills, hardDailyCap, billQueue, payBillFromQueue, dashboardWidgets, firstName, hasCompletedOnboarding } = useStore();
+  const { safeSpendLimit, liquidAssets, privacyMode, addIncome, vaults, debts, transactions, reconHistory, monthlyTakeHome, fixedBills, monthlySavingsGoal, nextPayday, upcomingBills, hardDailyCap, billQueue, payBillFromQueue, dashboardWidgets, firstName, hasCompletedOnboarding, themeColors } = useStore();
+  const captureTxt = contrastText(themeColors?.secondary);
   const widgetVisible = (id: string) => {
     const w = dashboardWidgets.find(x => x.id === id);
     return w ? w.visible : true;
@@ -149,7 +158,9 @@ export default function Dashboard() {
   const hardCapSweep = useMemo(() => {
     if (!hardDailyCap || hardDailyCap <= 0 || !nextPayday) return 0;
     const days = calculateDaysUntilPayday(nextPayday);
-    const raw = Math.max(0, (liquidAssets - (upcomingBills || 0)) / days);
+    // Match calculateRawSafeSpend: only reserve bills if balance can cover them
+    const billsToReserve = liquidAssets >= (upcomingBills || 0) ? (upcomingBills || 0) : 0;
+    const raw = Math.max(0, (liquidAssets - billsToReserve) / days);
     return Math.max(0, raw - hardDailyCap);
   }, [hardDailyCap, nextPayday, liquidAssets, upcomingBills]);
 
@@ -198,7 +209,7 @@ export default function Dashboard() {
           transition={{ delay: 0.1 }}
           className="bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
         >
-          <div className="inline-flex px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
+          <div className="inline-flex px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase mb-4">
             Welcome
           </div>
           <p className="text-white font-black uppercase text-sm leading-relaxed mb-1">
@@ -277,7 +288,7 @@ export default function Dashboard() {
               </div>
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
                 <span className="text-text-muted">{format(todaySpend)} spent today</span>
-                <span className={remaining < 0 ? 'text-action-bleed font-black' : 'text-action-capture font-black'}>
+                <span className={remaining < 0 ? 'text-action-bleed font-black' : 'text-capture-readable font-black'}>
                   {remaining < 0 ? `${format(Math.abs(remaining))} over` : `${format(remaining)} left`}
                 </span>
               </div>
@@ -378,7 +389,7 @@ export default function Dashboard() {
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden min-h-fit">
           <div className="flex justify-between items-start mb-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Vaulted</p>
-            <Shield size={18} className="text-action-capture shrink-0" strokeWidth={2.5} />
+            <Shield size={18} className="text-capture-readable shrink-0" strokeWidth={2.5} />
           </div>
           <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums break-all min-w-0">{maskBal(totalVaulted)}</p>
           {totalVaulted > 0 && investedVaulted > 0 && savedVaulted > 0 ? (
@@ -396,14 +407,21 @@ export default function Dashboard() {
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden min-h-fit">
           <div className="flex justify-between items-start mb-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Spendable</p>
-            <TrendingUp size={18} className="text-action-capture shrink-0" strokeWidth={2.5} />
+            <TrendingUp size={18} className="text-capture-readable shrink-0" strokeWidth={2.5} />
           </div>
           <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums break-all min-w-0">{maskBal(liquidAssets)}</p>
           {upcomingBills > 0 ? (
-            <div className="mt-2 space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">−{maskBal(upcomingBills)} bills reserved</p>
-              <p className="text-[10px] font-black uppercase tracking-wide text-action-capture tabular-nums">{maskBal(Math.max(0, liquidAssets - upcomingBills))} free</p>
-            </div>
+            liquidAssets >= upcomingBills ? (
+              <div className="mt-2 space-y-0.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">−{maskBal(upcomingBills)} bills reserved</p>
+                <p className="text-[10px] font-black uppercase tracking-wide text-capture-readable tabular-nums">{maskBal(Math.max(0, liquidAssets - upcomingBills))} free</p>
+              </div>
+            ) : (
+              <div className="mt-2 space-y-0.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted tabular-nums">{maskBal(upcomingBills)} bills due next payday</p>
+                <p className="text-[10px] font-black uppercase tracking-wide text-capture-readable tabular-nums">{maskBal(liquidAssets)} free until then</p>
+              </div>
+            )
           ) : (
             <p className="text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">Available cash</p>
           )}
@@ -418,7 +436,7 @@ export default function Dashboard() {
         <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Net Worth</p>
-            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border-2 border-black ${netWorth >= 0 ? 'bg-action-capture text-black' : 'bg-action-bleed text-white'}`}>
+            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border-2 border-black ${netWorth >= 0 ? `bg-action-capture ${captureTxt}` : 'bg-action-bleed text-white'}`}>
               {netWorth >= 0 ? 'Positive' : 'Negative'}
             </span>
           </div>
@@ -431,8 +449,8 @@ export default function Dashboard() {
               <p className="font-black text-sm text-text-main tabular-nums">{maskBal(liquidAssets)}</p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-action-capture">Vaulted</p>
-              <p className="font-black text-sm text-action-capture tabular-nums">+{maskBal(totalVaulted)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-capture-readable">Vaulted</p>
+              <p className="font-black text-sm text-text-main tabular-nums">+{maskBal(totalVaulted)}</p>
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wide text-action-bleed">Debt</p>
@@ -450,16 +468,16 @@ export default function Dashboard() {
           <div className={`border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] ${isPositive ? 'bg-surface' : 'bg-action-bleed/5'}`}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Net Cash Flow</p>
-              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border-2 border-current ${isPositive ? 'text-action-capture' : 'text-action-bleed'}`}>
+              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border-2 ${isPositive ? `bg-action-capture border-action-capture ${captureTxt}` : 'bg-action-bleed border-action-bleed text-white'}`}>
                 {isPositive ? 'Surplus' : 'Deficit'}
               </span>
             </div>
-            <p className={`text-4xl font-black italic tracking-tighter tabular-nums break-all min-w-0 ${isPositive ? 'text-action-capture' : 'text-action-bleed'}`}>
+            <p className={`text-4xl font-black italic tracking-tighter tabular-nums break-all min-w-0 ${isPositive ? 'text-text-main' : 'text-action-bleed'}`}>
               {isPositive ? '+' : '-'}{format(Math.abs(netFlow))}
             </p>
             <div className="flex gap-5 mt-3 pt-3 border-t-2 border-border/30">
               <div className="flex items-center gap-1.5">
-                <ArrowDownLeft size={13} strokeWidth={2.5} className="text-action-capture shrink-0" />
+                <ArrowDownLeft size={13} strokeWidth={2.5} className="text-capture-readable shrink-0" />
                 <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{format(monthlyIncome)} in</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -477,7 +495,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Monthly Budget</p>
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-black uppercase tracking-widest ${monthlyPct >= 90 ? 'text-action-bleed' : monthlyPct >= 70 ? 'text-action-primary' : 'text-action-capture'}`}>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${monthlyPct >= 90 ? 'text-action-bleed' : monthlyPct >= 70 ? 'text-action-primary' : 'text-capture-readable'}`}>
                 {monthlyPct.toFixed(0)}%
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{daysLeft}d left</span>
@@ -498,7 +516,7 @@ export default function Dashboard() {
           {projectedSpend > 0 && (
             <div className="flex justify-between text-[10px] mt-2 pt-2 border-t-2 border-border/30">
               <span className="font-bold uppercase tracking-wide text-text-muted">Month-end pace</span>
-              <span className={`font-black uppercase tracking-widest ${projectedSpend > monthlyBudget ? 'text-action-bleed' : 'text-action-capture'}`}>
+              <span className={`font-black uppercase tracking-widest ${projectedSpend > monthlyBudget ? 'text-action-bleed' : 'text-capture-readable'}`}>
                 ~{format(projectedSpend)} {projectedSpend > monthlyBudget ? '· over' : '· on track'}
               </span>
             </div>
@@ -512,7 +530,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Savings Rate</p>
             <div className={`px-2.5 py-1 rounded-full border-2 border-black text-[11px] font-black uppercase tracking-widest ${
-              actualRate >= 20 ? 'bg-action-capture text-black' :
+              actualRate >= 20 ? 'bg-action-capture text-capture-contrast' :
               actualRate >= 10 ? 'bg-action-primary text-black' :
               'bg-action-bleed text-white'
             }`}>
@@ -697,7 +715,7 @@ export default function Dashboard() {
         <button
           type="button"
           onClick={() => setIsIncomeMode(true)}
-          className="flex-1 min-w-35 flex items-center justify-center gap-2 border-4 border-black bg-action-capture text-black font-black uppercase tracking-widest text-sm rounded-full h-14 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all whitespace-nowrap"
+          className="flex-1 min-w-35 flex items-center justify-center gap-2 border-4 border-black bg-action-capture text-capture-contrast font-black uppercase tracking-widest text-sm rounded-full h-14 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all whitespace-nowrap"
         >
           ADD INCOME
         </button>
@@ -720,7 +738,7 @@ export default function Dashboard() {
         <div className="bg-surface border-4 border-border rounded-3xl overflow-hidden shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between px-5 pt-4 pb-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Recent Activity</p>
-            <Link to="/transactions" className="text-[10px] font-black uppercase tracking-widest text-text-main hover:text-action-capture transition-colors flex items-center gap-1">
+            <Link to="/transactions" className="text-[10px] font-black uppercase tracking-widest text-text-main hover:text-capture-readable transition-colors flex items-center gap-1">
               All <ChevronRight size={12} strokeWidth={3} />
             </Link>
           </div>
@@ -743,7 +761,7 @@ export default function Dashboard() {
                     <p className="text-[10px] font-bold uppercase text-text-muted">{relativeDate(tx.date)}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-black italic tabular-nums ${isIncome ? 'text-action-capture' : tx.isFlip ? 'text-action-bleed' : 'text-text-main'}`}>
+                    <p className={`text-sm font-black italic tabular-nums ${isIncome ? 'text-capture-readable' : tx.isFlip ? 'text-action-bleed' : 'text-text-main'}`}>
                       {isIncome ? '+' : '-'}{format(tx.amount)}
                     </p>
                     {tx.isFlip && tx.flipAmount > 0 && (
@@ -828,7 +846,7 @@ export default function Dashboard() {
                   type="button"
                   onClick={handleAddIncome}
                   disabled={!incomeAmount || parseFloat(incomeAmount) <= 0}
-                  className="flex-1 h-14 border-4 border-black rounded-full bg-action-capture text-black font-black uppercase tracking-widest text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 disabled:opacity-40"
+                  className="flex-1 h-14 border-4 border-black rounded-full bg-action-capture text-capture-contrast font-black uppercase tracking-widest text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 disabled:opacity-40"
                 >
                   Confirm
                 </button>

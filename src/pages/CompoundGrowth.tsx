@@ -141,10 +141,10 @@ export const CompoundGrowth: React.FC = () => {
         <div className="space-y-4">
           {/* Future Value hero */}
           <div className="bg-surface border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-[10px] font-black tracking-widest uppercase mb-3 text-action-capture">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-[10px] font-black tracking-widest uppercase mb-3 text-capture-readable">
               <TrendingUp size={11} strokeWidth={3} /> Future Value
             </div>
-            <p className="text-5xl md:text-6xl font-black italic leading-none tabular-nums text-action-capture">
+            <p className="text-5xl md:text-6xl font-black italic leading-none tabular-nums text-capture-readable">
               ${fmt(metrics.futureValue)}
             </p>
             {parseInt(years) > 0 && (
@@ -164,11 +164,11 @@ export const CompoundGrowth: React.FC = () => {
               <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">Your money in</p>
             </div>
             <div className={`border-4 rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${metrics.marketYield > 0 ? 'bg-black border-black' : 'bg-surface border-border shadow-[6px_6px_0px_0px_var(--shadow-color)]'}`}>
-              <p className={`label-xs mb-2 ${metrics.marketYield > 0 ? 'text-action-capture' : ''}`}>Market Yield</p>
-              <p className={`text-2xl font-black italic tabular-nums ${metrics.marketYield > 0 ? 'text-action-capture' : 'text-text-main'}`}>
+              <p className={`label-xs mb-2 ${metrics.marketYield > 0 ? 'text-capture-readable' : ''}`}>Market Yield</p>
+              <p className={`text-2xl font-black italic tabular-nums ${metrics.marketYield > 0 ? 'text-capture-readable' : 'text-text-main'}`}>
                 +${fmt(metrics.marketYield)}
               </p>
-              <p className={`text-[11px] font-bold uppercase tracking-wide mt-1.5 ${metrics.marketYield > 0 ? 'text-action-capture/60' : 'text-text-muted'}`}>Free market growth</p>
+              <p className={`text-[11px] font-bold uppercase tracking-wide mt-1.5 ${metrics.marketYield > 0 ? 'text-capture-readable/60' : 'text-text-muted'}`}>Free market growth</p>
             </div>
           </div>
 
@@ -177,7 +177,7 @@ export const CompoundGrowth: React.FC = () => {
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
               <div className="flex justify-between items-center mb-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Capital Breakdown</p>
-                <p className="text-[10px] font-black uppercase tracking-widest text-action-capture">
+                <p className="text-[10px] font-black uppercase tracking-widest text-capture-readable">
                   {((metrics.marketYield / metrics.futureValue) * 100).toFixed(1)}% free yield
                 </p>
               </div>
@@ -192,7 +192,7 @@ export const CompoundGrowth: React.FC = () => {
               </div>
               <div className="flex justify-between mt-2">
                 <span className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Principal</span>
-                <span className="text-[11px] font-bold uppercase tracking-wide text-action-capture">Yield</span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-capture-readable">Yield</span>
               </div>
             </div>
           )}

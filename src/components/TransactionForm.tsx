@@ -61,7 +61,7 @@ export function TransactionForm({ onClose }: Props = {}) {
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}
-              className="text-[10px] font-black uppercase tracking-widest text-action-capture shrink-0 ml-2"
+              className="text-[10px] font-black uppercase tracking-widest text-capture-readable shrink-0 ml-2"
             >
               LOGGED ✓
             </motion.span>

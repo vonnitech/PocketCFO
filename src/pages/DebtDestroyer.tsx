@@ -8,7 +8,7 @@ const DEBT_PALETTES = [
   { borderClass: '[border-left-color:#F97316]', bgClass: 'bg-[#F97316]', color: '#F97316' },
   { borderClass: '[border-left-color:#F5C518]', bgClass: 'bg-[#F5C518]', color: '#F5C518' },
   { borderClass: '[border-left-color:#00C853]', bgClass: 'bg-[#00C853]', color: '#00C853' },
-  { borderClass: '[border-left-color:#c084fc]', bgClass: 'bg-[#c084fc]', color: '#c084fc' },
+  { borderClass: '[border-left-color:#14b8a6]', bgClass: 'bg-[#14b8a6]', color: '#14b8a6' },
   { borderClass: '[border-left-color:#38bdf8]', bgClass: 'bg-[#38bdf8]', color: '#38bdf8' },
 ] as const;
 
@@ -102,14 +102,14 @@ export const DebtDestroyer: React.FC = () => {
 
       {/* Extra Ammo Slider */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#c084fc] border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase mb-4">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase mb-4">
           EXTRA MONTHLY AMMO
         </div>
         <div className="flex justify-between items-center mb-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
             Surplus capital applied after minimums
           </p>
-          <span className="text-3xl font-black italic text-action-capture">${extraAmmo}</span>
+          <span className="text-3xl font-black italic text-capture-readable">${extraAmmo}</span>
         </div>
         <input
           type="range"
@@ -152,13 +152,13 @@ export const DebtDestroyer: React.FC = () => {
 
         {/* Avalanche - recommended */}
         <div className="bg-surface border-4 border-action-capture rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] relative">
-          <div className="absolute -top-4 left-5 bg-action-capture text-black px-3 py-1 text-[11px] font-black uppercase tracking-widest border-2 border-black rounded-full">
+          <div className="absolute -top-4 left-5 bg-action-capture text-capture-contrast px-3 py-1 text-[11px] font-black uppercase tracking-widest border-2 border-black rounded-full">
             Recommended
           </div>
-          <div className="inline-flex items-center px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-5 mt-2">
+          <div className="inline-flex items-center px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase mb-5 mt-2">
             AVALANCHE STRATEGY
           </div>
-          <h2 className="text-2xl font-black italic uppercase tracking-tighter text-action-capture flex items-center gap-2 mb-4">
+          <h2 className="text-2xl font-black italic uppercase tracking-tighter text-capture-readable flex items-center gap-2 mb-4">
             <Zap size={20} strokeWidth={3} /> Avalanche
           </h2>
           <div className="space-y-4">
@@ -173,7 +173,7 @@ export const DebtDestroyer: React.FC = () => {
               </p>
             </div>
           </div>
-          <p className="mt-5 pt-4 border-t-2 border-black/20 text-[10px] font-bold text-action-capture uppercase tracking-widest">
+          <p className="mt-5 pt-4 border-t-2 border-black/20 text-[10px] font-bold text-capture-readable uppercase tracking-widest">
             Maximum capital preservation. Targeted interest suppression.
           </p>
         </div>
@@ -233,20 +233,20 @@ export const DebtDestroyer: React.FC = () => {
       {/* Delta */}
       {interestSaved > 0 && (
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase mb-4">
             THE MATH DIVIDEND
           </div>
           <div className="flex items-center gap-4">
-            <ShieldAlert className="text-action-capture shrink-0" size={36} strokeWidth={2.5} />
+            <ShieldAlert className="text-capture-readable shrink-0" size={36} strokeWidth={2.5} />
             <div className="min-w-0 flex-1">
-              <p className="text-3xl sm:text-4xl font-black italic text-action-capture tabular-nums">+${interestSaved.toFixed(2)}</p>
+              <p className="text-3xl sm:text-4xl font-black italic text-capture-readable tabular-nums">+${interestSaved.toFixed(2)}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">
                 Capital saved by choosing Avalanche over Snowball
               </p>
             </div>
           </div>
           {timeDifference > 0 && (
-            <p className="text-action-capture text-[10px] uppercase mt-4 font-bold flex items-center gap-1">
+            <p className="text-capture-readable text-[10px] uppercase mt-4 font-bold flex items-center gap-1">
               <Clock size={12} /> You reach freedom {timeDifference} months faster with Avalanche.
             </p>
           )}

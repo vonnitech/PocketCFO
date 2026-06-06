@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Trash2, Plus, Check, X, Edit2, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -79,6 +79,14 @@ export default function Config() {
   const [newBillAmount, setNewBillAmount] = useState('');
   const [isAddingBill, setIsAddingBill] = useState(false);
 
+  // Sync configBills from store only when the component initialised before data loaded (configBills is empty but store now has bills)
+  useEffect(() => {
+    if (configBills.length === 0 && (state.recurringBills || []).length > 0) {
+      setConfigBills(state.recurringBills.map(b => ({ id: b.id, name: b.name, amount: String(b.amount) })));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.recurringBills]);
+
   // Monthly Baseline state — string so empty field shows blank not "0"
   const [baselineIncome, setBaselineIncome] = useState(() => state.monthlyTakeHome || '');
   const [baselineSavings, setBaselineSavings] = useState(() => state.monthlySavingsGoal || '');
@@ -118,7 +126,7 @@ export default function Config() {
       {/* Stats */}
       <Card badge="TOTAL SAVINGS" badgeColor="bg-action-capture" badgeTextColor={captureTxt}>
         <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2">Total Value Protected</p>
-        <div className="text-3xl sm:text-4xl font-black italic text-action-capture tracking-tighter tabular-nums">
+        <div className="text-3xl sm:text-4xl font-black italic text-capture-readable tracking-tighter tabular-nums">
           ${(state.stats.lifetimeCapture || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <p className="text-[10px] font-bold uppercase text-text-muted mt-3">Savings gains & cancelled subscriptions</p>
@@ -167,9 +175,23 @@ export default function Config() {
             </div>
             <div className="space-y-2">
               {configBills.map(bill => (
-                <div key={bill.id} className="flex items-center gap-2 bg-input border-4 border-black rounded-2xl px-3 py-2.5">
-                  <span className="font-black uppercase text-sm text-text-main flex-1 truncate">{bill.name}</span>
-                  <span className="font-black tabular-nums text-sm text-text-main shrink-0">${parseFloat(bill.amount).toFixed(2)}</span>
+                <div key={bill.id} className="flex items-center gap-2 bg-input border-4 border-black rounded-2xl px-3 py-2">
+                  <input
+                    type="text"
+                    title="Bill name"
+                    value={bill.name}
+                    onChange={e => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, name: e.target.value } : b))}
+                    className="flex-1 min-w-0 font-black uppercase text-sm text-text-main bg-transparent outline-none"
+                  />
+                  <input
+                    type="number"
+                    title="Bill amount"
+                    min="0"
+                    value={bill.amount}
+                    onFocus={e => e.target.select()}
+                    onChange={e => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, amount: e.target.value } : b))}
+                    className="w-24 font-black tabular-nums text-sm text-text-main bg-transparent outline-none text-right shrink-0"
+                  />
                   <button
                     type="button"
                     title="Remove bill"
@@ -471,7 +493,7 @@ export default function Config() {
           Pocket CFO is local-first. We do not store your financial data on our servers. Your data stays on this device unless you export it yourself.
         </p>
         <div className="flex gap-2 mt-3">
-          <span className="bg-action-capture/20 text-action-capture border-[3px] border-action-capture/30 px-3 py-1 rounded-full text-[10px] font-black uppercase">v2.1.0-STABLE</span>
+          <span className="bg-action-capture/20 text-capture-readable border-[3px] border-action-capture/30 px-3 py-1 rounded-full text-[10px] font-black uppercase">v2.1.0-STABLE</span>
           <span className="bg-action-primary/20 text-black border-[3px] border-action-primary/30 px-3 py-1 rounded-full text-[10px] font-black uppercase">LOCAL ONLY</span>
         </div>
       </div>

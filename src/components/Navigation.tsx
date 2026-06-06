@@ -37,7 +37,7 @@ function NavItem({ path, icon: Icon, label, accent }: {
         ${isActive
           ? accent
             ? 'bg-action-primary border-black text-black'
-            : 'bg-action-capture border-black text-black'
+            : 'bg-action-capture border-black text-capture-contrast'
           : 'border-transparent text-text-muted hover:bg-input hover:text-text-main hover:border-border'
         }`
       }
@@ -65,9 +65,7 @@ function SheetLink({ path, icon: Icon, label, accent, onClick }: {
       className={({ isActive }) =>
         `flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 transition-all
         ${isActive
-          ? accent
-            ? 'bg-action-primary border-black text-black'
-            : 'bg-action-capture border-black text-black'
+          ? 'bg-black border-black text-action-primary'
           : 'bg-input border-transparent hover:border-border text-text-main'
         }`
       }
@@ -95,10 +93,10 @@ function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick }: {
     >
       {({ isActive }) => (
         <>
-          <Icon size={18} strokeWidth={2.5} className={`shrink-0 ${isActive ? 'text-black' : 'text-action-primary'}`} />
+          <Icon size={18} strokeWidth={2.5} className={`shrink-0 ${isActive ? 'text-primary-contrast' : 'text-action-primary'}`} />
           <div className="flex-1 min-w-0">
-            <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${isActive ? 'text-black' : 'text-text-main'}`}>{label}</p>
-            <p className={`text-[10px] font-bold mt-1 leading-snug ${isActive ? 'text-black/60' : 'text-text-muted'}`}>{subtitle}</p>
+            <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${isActive ? 'text-primary-contrast' : 'text-text-main'}`}>{label}</p>
+            <p className={`text-[10px] font-bold mt-1 leading-snug ${isActive ? 'text-primary-contrast/60' : 'text-text-muted'}`}>{subtitle}</p>
           </div>
         </>
       )}
@@ -185,7 +183,7 @@ export default function Navigation() {
               className={({ isActive }) =>
                 `flex-1 flex flex-col items-center justify-center gap-1.5 h-16 border-2 rounded-xl transition-all
                 ${isActive
-                  ? 'bg-action-capture border-black text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  ? 'bg-black border-black text-action-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,0.4)]'
                   : 'border-transparent text-text-muted'
                 }`
               }

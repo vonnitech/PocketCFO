@@ -69,6 +69,19 @@ function fmtFull(n: number): string {
   return '$' + Math.round(n).toLocaleString();
 }
 
+// Calculates the next stepping-stone milestone above the current balance.
+// Steps scale with magnitude so milestones always feel close enough to chase.
+function nextMilestone(current: number): number {
+  if (current < 0) return 0;
+  const step =
+    current < 10_000    ? 1_000 :
+    current < 100_000   ? 10_000 :
+    current < 1_000_000 ? 100_000 :
+                          250_000;
+  const next = Math.ceil((current + 1) / step) * step;
+  return next;
+}
+
 // ── SVG Chart ────────────────────────────────────────────────────────────────
 const VW = 400;
 const VH = 180;
@@ -136,12 +149,19 @@ function FireChart({ data, fireNumber, targetAge, currentAge, fireAge }: ChartPr
           {label}
         </text>
       ))}
-      {crossX !== null && fireAge !== null && (
-        <text x={crossX} y={Number(fireY) - 9} textAnchor="middle"
-          fontSize="8" fontFamily="monospace" fontWeight="bold" fill="var(--color-action-primary)">
-          {currentAge + fireAge}
-        </text>
-      )}
+      {crossX !== null && fireAge !== null && (() => {
+        const nearEdge = crossI >= 0 && crossI <= 3;
+        return (
+          <text
+            x={nearEdge ? Number(crossX) + 8 : Number(crossX)}
+            y={Number(fireY) - 9}
+            textAnchor={nearEdge ? 'start' : 'middle'}
+            fontSize="8" fontFamily="monospace" fontWeight="bold" fill="var(--color-action-primary)"
+          >
+            {currentAge + fireAge}
+          </text>
+        );
+      })()}
     </svg>
   );
 }
@@ -185,7 +205,7 @@ function LiveBadge() {
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
-const DEFAULTS = { currentAge: '28', targetAge: '45', annualExpenses: '40000', partTimeIncome: '20000' };
+const DEFAULTS = { currentAge: '28', targetAge: '45', annualExpenses: '40000', partTimeIncome: '20000', externalInvestments: '' };
 const SS_KEY = 'pocket-cfo-fire-inputs-v1';
 
 function loadSaved(): typeof DEFAULTS & { strategy: FireStrategy } {
@@ -206,7 +226,7 @@ function saveField(key: string, value: string) {
 export function FireCalculator() {
   const allVaults      = useStore(s => s.vaults);
   const vaults         = allVaults.filter(v => v.asset_class === 'INVESTMENT');
-  const totalVaulted   = vaults.reduce((sum, v) => sum + v.current, 0);
+  const vaultsTotal    = vaults.reduce((sum, v) => sum + v.current, 0);
   const monthlySavingsGoal = useStore(s => s.monthlySavingsGoal);
   const monthlyTakeHome    = useStore(s => s.monthlyTakeHome);
   const fixedBills         = useStore(s => s.fixedBills);
@@ -221,6 +241,10 @@ export function FireCalculator() {
 
   const [monthlyOverride, setMonthlyOverride] = useState('');
   const [incomeGrowthRaw, setIncomeGrowthRaw] = useState('');
+  const [externalInvestmentsRaw, setExternalInvestmentsRaw] = useState(() => loadSaved().externalInvestments ?? '');
+  const setExternalInvestments = (v: string) => { setExternalInvestmentsRaw(v); saveField('externalInvestments', v); };
+  const externalInvestments = parseFloat(externalInvestmentsRaw) || 0;
+  const totalVaulted = vaultsTotal + externalInvestments;
   const monthlyContrib   = monthlyOverride !== '' ? (parseFloat(monthlyOverride) || 0) : monthlyContribBase;
   const incomeGrowthRate = incomeGrowthRaw !== '' ? (parseFloat(incomeGrowthRaw) || 0) / 100 : 0;
 
@@ -295,7 +319,7 @@ export function FireCalculator() {
       const projAtTarget = fv(totalVaulted, 0, yearsTo65 * 12);
       const surplus      = onCoast ? projAtTarget - fireNumber : 0;
       const shortfall    = onCoast ? 0 : coastNumber - totalVaulted;
-      const progressPct  = Math.min(100, coastNumber > 0 ? (totalVaulted / coastNumber) * 100 : 0);
+      const progressPct  = coastNumber > 0 ? (totalVaulted / coastNumber) * 100 : 0;
       const projPct      = Math.min(100, (projAtTarget / fireNumber) * 100);
       const coastYTF     = yearsToFire(totalVaulted, 0, fireNumber);
 
@@ -331,8 +355,8 @@ export function FireCalculator() {
 
     const yearsToTarget = targetAge - currentAge;
     const projAtTarget  = fvWithGrowth(totalVaulted, monthlyContrib, yearsToTarget * 12, incomeGrowthRate);
-    const progressPct   = Math.min(100, (totalVaulted / fireNumber) * 100);
-    const projPct       = Math.min(100, (projAtTarget / fireNumber) * 100);
+    const progressPct   = fireNumber > 0 ? (totalVaulted / fireNumber) * 100 : 0;
+    const projPct       = fireNumber > 0 ? (projAtTarget / fireNumber) * 100 : 0;
     const onTrack       = projAtTarget >= fireNumber;
     const yearsToFIRE   = yearsToFireWithGrowth(totalVaulted, monthlyContrib, fireNumber, incomeGrowthRate);
     const fireAge       = yearsToFIRE !== null ? currentAge + yearsToFIRE : null;
@@ -477,28 +501,44 @@ export function FireCalculator() {
             </div>
           </div>
 
+          {/* Next milestone — psychological stepping stone */}
+          {(() => {
+            const milestone = nextMilestone(totalVaulted);
+            const toGo = Math.max(0, milestone - totalVaulted);
+            return milestone < calc.fireNumber && (
+              <div className="mb-3 flex items-baseline justify-between gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-action-primary">
+                  Next Milestone · {fmtFull(milestone)}
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/50 tabular-nums">
+                  {fmtFull(toGo)} to go
+                </span>
+              </div>
+            );
+          })()}
+
           <div className="space-y-2">
-            <div className="flex justify-between text-[10px] font-bold uppercase tracking-wide">
-              <span className="text-white/50">Vaulted now: {fmtFull(totalVaulted)}</span>
-              <span className="text-action-primary font-black">{calc.progressPct.toFixed(1)}% there</span>
+            <div className="flex justify-between items-baseline text-[10px] font-bold uppercase tracking-wide">
+              <span className="text-white/50">Today · {fmtFull(totalVaulted)}</span>
+              <span className="text-action-primary font-black tabular-nums">{calc.progressPct.toFixed(1)}%</span>
             </div>
             <div className="h-3 bg-white/10 border-2 border-white/20 rounded-full overflow-hidden">
               <motion.div
                 className="h-full rounded-full bg-action-capture"
                 initial={{ width: 0 }}
-                animate={{ width: `${calc.progressPct}%` }}
+                animate={{ width: `${Math.min(100, calc.progressPct)}%` }}
                 transition={{ type: 'spring', stiffness: 180, damping: 28 }}
               />
             </div>
             {calc.projPct > calc.progressPct && (
               <>
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wide">
+                <div className="flex justify-between items-baseline text-[10px] font-bold uppercase tracking-wide pt-1">
                   <span className="text-white/40">
                     {calc.isCoast
-                      ? `At 65: ${fmtFull(calc.projAtTarget)}`
-                      : `Projected at ${calc.targetAge}: ${fmtFull(calc.projAtTarget)}`}
+                      ? `At 65 · ${fmtFull(calc.projAtTarget)}`
+                      : `At ${calc.targetAge} · ${fmtFull(calc.projAtTarget)}`}
                   </span>
-                  <span className={`font-black ${calc.onTrack ? 'text-action-capture' : 'text-action-bleed'}`}>
+                  <span className={`font-black tabular-nums ${calc.onTrack ? 'text-capture-readable' : 'text-action-bleed'}`}>
                     {calc.projPct.toFixed(1)}%
                   </span>
                 </div>
@@ -506,13 +546,14 @@ export function FireCalculator() {
                   <motion.div
                     className={`h-full rounded-full ${calc.onTrack ? 'bg-action-capture' : 'bg-action-bleed/60'}`}
                     initial={{ width: 0 }}
-                    animate={{ width: `${calc.projPct}%` }}
+                    animate={{ width: `${Math.min(100, calc.projPct)}%` }}
                     transition={{ type: 'spring', stiffness: 180, damping: 28, delay: 0.1 }}
                   />
                 </div>
               </>
             )}
           </div>
+
         </div>
       )}
 
@@ -526,7 +567,7 @@ export function FireCalculator() {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-input border-4 border-black rounded-2xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
-              <ShieldCheck size={12} strokeWidth={2.5} className="text-action-capture shrink-0" />
+              <ShieldCheck size={12} strokeWidth={2.5} className="text-capture-readable shrink-0" />
               <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Investments</p>
             </div>
             <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{fmtFull(totalVaulted)}</p>
@@ -617,6 +658,28 @@ export function FireCalculator() {
         <Field label="Annual Expenses in Retirement" prefix="$" value={ae} onChange={setAe} />
 
         <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Existing Investments (Outside App)</p>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none select-none text-lg">$</span>
+            <input
+              type="number"
+              title="Existing investments outside the app"
+              inputMode="decimal"
+              min="0"
+              value={externalInvestmentsRaw}
+              placeholder="0"
+              onChange={e => setExternalInvestments(e.target.value.replace(/[^0-9.]/g, ''))}
+              onFocus={e => e.target.select()}
+              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted/40"
+            />
+          </div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
+            401(k), IRA, brokerage, crypto — anything not tracked in your app vaults
+            {externalInvestments > 0 && ` · combined starting balance: ${fmtFull(totalVaulted)}`}
+          </p>
+        </div>
+
+        <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Monthly Vault Contribution</p>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none select-none text-lg">$</span>
@@ -632,7 +695,7 @@ export function FireCalculator() {
               className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted/40"
             />
           </div>
-          {monthlyOverride !== '' && (
+          {monthlyOverride !== '' && Math.round(parseFloat(monthlyOverride)) !== Math.round(monthlyContribBase) && (
             <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary mt-1.5">
               Overriding profile goal of {fmtFull(monthlyContribBase)}/mo
             </p>
@@ -681,13 +744,13 @@ export function FireCalculator() {
           <button
             type="button"
             onClick={handleLockIn}
-            className="w-full h-12 flex items-center justify-center gap-2 border-4 border-black rounded-2xl bg-black text-action-capture font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            className="w-full h-12 flex items-center justify-center gap-2 border-4 border-black rounded-2xl bg-black text-capture-readable font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
           >
             <Lock size={14} strokeWidth={3} />
             {fireConfig ? 'Update Locked Strategy' : 'Lock In Strategy'}
           </button>
         ) : (
-          <div className="w-full h-12 flex items-center justify-center gap-2 border-4 border-action-capture/40 rounded-2xl bg-action-capture/10 text-action-capture font-black uppercase tracking-widest text-[11px]">
+          <div className="w-full h-12 flex items-center justify-center gap-2 border-4 border-action-capture/40 rounded-2xl bg-action-capture/10 text-capture-readable font-black uppercase tracking-widest text-[11px]">
             <Lock size={14} strokeWidth={3} />
             Strategy Locked
           </div>
@@ -730,40 +793,42 @@ export function FireCalculator() {
               label: 'Coast #',
               value: fmt(calc.coastNumber),
               sub: 'needed today',
-              accent: calc.onTrack ? 'text-action-capture' : 'text-action-bleed',
+              accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
             {
               label: 'Vaults Now',
               value: fmt(totalVaulted),
               sub: `${calc.progressPct.toFixed(0)}% to coast`,
-              accent: calc.onTrack ? 'text-action-capture' : 'text-action-bleed',
+              accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
             {
               label: calc.onTrack ? 'At 65' : 'Shortfall',
               value: calc.onTrack ? fmt(calc.projAtTarget) : fmt(calc.shortfall),
               sub: calc.onTrack ? `+${fmt(calc.surplus)} surplus` : 'to add today',
-              accent: calc.onTrack ? 'text-action-capture' : 'text-action-bleed',
+              accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
           ] : [
             {
               label: 'FIRE Age',
               value: calc.fireAge !== null ? String(calc.fireAge) : '80+',
               sub: calc.fireAge !== null ? `in ${calc.fireAge - calc.currentAge}y` : 'increase savings',
-              accent: calc.onTrack ? 'text-action-capture' : 'text-action-bleed',
+              accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
             {
               label: 'At Target',
               value: fmt(calc.projAtTarget),
               sub: calc.onTrack ? `+${fmt(calc.surplus)} surplus` : `${fmt(calc.fireNumber - calc.projAtTarget)} short`,
-              accent: calc.onTrack ? 'text-action-capture' : 'text-action-bleed',
+              accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
             {
               label: calc.onTrack ? 'Min / Mo' : 'Need / Mo',
               value: calc.reqMonthly !== null && isFinite(calc.reqMonthly) ? fmt(calc.reqMonthly) : '—',
               sub: calc.onTrack
-                ? `saving ${fmt(monthlyContrib)} · ${fmt(monthlyContrib - (calc.reqMonthly ?? 0))} above min`
+                ? (monthlyContrib >= (calc.reqMonthly ?? 0)
+                    ? `saving ${fmt(monthlyContrib)} · ${fmt(monthlyContrib - (calc.reqMonthly ?? 0))} above min`
+                    : `saving ${fmt(monthlyContrib)} now · growth makes up the gap`)
                 : `${fmt((calc.reqMonthly ?? 0) - monthlyContrib)} more than now`,
-              accent: calc.onTrack ? 'text-action-capture' : 'text-action-bleed',
+              accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
           ]).map(s => (
             <div key={s.label} className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
@@ -814,7 +879,9 @@ export function FireCalculator() {
                   </p>
                   <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
                     {calc.reqMonthly !== null && isFinite(calc.reqMonthly)
-                      ? `Minimum needed: ${fmtFull(calc.reqMonthly)}/mo · you're saving ${fmtFull(monthlyContrib)}/mo · ${fmtFull(monthlyContrib - calc.reqMonthly)} above minimum.`
+                      ? (monthlyContrib >= calc.reqMonthly
+                          ? `Flat minimum needed: ${fmtFull(calc.reqMonthly)}/mo · you're saving ${fmtFull(monthlyContrib)}/mo · ${fmtFull(monthlyContrib - calc.reqMonthly)} above minimum.`
+                          : `You're saving ${fmtFull(monthlyContrib)}/mo today · less than the ${fmtFull(calc.reqMonthly)}/mo flat minimum, but your income growth scales your contributions enough to clear the goal.`)
                       : `Keep your ${fmtFull(monthlyContrib)}/mo savings rate consistent · compounding does the heavy lifting from here.`
                     }
                   </p>
@@ -823,7 +890,7 @@ export function FireCalculator() {
                 <>
                   <p className="font-black uppercase text-sm tracking-tight text-text-main leading-snug">
                     {calc.fireAge !== null
-                      ? `Based on your vault deposits, you'll reach FIRE at age ${calc.fireAge} · ${calc.fireAge - calc.targetAge} years behind your target.`
+                      ? `Based on your vault deposits, you'll reach FIRE at age ${calc.fireAge} · ${calc.fireAge - calc.targetAge} years past your target.`
                       : `At your current savings rate, you won't reach FIRE within 80 years.`
                     }
                   </p>

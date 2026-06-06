@@ -53,7 +53,6 @@ const COLOR_THEMES = [
   // Reds
   { id: 'raspberry-lemon',   name: 'Raspberry Lemon',     primary: '#C8154B', capture: '#FFF8B6' },
   { id: 'coral-lemon',       name: 'Coral & Lemon',       primary: '#FF5960', capture: '#FFE783' },
-  { id: 'retro-earth',       name: 'Retro Earth',         primary: '#ED5351', capture: '#1C180A' },
   { id: 'sunny-spark',       name: 'Sunny Spark',         primary: '#DE4818', capture: '#ECDC80' },
   // Oranges
   { id: 'deep-roots',        name: 'Deep Roots',          primary: '#FB884C', capture: '#3A1A0A' },
@@ -61,18 +60,16 @@ const COLOR_THEMES = [
   { id: 'yam-tide',          name: 'Yam & High Tide',     primary: '#EA9216', capture: '#313841' },
   { id: 'amber-flamingo',    name: 'Amber & Flamingo',    primary: '#FFBF00', capture: '#F0563A' },
   { id: 'chili-flare',       name: 'Chili Flare',         primary: '#FFD9A1', capture: '#BE2717' },
-  { id: 'barley-orange',     name: 'Barley & Orange',     primary: '#FFF4CC', capture: '#FF8C00' },
   // Yellows & Golds
   { id: 'saffron-steel',     name: 'Saffron & Steel',     primary: '#E8C547', capture: '#4F7CAC' },
   { id: 'gold-vintage',      name: 'Gold Vintage',        primary: '#A77E16', capture: '#1A2800' },
-  { id: 'sunlit-wine',       name: 'Sunlit Wine',         primary: '#F4E7AF', capture: '#551424' },
   { id: 'cherry-blossom',    name: 'Cherry Blossom',      primary: '#FAFFC7', capture: '#F8A8B9' },
   // Olives & Yellow-Greens
   { id: 'olive-foliage',     name: 'Olive & Foliage',     primary: '#D2DB76', capture: '#2D371D' },
   { id: 'matcha-honey',      name: 'Matcha Honey',        primary: '#9CA764', capture: '#F1E8C7' },
   // Greens
   { id: 'lime-royal',        name: 'Lime & Royal',        primary: '#88CC22', capture: '#3355CC' },
-  { id: 'avocado-chiffon',   name: 'Avocado & Chiffon',   primary: '#568203', capture: '#FFF8B9' },
+  { id: 'avocado-chiffon',   name: 'Avocado & Chocolate', primary: '#568203', capture: '#7B3F00' },
   { id: 'cyprus-jade',       name: 'Cyprus & Jade',       primary: '#004643', capture: '#ABD1C6' },
   // Teals & Cyans
   { id: 'turquoise-teal',    name: 'Turquoise & Teal',    primary: '#22CCBB', capture: '#007799' },
@@ -367,7 +364,7 @@ export default function Settings() {
               <input type="file" title="Import JSON State" className="hidden" accept=".json" onChange={importData} />
             </motion.label>
             {isInstalled ? (
-              <div className="w-full h-12 border-4 border-action-capture rounded-full bg-action-capture/10 text-action-capture font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+              <div className="w-full h-12 border-4 border-action-capture rounded-full bg-action-capture/10 text-capture-readable font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
                 <Smartphone size={16} /> INSTALLED
               </div>
             ) : (

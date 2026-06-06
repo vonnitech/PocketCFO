@@ -12,8 +12,16 @@ export const TacticalSplitter: React.FC = () => {
     addSplitTransaction, safeSpendLimit,
     customSplitPresets, saveSplitPreset, deleteSplitPreset,
     addSquadMember, updateSquadMember, removeSquadMember,
-    iouLedger, collectIou, appendIouEntries,
+    iouLedger, collectIou, appendIouEntries, themeColors,
   } = useStore();
+  const captureTxt = (() => {
+    const hex = themeColors?.secondary;
+    if (!hex || hex.length < 7) return 'text-black';
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? 'text-black' : 'text-white';
+  })();
 
   const [currentInput, setCurrentInput] = useState('0');
   const [activeMembers, setActiveMembers] = useState<Set<string>>(
@@ -145,7 +153,7 @@ export const TacticalSplitter: React.FC = () => {
         </div>
         <div className="bg-surface border-4 border-action-capture rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
           <div className="flex items-center gap-3">
-            <CheckCircle2 size={24} className="text-action-capture" strokeWidth={3} />
+            <CheckCircle2 size={24} className="text-capture-readable" strokeWidth={3} />
             <h2 className="text-xl font-black italic uppercase tracking-tighter text-text-main">Split Done</h2>
           </div>
 
@@ -155,15 +163,15 @@ export const TacticalSplitter: React.FC = () => {
               <p className="text-lg sm:text-xl font-black italic text-text-main tabular-nums">${s.bill.toFixed(2)}</p>
             </div>
             <div className="bg-action-capture border-4 border-black rounded-2xl p-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-black/60 mb-1">Your Share</p>
-              <p className="text-lg sm:text-xl font-black italic text-text-main tabular-nums">${s.base.toFixed(2)}</p>
+              <p className={`text-[11px] font-bold uppercase tracking-widest opacity-60 mb-1 ${captureTxt}`}>Your Share</p>
+              <p className={`text-lg sm:text-xl font-black italic tabular-nums ${captureTxt}`}>${s.base.toFixed(2)}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-input border-4 border-black rounded-2xl p-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1">Vault Capture</p>
-              <p className="text-lg sm:text-xl font-black italic text-text-main tabular-nums">${s.flip.toFixed(2)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1">Your Vault</p>
+              <p className="text-lg sm:text-xl font-black italic text-capture-readable tabular-nums">+${s.flip.toFixed(2)}</p>
             </div>
             <div className="bg-action-primary border-4 border-black rounded-2xl p-4">
               <p className="text-[11px] font-bold uppercase tracking-widest text-black/60 mb-1">Total Hit</p>
@@ -200,22 +208,22 @@ export const TacticalSplitter: React.FC = () => {
           </div>
           <div className="text-right shrink-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{totalPeople} people</p>
-            <p className="text-xl sm:text-2xl font-black italic text-text-main tabular-nums">${metrics.totalHitPerPerson.toFixed(2)} each</p>
+            <p className="text-xl sm:text-2xl font-black italic text-text-main tabular-nums">${metrics.baseSharePerPerson.toFixed(2)} each</p>
           </div>
         </div>
 
         {totalBill > 0 && (
           <div className="flex gap-3 pt-2 border-t-2 border-border">
             <div className="flex-1 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-tight">Base</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-tight">They Owe</p>
               <p className="font-black text-text-main tabular-nums">${metrics.baseSharePerPerson.toFixed(2)}</p>
             </div>
             <div className="flex-1 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-tight">Vault</p>
-              <p className="font-black text-text-main tabular-nums">${metrics.flipObligationPerPerson.toFixed(2)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-capture-readable leading-tight">Your Vault</p>
+              <p className="font-black text-capture-readable tabular-nums">+${metrics.flipObligationPerPerson.toFixed(2)}</p>
             </div>
             <div className="flex-1 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-tight">Each Total</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-tight">Your Total</p>
               <p className="font-black text-text-main tabular-nums">${metrics.totalHitPerPerson.toFixed(2)}</p>
             </div>
           </div>
@@ -225,7 +233,7 @@ export const TacticalSplitter: React.FC = () => {
       {/* Squad */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
         <div className="flex justify-between items-center mb-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase">
             <Users size={11} strokeWidth={3} /> THE SQUAD
           </div>
           <button
@@ -244,8 +252,8 @@ export const TacticalSplitter: React.FC = () => {
             <div className="w-8 h-8 bg-black rounded-xl flex items-center justify-center">
               <span className="text-[10px] font-black text-action-primary">YOU</span>
             </div>
-            <span className="font-black uppercase text-black flex-1">You</span>
-            <span className="text-[11px] font-black uppercase tracking-widest text-black/50">HOST</span>
+            <span className="font-black uppercase text-capture-contrast flex-1">You</span>
+            <span className="text-[11px] font-black uppercase tracking-widest text-capture-contrast opacity-50">HOST</span>
           </div>
 
           {squad.map(member => {
@@ -300,7 +308,7 @@ export const TacticalSplitter: React.FC = () => {
                   {isActive && <Check size={11} strokeWidth={3} />}
                 </div>
                 <span className={`font-black uppercase text-sm flex-1 text-left ${isActive ? 'text-text-main' : 'text-text-muted'}`}>{member.name}</span>
-                {isActive && <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">${metrics.totalHitPerPerson.toFixed(2)}</span>}
+                {isActive && <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">${metrics.baseSharePerPerson.toFixed(2)}</span>}
               </button>
             );
           })}
@@ -351,7 +359,7 @@ export const TacticalSplitter: React.FC = () => {
                         type="button"
                         onClick={() => applyPreset(preset)}
                         className={`px-3 py-1 border-2 font-black text-xs uppercase rounded-full transition-all
-                          ${activePresetId === preset.id ? 'bg-action-capture border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' : 'bg-surface border-black text-text-main hover:bg-input'}
+                          ${activePresetId === preset.id ? 'bg-action-capture border-black text-capture-contrast shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' : 'bg-surface border-black text-text-main hover:bg-input'}
                         `}
                       >
                         {preset.name} <span className="opacity-40">({preset.participantIds.length + 1})</span>
@@ -383,7 +391,7 @@ export const TacticalSplitter: React.FC = () => {
                     onChange={e => setPresetNameInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSavePreset()}
                   />
-                  <button type="button" onClick={handleSavePreset} className="px-5 h-12 border-4 border-black rounded-2xl bg-action-capture text-black font-black uppercase text-xs">SAVE</button>
+                  <button type="button" onClick={handleSavePreset} className="px-5 h-12 border-4 border-black rounded-2xl bg-action-capture text-capture-contrast font-black uppercase text-xs">SAVE</button>
                 </div>
                 <button type="button" onClick={() => setIsSavingPreset(false)} className="text-[10px] uppercase font-bold text-text-muted underline">CANCEL</button>
               </div>
@@ -392,7 +400,7 @@ export const TacticalSplitter: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsSavingPreset(true)}
-                  className="text-[10px] font-bold uppercase border-b-2 border-black text-text-main hover:text-action-capture transition-colors"
+                  className="text-[10px] font-bold uppercase border-b-2 border-black text-text-main hover:text-capture-readable transition-colors"
                 >
                   SAVE THIS GROUP
                 </button>
@@ -411,7 +419,7 @@ export const TacticalSplitter: React.FC = () => {
       {iouLedger && iouLedger.length > 0 && (
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between mb-4">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-primary border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
               IOU LEDGER
             </div>
             <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
@@ -431,7 +439,7 @@ export const TacticalSplitter: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => collectIou(entry.id)}
-                  className="shrink-0 px-3 h-11 border-[3px] border-black rounded-full bg-action-capture text-black font-black uppercase text-[10px] tracking-widest shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                  className="shrink-0 px-3 h-11 border-[3px] border-black rounded-full bg-action-capture text-capture-contrast font-black uppercase text-[10px] tracking-widest shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
                 >
                   [COLLECTED]
                 </button>

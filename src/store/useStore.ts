@@ -529,7 +529,10 @@ export const useStore = create<StoreState>()(
       const freshQueue: BillQueueItem[]   = shouldRegen
         ? recurringToUse.map(b => ({ ...b, id: crypto.randomUUID() }))
         : currentBillQueue;
-      const effectiveUpcomingBills = shouldRegen ? billsTotal : currentUpcomingBills;
+      // Always sync upcomingBills to current template total when bills are explicitly passed in
+      const effectiveUpcomingBills = (shouldRegen || newBillQueue !== undefined)
+        ? billsTotal
+        : currentUpcomingBills;
 
       const calcState = {
         ...(get() as StoreState),

@@ -6,15 +6,15 @@ import { formatCurrency } from '../lib/utils';
 import { CSVImport } from '../components/CSVImport';
 
 const CATEGORY_META: Record<string, { label: string; bg: string; text: string }> = {
-  VAULT_DEPOSIT:    { label: 'Vaulted',    bg: 'bg-action-capture',       text: 'text-black' },
+  VAULT_DEPOSIT:    { label: 'Vaulted',    bg: 'bg-action-capture',       text: 'text-capture-contrast' },
   VAULT_WITHDRAWAL: { label: 'Withdrawal', bg: 'bg-action-bleed/20',      text: 'text-action-bleed' },
   VAULT_TRANSFER:   { label: 'Transfer',   bg: 'bg-input',                text: 'text-text-muted' },
-  INCOME:           { label: 'Income',     bg: 'bg-action-primary',       text: 'text-black' },
-  SAVINGS:          { label: 'Savings',    bg: 'bg-action-capture',       text: 'text-black' },
-  DEBT_PAYMENT:     { label: 'Debt',       bg: 'bg-[#c084fc]/20',         text: 'text-[#c084fc]' },
+  INCOME:           { label: 'Income',     bg: 'bg-action-primary',       text: 'text-primary-contrast' },
+  SAVINGS:          { label: 'Savings',    bg: 'bg-action-capture',       text: 'text-capture-contrast' },
+  DEBT_PAYMENT:     { label: 'Debt',       bg: 'bg-[#14b8a6]/20',         text: 'text-[#14b8a6]' },
   PENALTY:          { label: 'Penalty',    bg: 'bg-action-bleed/20',      text: 'text-action-bleed' },
   SOCIAL:           { label: 'Social',     bg: 'bg-[#facc15]/20',         text: 'text-[#facc15]' },
-  PAYDAY:           { label: 'Payday',     bg: 'bg-action-primary',       text: 'text-black' },
+  PAYDAY:           { label: 'Payday',     bg: 'bg-action-primary',       text: 'text-primary-contrast' },
   OTHER:            { label: 'Spend',      bg: 'bg-input',                text: 'text-text-muted' },
 };
 

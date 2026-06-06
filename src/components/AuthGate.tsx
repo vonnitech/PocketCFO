@@ -160,8 +160,8 @@ export function AuthGate() {
                 exit={{ opacity: 0, height: 0 }}
                 className="flex items-start gap-2 bg-action-capture/10 border-2 border-action-capture rounded-2xl px-3 py-2.5"
               >
-                <CheckCircle size={13} className="text-action-capture shrink-0 mt-0.5" strokeWidth={2.5} />
-                <p className="text-[10px] font-black uppercase tracking-wider text-action-capture leading-tight">{notice}</p>
+                <CheckCircle size={13} className="text-capture-readable shrink-0 mt-0.5" strokeWidth={2.5} />
+                <p className="text-[10px] font-black uppercase tracking-wider text-capture-readable leading-tight">{notice}</p>
               </motion.div>
             )}
           </AnimatePresence>

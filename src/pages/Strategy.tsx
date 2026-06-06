@@ -3,8 +3,17 @@ import { Clock, ShieldCheck } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { useStore } from '../store/useStore';
 
+function contrastText(hex?: string): string {
+  if (!hex || hex.length < 7) return 'text-black';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? 'text-black' : 'text-white';
+}
+
 export default function Strategy() {
-  const { privacyMode, makeDebtPayment, debts } = useStore();
+  const { privacyMode, makeDebtPayment, debts, themeColors } = useStore();
+  const captureTxt = contrastText(themeColors?.secondary);
 
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [extraPayment, setExtraPayment]     = useState(0);
@@ -85,7 +94,7 @@ export default function Strategy() {
             <div>
               <div className="flex justify-between text-[10px] mb-2">
                 <span className="font-bold uppercase tracking-wide text-text-muted">Extra Monthly Payment</span>
-                <span className="font-black uppercase tracking-widest text-action-capture">+{mask(extraPayment)}</span>
+                <span className="font-black uppercase tracking-widest text-capture-readable">+{mask(extraPayment)}</span>
               </div>
               <input
                 type="range" min="0" max="1000" step="50"
@@ -105,10 +114,10 @@ export default function Strategy() {
                 )}
               </div>
               <div className="bg-action-capture border-4 border-black rounded-2xl p-4">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-black/60">Time Saved</p>
-                <p className="text-2xl font-black italic text-black">{timeSaved} mos</p>
+                <p className={`text-[11px] font-bold uppercase tracking-wide opacity-60 ${captureTxt}`}>Time Saved</p>
+                <p className={`text-2xl font-black italic ${captureTxt}`}>{timeSaved} mos</p>
                 {timeSaved >= 24 && (
-                  <p className="text-[11px] font-bold text-black/50 mt-0.5">{(timeSaved / 12).toFixed(1)} yrs</p>
+                  <p className={`text-[11px] font-bold opacity-50 mt-0.5 ${captureTxt}`}>{(timeSaved / 12).toFixed(1)} yrs</p>
                 )}
               </div>
             </div>

@@ -296,7 +296,7 @@ export default function Vaults() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`text-xs font-black tabular-nums ${isComplete ? 'text-action-capture' : 'text-text-muted'}`}>{Math.min(100, progress).toFixed(0)}%</span>
+                  <span className={`text-xs font-black tabular-nums ${isComplete ? 'text-capture-readable' : 'text-text-muted'}`}>{Math.min(100, progress).toFixed(0)}%</span>
                   <button type="button" aria-label="Delete vault" onClick={() => setDeletingVaultId(vault.id)} className="w-7 h-7 flex items-center justify-center rounded-lg opacity-0 hover:opacity-100 hover:text-action-bleed transition-all">
                     <Trash2 size={13} strokeWidth={2.5} />
                   </button>
@@ -310,13 +310,13 @@ export default function Vaults() {
                 <div className="flex justify-between mt-1">
                   <span className="text-[9px] font-bold text-text-muted tabular-nums">{formatCurrency(vault.current, privacyMode)}</span>
                   {!isComplete && <span className="text-[9px] font-bold text-text-muted/50 tabular-nums">of {formatCurrency(vault.target, privacyMode)}</span>}
-                  {isComplete && <span className="text-[9px] font-black text-action-capture uppercase tracking-widest">Goal Achieved</span>}
+                  {isComplete && <span className="text-[9px] font-black text-capture-readable uppercase tracking-widest">Goal Achieved</span>}
                 </div>
               </div>
               {/* Actions */}
               <div className="flex gap-2">
                 <button type="button" onClick={() => setFundingVault({ id: vault.id, name: vault.name })}
-                  className="flex-1 h-9 border-[3px] border-black rounded-xl bg-action-capture text-black font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all">
+                  className="flex-1 h-9 border-[3px] border-black rounded-xl bg-action-capture text-capture-contrast font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all">
                   Fund
                 </button>
                 <button type="button" title="Move funds" onClick={() => setTransferVault({ id: vault.id, name: vault.name, current: vault.current })}
@@ -397,7 +397,7 @@ export default function Vaults() {
                   <button
                     type="button"
                     onClick={() => restoreVault(vault.id)}
-                    className="flex items-center gap-1.5 h-11 px-3 border-[3px] border-black rounded-full bg-action-capture text-black font-black uppercase text-[10px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                    className="flex items-center gap-1.5 h-11 px-3 border-[3px] border-black rounded-full bg-action-capture text-capture-contrast font-black uppercase text-[10px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
                   >
                     <RotateCcw size={12} strokeWidth={3} /> Restore
                   </button>

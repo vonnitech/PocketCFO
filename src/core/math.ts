@@ -70,8 +70,11 @@ export const calculateRawSafeSpend = (state: AppState): number => {
   const days = calculateDaysUntilPayday(state.nextPayday);
   const deposited = calculateCurrentMonthDeposits(state.transactions, state.nextPayday);
   const remainingSavingsGoal = Math.max(0, (state.monthlySavingsGoal || 0) - deposited);
-  // debt.balance → Net Worth only; debt minPayments belong in the Horizon recurring-bills form
-  return Math.max(0, (state.liquidAssets - (state.upcomingBills || 0) - remainingSavingsGoal) / days);
+  // Bills only reserve against current balance if it can cover them.
+  // Otherwise the bills are coming out of the next paycheck and shouldn't squeeze pre-payday spend.
+  const upcoming = state.upcomingBills || 0;
+  const billsToReserve = state.liquidAssets >= upcoming ? upcoming : 0;
+  return Math.max(0, (state.liquidAssets - billsToReserve - remainingSavingsGoal) / days);
 };
 
 export const calculateTrueSafeSpend = (state: AppState): number => {
@@ -105,9 +108,9 @@ export const calculateImpulseDeduction = (amount: number, penaltyRate: number): 
  * 3. The Spend Challenge
  */
 export const SPEND_TIERS = [
-  { id: 'EASY',   label: '90% LIMIT', multiplier: 0.90, color: 'bg-action-capture', textColor: 'text-black',  accent: '#00CC55' },
+  { id: 'EASY',   label: '90% LIMIT', multiplier: 0.90, color: 'bg-action-capture', textColor: 'text-capture-contrast',  accent: '#00CC55' },
   { id: 'TIGHT',  label: '75% LIMIT', multiplier: 0.75, color: 'bg-[#facc15]',      textColor: 'text-black',  accent: '#facc15' },
-  { id: 'STRICT', label: '50% LIMIT', multiplier: 0.50, color: 'bg-[#c084fc]',      textColor: 'text-white',  accent: '#c084fc' },
+  { id: 'STRICT', label: '50% LIMIT', multiplier: 0.50, color: 'bg-orange-400',     textColor: 'text-black',  accent: '#fb923c' },
   { id: 'BARE',   label: '25% LIMIT', multiplier: 0.25, color: 'bg-action-bleed',   textColor: 'text-white',  accent: '#FF4D4D' },
 ] as const;
 

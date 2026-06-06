@@ -326,7 +326,7 @@ export function CSVImport({ onClose }: Props) {
                       </button>
                       <span className="text-[10px] font-bold text-text-muted shrink-0">{row.rawDate}</span>
                       <span className="text-[11px] font-black text-text-main truncate flex-1">{row.merchant}</span>
-                      <span className={`text-[11px] font-black tabular-nums shrink-0 ${row.category === 'INCOME' ? 'text-action-capture' : 'text-text-main'}`}>
+                      <span className={`text-[11px] font-black tabular-nums shrink-0 ${row.category === 'INCOME' ? 'text-capture-readable' : 'text-text-main'}`}>
                         {row.category === 'INCOME' ? '+' : '-'}${row.amount.toFixed(2)}
                       </span>
                     </div>
@@ -363,7 +363,7 @@ export function CSVImport({ onClose }: Props) {
                   type="button"
                   onClick={handleImport}
                   disabled={importing || activePreview.length === 0}
-                  className="flex-1 h-12 bg-action-capture border-4 border-black rounded-2xl font-black uppercase tracking-widest text-sm text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-40 transition-all"
+                  className="flex-1 h-12 bg-action-capture border-4 border-black rounded-2xl font-black uppercase tracking-widest text-sm text-capture-contrast shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-40 transition-all"
                 >
                   {importing ? 'Importing...' : `Import ${activePreview.length} Transactions`}
                 </button>
