@@ -319,7 +319,7 @@ function App() {
             <div className="max-w-4xl mx-auto">
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />
-                <Route path="/audit"           element={<Navigate to="/transactions" replace />} />
+                <Route path="/audit"           element={withPageWrapper(<Breakdown />)} />
                 <Route path="/split"           element={withPageWrapper(<TacticalSplitter />)} />
                 <Route path="/true-cost"       element={withPageWrapper(<TrueCost />)} />
                 <Route path="/debt-destroyer"  element={withPageWrapper(<DebtDestroyer />)} />

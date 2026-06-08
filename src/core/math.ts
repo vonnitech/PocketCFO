@@ -35,7 +35,9 @@ export const calculateRemainingDaysInMonth = (): number => {
   return lastDay - now.getDate() + 1;
 };
 
-const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+// Excluded from "daily drain" — these are not discretionary spend.
+// Bills, debt minimums and vault transfers are pre-reserved and tracked separately.
+const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
 export const calculateDaysUntilPayday = (nextPayday: string): number => {
   if (!nextPayday) return 1;

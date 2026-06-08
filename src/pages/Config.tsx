@@ -72,17 +72,18 @@ export default function Config() {
   const [horizonCap, setHorizonCap] = useState(() => state.hardDailyCap > 0 ? String(state.hardDailyCap) : '');
 
   // Bill queue state for the Horizon card
-  const [configBills, setConfigBills] = useState<{ id: string; name: string; amount: string }[]>(
-    () => (state.recurringBills || []).map(b => ({ id: b.id, name: b.name, amount: String(b.amount) }))
+  const [configBills, setConfigBills] = useState<{ id: string; name: string; amount: string; dueDay: string }[]>(
+    () => (state.recurringBills || []).map(b => ({ id: b.id, name: b.name, amount: String(b.amount), dueDay: b.dueDay ? String(b.dueDay) : '' }))
   );
   const [newBillName, setNewBillName] = useState('');
   const [newBillAmount, setNewBillAmount] = useState('');
+  const [newBillDueDay, setNewBillDueDay] = useState('');
   const [isAddingBill, setIsAddingBill] = useState(false);
 
   // Sync configBills from store only when the component initialised before data loaded (configBills is empty but store now has bills)
   useEffect(() => {
     if (configBills.length === 0 && (state.recurringBills || []).length > 0) {
-      setConfigBills(state.recurringBills.map(b => ({ id: b.id, name: b.name, amount: String(b.amount) })));
+      setConfigBills(state.recurringBills.map(b => ({ id: b.id, name: b.name, amount: String(b.amount), dueDay: b.dueDay ? String(b.dueDay) : '' })));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.recurringBills]);
@@ -107,7 +108,7 @@ export default function Config() {
   const [editDebtFields, setEditDebtFields] = useState<Partial<Omit<Debt, 'id'>>>({});
 
   return (
-    <motion.div className="space-y-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+    <motion.div className="space-y-6 w-full max-w-3xl mx-auto" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
       {/* Back + Header + Level */}
       <div>
         <Link
@@ -183,6 +184,25 @@ export default function Config() {
                     onChange={e => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, name: e.target.value } : b))}
                     className="flex-1 min-w-0 font-black uppercase text-sm text-text-main bg-transparent outline-none"
                   />
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <span className="text-[10px] font-black uppercase text-text-muted/60 tracking-widest">Day</span>
+                    <input
+                      type="number"
+                      title="Day of month due (1-31)"
+                      min="1"
+                      max="31"
+                      placeholder="—"
+                      value={bill.dueDay}
+                      onFocus={e => e.target.select()}
+                      onChange={e => {
+                        const v = e.target.value;
+                        const n = parseInt(v, 10);
+                        const clamped = v === '' ? '' : String(Math.min(31, Math.max(1, isNaN(n) ? 1 : n)));
+                        setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, dueDay: clamped } : b));
+                      }}
+                      className="w-10 font-black tabular-nums text-sm text-text-main bg-transparent outline-none text-center"
+                    />
+                  </div>
                   <input
                     type="number"
                     title="Bill amount"
@@ -190,7 +210,7 @@ export default function Config() {
                     value={bill.amount}
                     onFocus={e => e.target.select()}
                     onChange={e => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, amount: e.target.value } : b))}
-                    className="w-24 font-black tabular-nums text-sm text-text-main bg-transparent outline-none text-right shrink-0"
+                    className="w-20 font-black tabular-nums text-sm text-text-main bg-transparent outline-none text-right shrink-0"
                   />
                   <button
                     type="button"
@@ -204,58 +224,73 @@ export default function Config() {
               ))}
               {isAddingBill ? (
                 <div className="space-y-2">
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Bill name"
-                    value={newBillName}
-                    onChange={e => setNewBillName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newBillName.trim() && parseFloat(newBillAmount) > 0) {
-                        setConfigBills(bills => [...bills, { id: crypto.randomUUID(), name: newBillName.trim(), amount: newBillAmount }]);
-                        setNewBillName(''); setNewBillAmount(''); setIsAddingBill(false);
-                      }
-                    }}
-                    className="w-full bg-input border-4 border-black rounded-2xl p-2.5 font-black text-sm text-text-main outline-none focus:border-action-capture transition-colors"
-                  />
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Amount $"
-                      value={newBillAmount}
-                      onFocus={e => e.target.select()}
-                      onChange={e => setNewBillAmount(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && newBillName.trim() && parseFloat(newBillAmount) > 0) {
-                          setConfigBills(bills => [...bills, { id: crypto.randomUUID(), name: newBillName.trim(), amount: newBillAmount }]);
-                          setNewBillName(''); setNewBillAmount(''); setIsAddingBill(false);
-                        }
-                      }}
-                      className="flex-1 min-w-0 bg-input border-4 border-black rounded-2xl p-2.5 font-black text-sm text-text-main outline-none focus:border-action-capture transition-colors tabular-nums"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (newBillName.trim() && parseFloat(newBillAmount) > 0) {
-                          setConfigBills(bills => [...bills, { id: crypto.randomUUID(), name: newBillName.trim(), amount: newBillAmount }]);
-                          setNewBillName(''); setNewBillAmount(''); setIsAddingBill(false);
-                        }
-                      }}
-                      title="Confirm bill"
-                      className={`h-10 w-10 bg-action-capture border-4 border-black rounded-2xl flex items-center justify-center shrink-0 ${captureTxt}`}
-                    >
-                      <Check size={14} strokeWidth={3} />
-                    </button>
-                    <button
-                      type="button"
-                      title="Cancel"
-                      onClick={() => { setIsAddingBill(false); setNewBillName(''); setNewBillAmount(''); }}
-                      className="h-10 w-10 bg-surface border-4 border-black rounded-2xl flex items-center justify-center shrink-0"
-                    >
-                      <X size={14} strokeWidth={3} />
-                    </button>
-                  </div>
+                  {(() => {
+                    const canConfirm = newBillName.trim() && parseFloat(newBillAmount) > 0 && parseInt(newBillDueDay, 10) >= 1 && parseInt(newBillDueDay, 10) <= 31;
+                    const confirm = () => {
+                      if (!canConfirm) return;
+                      setConfigBills(bills => [...bills, { id: crypto.randomUUID(), name: newBillName.trim(), amount: newBillAmount, dueDay: newBillDueDay }]);
+                      setNewBillName(''); setNewBillAmount(''); setNewBillDueDay(''); setIsAddingBill(false);
+                    };
+                    return (
+                      <>
+                        <input
+                          autoFocus
+                          type="text"
+                          placeholder="Bill name"
+                          value={newBillName}
+                          onChange={e => setNewBillName(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') confirm(); }}
+                          className="w-full bg-input border-4 border-black rounded-2xl p-2.5 font-black text-sm text-text-main outline-none focus:border-action-capture transition-colors"
+                        />
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Amount $"
+                            value={newBillAmount}
+                            onFocus={e => e.target.select()}
+                            onChange={e => setNewBillAmount(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') confirm(); }}
+                            className="flex-1 min-w-0 bg-input border-4 border-black rounded-2xl p-2.5 font-black text-sm text-text-main outline-none focus:border-action-capture transition-colors tabular-nums"
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            max="31"
+                            placeholder="Day"
+                            title="Day of month (1-31)"
+                            value={newBillDueDay}
+                            onFocus={e => e.target.select()}
+                            onChange={e => {
+                              const v = e.target.value;
+                              if (v === '') return setNewBillDueDay('');
+                              const n = parseInt(v, 10);
+                              setNewBillDueDay(String(Math.min(31, Math.max(1, isNaN(n) ? 1 : n))));
+                            }}
+                            onKeyDown={e => { if (e.key === 'Enter') confirm(); }}
+                            className="w-16 bg-input border-4 border-black rounded-2xl p-2.5 font-black text-sm text-text-main outline-none focus:border-action-capture transition-colors tabular-nums text-center"
+                          />
+                          <button
+                            type="button"
+                            onClick={confirm}
+                            disabled={!canConfirm}
+                            title="Confirm bill"
+                            className={`h-10 w-10 bg-action-capture border-4 border-black rounded-2xl flex items-center justify-center shrink-0 disabled:opacity-40 ${captureTxt}`}
+                          >
+                            <Check size={14} strokeWidth={3} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Cancel"
+                            onClick={() => { setIsAddingBill(false); setNewBillName(''); setNewBillAmount(''); setNewBillDueDay(''); }}
+                            className="h-10 w-10 bg-surface border-4 border-black rounded-2xl flex items-center justify-center shrink-0"
+                          >
+                            <X size={14} strokeWidth={3} />
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 <button
@@ -290,7 +325,15 @@ export default function Config() {
             type="button"
             onClick={() => {
               const parsedBills: BillQueueItem[] = configBills
-                .map(b => ({ id: b.id, name: b.name, amount: parseFloat(b.amount) || 0 }))
+                .map(b => {
+                  const day = parseInt(b.dueDay, 10);
+                  return {
+                    id: b.id,
+                    name: b.name,
+                    amount: parseFloat(b.amount) || 0,
+                    ...(day >= 1 && day <= 31 ? { dueDay: day } : {}),
+                  };
+                })
                 .filter(b => b.amount > 0);
               setHorizon(
                 parseFloat(String(horizonCapital)) || 0,

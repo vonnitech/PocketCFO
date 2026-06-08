@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, X, Upload } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
@@ -12,6 +12,7 @@ const CATEGORY_META: Record<string, { label: string; bg: string; text: string }>
   INCOME:           { label: 'Income',     bg: 'bg-action-primary',       text: 'text-primary-contrast' },
   SAVINGS:          { label: 'Savings',    bg: 'bg-action-capture',       text: 'text-capture-contrast' },
   DEBT_PAYMENT:     { label: 'Debt',       bg: 'bg-[#14b8a6]/20',         text: 'text-[#14b8a6]' },
+  BILL_PAYMENT:     { label: 'Bill',       bg: 'bg-action-bleed/15',      text: 'text-action-bleed' },
   PENALTY:          { label: 'Penalty',    bg: 'bg-action-bleed/20',      text: 'text-action-bleed' },
   SOCIAL:           { label: 'Social',     bg: 'bg-[#facc15]/20',         text: 'text-[#facc15]' },
   PAYDAY:           { label: 'Payday',     bg: 'bg-action-primary',       text: 'text-primary-contrast' },
@@ -26,6 +27,7 @@ const FILTER_TABS = [
   { id: 'INCOME',           label: 'Income' },
   { id: 'SAVINGS',          label: 'Savings' },
   { id: 'DEBT_PAYMENT',     label: 'Debt' },
+  { id: 'BILL_PAYMENT',     label: 'Bill' },
   { id: 'PENALTY',          label: 'Penalty' },
   { id: 'OTHER',            label: 'Spend' },
 ];
@@ -46,12 +48,33 @@ function groupByDate(txs: ReturnType<typeof useStore.getState>['transactions']) 
 }
 
 export default function Transactions() {
-  const transactions = useStore(s => s.transactions);
-  const privacyMode  = useStore(s => s.privacyMode);
+  const transactions          = useStore(s => s.transactions);
+  const privacyMode           = useStore(s => s.privacyMode);
+  const allTransactionsLoaded = useStore(s => s.allTransactionsLoaded);
+  const fetchMoreTransactions = useStore(s => s.fetchMoreTransactions);
 
   const [search,        setSearch]        = useState('');
   const [category,      setCategory]      = useState('ALL');
   const [importOpen,    setImportOpen]    = useState(false);
+  const [loadingMore,   setLoadingMore]   = useState(false);
+
+  // Infinite scroll — when the sentinel enters the viewport, fetch the next page.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (allTransactionsLoaded) return;
+    const el = sentinelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    let cancelled = false;
+    const observer = new IntersectionObserver(async (entries) => {
+      if (!entries[0]?.isIntersecting) return;
+      if (loadingMore || cancelled) return;
+      setLoadingMore(true);
+      try { await fetchMoreTransactions(); }
+      finally { if (!cancelled) setLoadingMore(false); }
+    }, { rootMargin: '300px 0px' });
+    observer.observe(el);
+    return () => { cancelled = true; observer.disconnect(); };
+  }, [allTransactionsLoaded, fetchMoreTransactions, loadingMore, transactions.length]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -186,6 +209,19 @@ export default function Transactions() {
           </div>
         </div>
       ))}
+
+      {/* Infinite-scroll sentinel + status */}
+      <div ref={sentinelRef} className="h-8" />
+      {!allTransactionsLoaded && (
+        <p className="text-center text-[10px] font-black uppercase tracking-widest text-text-muted py-2">
+          {loadingMore ? 'Loading older transactions…' : 'Scroll for more'}
+        </p>
+      )}
+      {allTransactionsLoaded && transactions.length > 0 && (
+        <p className="text-center text-[10px] font-bold uppercase tracking-widest text-text-muted/60 py-2">
+          End of history
+        </p>
+      )}
     </div>
   );
 }

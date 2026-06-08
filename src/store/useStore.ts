@@ -14,6 +14,19 @@ import { SpendTierId } from '../core/math';
 // runPaydayCheck fires multiple times before the first async call completes.
 let _paydayProcessing = false;
 
+// billQueue isn't persisted to Supabase — stash it in localStorage per-user so paid bills
+// stay paid across refreshes on this device. (Cross-device sync would need a JSONB column.)
+const billQueueKey = (userId: string) => `pocketcfo-bill-queue-${userId}`;
+function loadLocalBillQueue(userId: string): unknown[] | null {
+  try {
+    const raw = localStorage.getItem(billQueueKey(userId));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function saveLocalBillQueue(userId: string, queue: unknown[]): void {
+  try { localStorage.setItem(billQueueKey(userId), JSON.stringify(queue)); } catch {}
+}
+
 export interface Transaction {
   id: string;
   merchant: string;
@@ -74,6 +87,8 @@ export interface BillQueueItem {
   id: string;
   name: string;
   amount: number;
+  // Day of month the bill is due (1-31). Optional for back-compat with legacy bills.
+  dueDay?: number;
 }
 
 export interface IouEntry {
@@ -96,6 +111,7 @@ export interface AppState {
   // Auth
   userId: string | null;
   dataLoaded: boolean;
+  allTransactionsLoaded: boolean;
 
   isConfigured: boolean;
   monthlyTakeHome: number;
@@ -177,6 +193,7 @@ const calculatePrimaryVaultBalance = (vaults: Vault[]): number =>
 export const INITIAL_STATE: AppState = {
   userId: null,
   dataLoaded: false,
+  allTransactionsLoaded: false,
 
   isConfigured: false,
   monthlyTakeHome: 0,
@@ -257,6 +274,7 @@ interface StoreActions {
 
   // Data sync
   fetchUserData: (userId: string) => Promise<void>;
+  fetchMoreTransactions: () => Promise<number>; // returns count fetched, 0 = end of history
 
   // CFO Actions
   setHorizon: (capital: number, nextPayday: string, upcomingBills: number, newHardDailyCap?: number, newBillQueue?: BillQueueItem[]) => void;
@@ -273,6 +291,7 @@ interface StoreActions {
   updateSquadMember: (id: string, name: string) => void;
   removeSquadMember: (id: string) => void;
   addIncome: (amount: number, source: string) => void;
+  massImportTransactions: (txs: Transaction[]) => Promise<void>;
   addDebt: (debt: Omit<Debt, 'id'>) => void;
   updateDebt: (id: string, updates: Partial<Omit<Debt, 'id'>>) => void;
   removeDebt: (id: string) => void;
@@ -314,9 +333,15 @@ export const useStore = create<StoreState>()(
     // ── Sync ─────────────────────────────────────────────────────────────────
 
     fetchUserData: async (userId) => {
+      // Initial transaction load is limited to the last 60 days. That's enough for
+      // the safe-spend engine (which only looks at the current pay cycle) without
+      // dragging in years of history. The Transactions/Ledger page paginates older
+      // rows via fetchMoreTransactions() as the user scrolls.
+      const cutoffIso = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+
       const [profileRes, txRes, vaultRes, deletedVaultRes, debtRes, subRes, reconRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(500),
+        supabase.from('transactions').select('*').eq('user_id', userId).gte('date', cutoffIso).order('date', { ascending: false }),
         supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', false),
         supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', true),
         supabase.from('debts').select('*').eq('user_id', userId),
@@ -381,6 +406,10 @@ export const useStore = create<StoreState>()(
         const merged: Partial<AppState> = {
           userId,
           dataLoaded: true,
+          // Initial load only pulled the last 60 days. The Ledger pagination will
+          // unlock older history as the user scrolls. If we got 0 rows there's nothing
+          // older to fetch either — flag complete to skip pointless network calls.
+          allTransactionsLoaded: transactions.length === 0,
           transactions,
           vaults,
           deletedVaults,
@@ -393,6 +422,7 @@ export const useStore = create<StoreState>()(
         if (profile) {
           const widgets = profile.dashboard_widgets;
           const rawBills = profile.recurring_bills;
+          const rawQueue = profile.bill_queue;
           const rawImpulses = profile.impulses;
           Object.assign(merged, {
             liquidAssets:          Number(profile.liquid_assets ?? 0),
@@ -407,6 +437,8 @@ export const useStore = create<StoreState>()(
             extraCashPool:         Number(profile.extra_cash_pool ?? 0),
             rolloverPool:          Number(profile.rollover_pool ?? 0),
             recurringBills:        Array.isArray(rawBills) ? rawBills as BillQueueItem[] : [],
+            // Server-side bill queue (if the bill_queue column has been added) takes top priority.
+            ...(Array.isArray(rawQueue) ? { billQueue: rawQueue as BillQueueItem[] } : {}),
             impulses:              Array.isArray(rawImpulses) ? rawImpulses as Impulse[] : [],
             salary: {
               current: Number(profile.salary_current ?? 0),
@@ -441,8 +473,81 @@ export const useStore = create<StoreState>()(
         }
 
         const nextState = { ...state, ...merged };
+
+        // Bill queue priority chain:
+        //   1. profile.bill_queue from Supabase (applied above in merged) — cross-device truth
+        //   2. localStorage cache for this user — survives refreshes on this device
+        //   3. Rehydrate from the recurring template — fresh cycle
+        if (!nextState.billQueue || nextState.billQueue.length === 0) {
+          const cached = loadLocalBillQueue(userId) as BillQueueItem[] | null;
+          if (cached && cached.length > 0) {
+            nextState.billQueue = cached;
+          } else if (Array.isArray(nextState.recurringBills) && nextState.recurringBills.length > 0) {
+            const fresh = (nextState.recurringBills as BillQueueItem[]).map(b => ({ ...b, id: crypto.randomUUID() }));
+            nextState.billQueue = fresh;
+            saveLocalBillQueue(userId, fresh);
+            // Push to Supabase too so other devices see the fresh queue.
+            pushProfileUpdate(userId, { bill_queue: fresh }).catch(() => {});
+          }
+        }
+
+        // Reconcile upcomingBills with the actual queue total. Supabase's profile.upcoming_bills
+        // can lag behind the queue (older Pay Cycle save, mid-cycle bill edits, etc.) and a
+        // mismatch corrupts daily safe-spend math when bills are paid.
+        if (Array.isArray(nextState.billQueue)) {
+          const queueTotal = nextState.billQueue.reduce((s: number, b: BillQueueItem) => s + b.amount, 0);
+          if (queueTotal !== nextState.upcomingBills) {
+            nextState.upcomingBills = queueTotal;
+            pushProfileUpdate(userId, { upcoming_bills: queueTotal }).catch(() => {});
+          }
+        }
+
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+    },
+
+    // Pulls the next 50 transactions older than the oldest one we have in memory.
+    // Returns the count fetched (0 means we've hit the end of history).
+    fetchMoreTransactions: async () => {
+      const { userId, transactions, allTransactionsLoaded } = get() as StoreState;
+      if (!userId || allTransactionsLoaded) return 0;
+
+      // Find the oldest date currently in memory; if none, use "now" as the boundary.
+      const oldestDate = transactions.length > 0
+        ? transactions[transactions.length - 1].date
+        : new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .lt('date', oldestDate)
+        .order('date', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('[fetchMoreTransactions] error:', error);
+        return 0;
+      }
+      const rows = (data ?? []) as Record<string, unknown>[];
+      const older: Transaction[] = rows.map(t => ({
+        id:         String(t.id),
+        merchant:   String(t.merchant ?? 'GENERAL'),
+        amount:     Number(t.amount),
+        category:   String(t.category ?? 'OTHER'),
+        date:       String(t.date),
+        isFlip:     Boolean(t.is_flip),
+        flipAmount: Number(t.flip_amount ?? 0),
+      }));
+
+      set((state: any) => ({
+        ...state,
+        transactions: [...state.transactions, ...older],
+        // Got fewer than the page size → we've reached the end.
+        allTransactionsLoaded: older.length < 50,
+      }));
+
+      return older.length;
     },
 
     // ── Local-only helpers ────────────────────────────────────────────────────
@@ -521,7 +626,7 @@ export const useStore = create<StoreState>()(
 
       // Only regenerate the bill queue when the pay cycle period changes or the bill
       // template is modified. Preserves ticked-off progress within the current cycle.
-      const fingerprint   = (bills: BillQueueItem[]) => bills.map(b => `${b.name}:${b.amount}`).join('|');
+      const fingerprint   = (bills: BillQueueItem[]) => bills.map(b => `${b.name}:${b.amount}:${b.dueDay ?? ''}`).join('|');
       const paydayChanged = nextPayday !== currentNextPayday;
       const billsChanged  = newBillQueue !== undefined && fingerprint(newBillQueue) !== fingerprint(recurringBills || []);
       const shouldRegen   = paydayChanged || billsChanged || currentBillQueue.length === 0;
@@ -576,6 +681,8 @@ export const useStore = create<StoreState>()(
           hasCompletedOnboarding: true,
           hardDailyCap:          capToUse,
         };
+        // Mirror the queue to localStorage so the user's paid-state survives refreshes.
+        if (userId) saveLocalBillQueue(userId, freshQueue);
         return { ...baseNext, safeSpendLimit: calculateTrueSafeSpend(baseNext) };
       });
 
@@ -592,6 +699,7 @@ export const useStore = create<StoreState>()(
         has_completed_onboarding: true,
         last_sweep_date:         doSweep ? todayKey : (lastSweepDate || null),
         recurring_bills:         recurringToUse,
+        bill_queue:              freshQueue,
       }, { onConflict: 'id' });
       if (profileError) {
         console.error('[setHorizon] profile upsert failed:', profileError);
@@ -877,6 +985,37 @@ export const useStore = create<StoreState>()(
         flip_amount: 0,
         date:        now,
       }]).catch(() => {});
+    },
+
+    massImportTransactions: async (txs) => {
+      if (!txs || txs.length === 0) return;
+      const { userId } = get() as StoreState;
+
+      // Local optimistic update — new imports get prepended, balance stays untouched.
+      // (Imports represent past history, not new money movement, so we don't touch liquidAssets.)
+      set((state: any) => {
+        const merged = [...txs, ...state.transactions];
+        return { ...state, transactions: merged };
+      });
+
+      if (!userId) return;
+      // Push to Supabase in one batch (papaparse can deliver thousands at once).
+      const rows = txs.map(t => ({
+        id:          t.id,
+        user_id:     userId,
+        merchant:    t.merchant,
+        amount:      t.amount,
+        category:    t.category,
+        is_flip:     t.isFlip,
+        flip_amount: t.flipAmount,
+        date:        t.date,
+      }));
+      try {
+        const { error } = await (supabase.from('transactions') as any).insert(rows);
+        if (error) console.error('[massImportTransactions] insert failed:', error);
+      } catch (err) {
+        console.error('[massImportTransactions] threw:', err);
+      }
     },
 
     // ── Split ─────────────────────────────────────────────────────────────────
@@ -1469,21 +1608,57 @@ export const useStore = create<StoreState>()(
     // ── Bill Queue (local) ────────────────────────────────────────────────────
 
     payBillFromQueue: (id) => {
-      const { userId } = get() as StoreState;
+      const { userId, billQueue } = get() as StoreState;
+      const bill = (billQueue || []).find(b => b.id === id);
+      if (!bill) return;
+
+      const txId = crypto.randomUUID();
+      const now  = new Date().toISOString();
+      const paymentTx: Transaction = {
+        id:        txId,
+        merchant:  `BILL: ${bill.name}`,
+        amount:    bill.amount,
+        category:  'BILL_PAYMENT',
+        date:      now,
+        isFlip:    false,
+        flipAmount: 0,
+      };
+
       set((state: any) => {
-        const bill = (state.billQueue || []).find((b: BillQueueItem) => b.id === id);
-        if (!bill) return state;
+        const nextQueue = (state.billQueue || []).filter((b: BillQueueItem) => b.id !== id);
+        // Always derive upcomingBills from the queue total so it can't drift out of sync.
+        // Subtract-only logic was vulnerable to a stale starting value, which would let
+        // paid bills permanently reduce daily safe-spend (the liquid-side drop wasn't
+        // balanced by an equivalent reserve-side drop).
+        const nextUpcoming = nextQueue.reduce((s: number, b: BillQueueItem) => s + b.amount, 0);
         const nextState = {
           ...state,
-          billQueue:     (state.billQueue || []).filter((b: BillQueueItem) => b.id !== id),
-          upcomingBills: Math.max(0, (state.upcomingBills || 0) - bill.amount),
+          billQueue:     nextQueue,
+          upcomingBills: nextUpcoming,
           liquidAssets:  Math.max(0, state.liquidAssets - bill.amount),
+          transactions:  [paymentTx, ...state.transactions],
         };
+        if (userId) saveLocalBillQueue(userId, nextQueue);
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+
       if (userId) {
-        const { liquidAssets, upcomingBills } = get() as StoreState;
-        pushProfileUpdate(userId, { liquid_assets: liquidAssets, upcoming_bills: upcomingBills }).catch(() => {});
+        const { liquidAssets, upcomingBills, billQueue: updatedQueue } = get() as StoreState;
+        pushProfileUpdate(userId, {
+          liquid_assets: liquidAssets,
+          upcoming_bills: upcomingBills,
+          bill_queue: updatedQueue,
+        }).catch(() => {});
+        (supabase.from('transactions') as any).insert({
+          id:          txId,
+          user_id:     userId,
+          merchant:    `BILL: ${bill.name}`,
+          amount:      bill.amount,
+          category:    'BILL_PAYMENT',
+          is_flip:     false,
+          flip_amount: 0,
+          date:        now,
+        }).then((r: any) => { if (r?.error) console.error('[payBillFromQueue] tx insert failed:', r.error); });
       }
     },
 

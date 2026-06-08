@@ -3,13 +3,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Eye, EyeOff, Sun, Moon, SlidersHorizontal, ChevronRight, Lock, LockOpen,
   Download, Upload, Trash2, Smartphone, RefreshCw, Zap, Trophy, Shield, Medal,
-  User, Check, ChevronDown,
+  User, Check, ChevronDown, FileText, FileSpreadsheet, FileDown,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { supabase } from '../core/supabase';
 import { calculateTrueSafeSpend } from '../core/math';
+import { exportLedgerCSV, exportWorkbookXLSX, exportReportPDF } from '../core/export';
+import { ImportMapperModal } from '../components/ImportMapperModal';
+import { Transaction } from '../types';
 
 const DEFAULT_PRIMARY = '#facc15';
 const DEFAULT_CAPTURE = '#00CC55';
@@ -107,6 +110,22 @@ export default function Settings() {
 
   const [primaryColor, setPrimaryColor] = useState(() => safeHex(state.themeColors?.primary, DEFAULT_PRIMARY));
   const [captureColor, setCaptureColor] = useState(() => safeHex(state.themeColors?.secondary, DEFAULT_CAPTURE));
+
+  // Export / Import state
+  const [importOpen, setImportOpen] = useState(false);
+  const snapshot = () => ({
+    firstName:      state.firstName || '',
+    liquidAssets:   state.liquidAssets,
+    safeSpendLimit: state.safeSpendLimit,
+    upcomingBills:  state.upcomingBills,
+    transactions:   state.transactions,
+    vaults:         state.vaults,
+    debts:          state.debts,
+    subscriptions:  state.subscriptions,
+  });
+  const handleImport = (txs: Transaction[]) => {
+    state.massImportTransactions(txs);
+  };
   const [accentOpen, setAccentOpen] = useState(true);
 
   const [firstName, setFirstName] = useState(state.firstName || '');
@@ -188,7 +207,7 @@ export default function Settings() {
   ];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 w-full max-w-3xl mx-auto">
       {/* Header */}
       <div>
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
@@ -331,11 +350,11 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-stretch">
         {/* Achievements */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-4">Achievements</p>
-          <div className="space-y-3">
+          <div className="space-y-3 flex-1">
             {achievements.map(ach => (
               <div key={ach.id} className={`flex items-center gap-4 p-3 rounded-2xl border-4 transition-all ${ach.unlocked ? 'bg-input border-black' : 'bg-transparent border-dashed border-black/20 opacity-40'}`}>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 border-black shrink-0 ${ach.unlocked ? 'bg-action-primary' : 'bg-input'}`}>
@@ -352,17 +371,44 @@ export default function Settings() {
         </div>
 
         {/* Data & Security */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-4">Data & Security</p>
-          <div className="space-y-3">
-            <button type="button" onClick={exportData}
+          <div className="space-y-3 flex-1">
+            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60">Export</p>
+            <div className="grid grid-cols-3 gap-2">
+              <button type="button" onClick={() => exportLedgerCSV(state.transactions)}
+                className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
+                <FileText size={14} /> CSV
+              </button>
+              <button type="button" onClick={() => exportWorkbookXLSX(snapshot())}
+                className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
+                <FileSpreadsheet size={14} /> XLSX
+              </button>
+              <button type="button" onClick={() => exportReportPDF(snapshot())}
+                className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
+                <FileDown size={14} /> PDF
+              </button>
+            </div>
+
+            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60 mt-2">Import</p>
+            <button type="button" onClick={() => setImportOpen(true)}
               className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
-              <Download size={16} /> EXPORT PAYLOAD
+              <Upload size={16} /> IMPORT STATEMENT (CSV / XLSX)
             </button>
-            <motion.label className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 cursor-pointer hover:bg-input transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
-              <Upload size={16} /> IMPORT STATE
-              <input type="file" title="Import JSON State" className="hidden" accept=".json" onChange={importData} />
-            </motion.label>
+
+            <details className="border-2 border-border rounded-2xl px-3 py-2">
+              <summary className="text-[10px] font-black uppercase tracking-widest text-text-muted cursor-pointer">JSON Backup (Legacy)</summary>
+              <div className="mt-2 space-y-2">
+                <button type="button" onClick={exportData}
+                  className="w-full h-9 border-2 border-border rounded-full bg-input text-text-muted font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:text-text-main transition-all">
+                  <Download size={12} /> Export JSON
+                </button>
+                <motion.label className="w-full h-9 border-2 border-border rounded-full bg-input text-text-muted font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-pointer hover:text-text-main transition-all">
+                  <Upload size={12} /> Import JSON
+                  <input type="file" title="Import JSON State" className="hidden" accept=".json" onChange={importData} />
+                </motion.label>
+              </div>
+            </details>
             {isInstalled ? (
               <div className="w-full h-12 border-4 border-action-capture rounded-full bg-action-capture/10 text-capture-readable font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
                 <Smartphone size={16} /> INSTALLED
@@ -423,7 +469,7 @@ export default function Settings() {
                     Reset defaults
                   </button>
                 </div>
-                <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-1.5 mb-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
                   {COLOR_THEMES.map(t => {
                     const isActive = primaryColor === t.primary && captureColor === t.capture;
                     return (
@@ -431,13 +477,13 @@ export default function Settings() {
                         key={t.id}
                         type="button"
                         onClick={() => { setPrimaryColor(t.primary); setCaptureColor(t.capture); setThemeColors(t.primary, t.capture); }}
-                        className={`swatch-${t.id} flex flex-col items-center gap-1 p-2 rounded-xl border-4 transition-all ${isActive ? 'border-black shadow-brutal-sm' : 'border-transparent hover:border-border'}`}
+                        className={`swatch-${t.id} flex flex-col items-center gap-1.5 p-3 rounded-xl border-4 transition-all ${isActive ? 'border-black shadow-brutal-sm' : 'border-transparent hover:border-border'}`}
                       >
-                        <div className="flex gap-0.5">
-                          <div className="swatch-dot-primary w-4 h-4 rounded-full border-2 border-black/30" />
-                          <div className="swatch-dot-capture w-4 h-4 rounded-full border-2 border-black/30" />
+                        <div className="flex gap-1">
+                          <div className="swatch-dot-primary w-5 h-5 rounded-full border-2 border-black/30" />
+                          <div className="swatch-dot-capture w-5 h-5 rounded-full border-2 border-black/30" />
                         </div>
-                        <span className="text-[8px] font-black uppercase tracking-wide text-text-muted leading-tight text-center line-clamp-1">{t.name}</span>
+                        <span className="text-[9px] font-black uppercase tracking-wide text-text-muted leading-tight text-center">{t.name}</span>
                       </button>
                     );
                   })}
@@ -497,6 +543,8 @@ export default function Settings() {
         </div>
         <ChevronRight size={18} strokeWidth={3} className="text-text-muted group-hover:text-text-main transition-colors shrink-0" />
       </Link>
+
+      <ImportMapperModal open={importOpen} onClose={() => setImportOpen(false)} onImport={handleImport} />
     </motion.div>
   );
 }

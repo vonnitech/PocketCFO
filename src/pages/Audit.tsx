@@ -1,7 +1,8 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, Target, ShieldAlert, ShieldCheck, ArrowUpRight, Search, X, TrendingUp, TrendingDown, Upload } from 'lucide-react';
+import { Activity, Target, ShieldAlert, ShieldCheck, ArrowUpRight, Search, X, TrendingUp, TrendingDown, Upload, Grid3x3 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../store/useStore';
+import { Transaction } from '../types';
 import { CSVImport } from '../components/CSVImport';
 
 type Period = 'week' | 'month' | 'all';
@@ -22,6 +23,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   HEALTH: 'Health', HOME: 'Home', WORK: 'Work', OTHER: 'Other',
   GENERAL: 'Other', SOCIAL: 'Splits', PENALTY: 'Penalties',
   VAULT_DEPOSIT: 'Vault', DEBT_PAYMENT: 'Debt', INCOME: 'Income', SAVINGS: 'Savings',
+  BILL_PAYMENT: 'Bill',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -45,6 +47,254 @@ function catBadge(category: string) {
   const color = CATEGORY_COLORS[category] ?? 'bg-input text-text-muted border-border';
   return { label, color };
 }
+
+// ── Pivot Table ──────────────────────────────────────────────────────────────
+
+type PivotInterval = 'month' | 'week';
+
+// Categories ignored entirely (internal moves)
+const PIVOT_EXCLUDED = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+// Categories that count as income in the NET TOTAL row
+const PIVOT_INCOME_CATS = new Set(['INCOME']);
+
+const NUM_INTERVALS = 6;
+
+function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function monthLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+}
+// ISO week start (Monday) as YYYY-MM-DD
+function weekKey(d: Date): string {
+  const day = new Date(d);
+  day.setHours(0, 0, 0, 0);
+  const dow = (day.getDay() + 6) % 7; // 0 = Monday
+  day.setDate(day.getDate() - dow);
+  return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+}
+function weekLabel(key: string): string {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+interface PivotMatrix {
+  intervals: string[];          // column keys, oldest → newest
+  intervalLabels: string[];     // human-friendly labels
+  rows: { category: string; label: string; isIncome: boolean; values: number[]; total: number; average: number }[];
+  netRow: { values: number[]; total: number; average: number };
+}
+
+function buildPivot(transactions: Transaction[], interval: PivotInterval): PivotMatrix {
+  const keyFn = interval === 'month' ? monthKey : weekKey;
+  const labelFn = interval === 'month' ? monthLabel : weekLabel;
+
+  // 1. Collect last N interval keys (relative to today)
+  const intervals: string[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = NUM_INTERVALS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    if (interval === 'month') d.setMonth(d.getMonth() - i);
+    else                       d.setDate(d.getDate() - i * 7);
+    intervals.push(keyFn(d));
+  }
+
+  // 2. Sum tx amount (incl flipAmount) by category × interval
+  const cellMap: Record<string, Record<string, number>> = {};
+  for (const tx of transactions) {
+    if (PIVOT_EXCLUDED.has(tx.category)) continue;
+    const k = keyFn(new Date(tx.date));
+    if (!intervals.includes(k)) continue;
+    if (!cellMap[tx.category]) cellMap[tx.category] = {};
+    cellMap[tx.category][k] = (cellMap[tx.category][k] ?? 0) + tx.amount + (tx.flipAmount || 0);
+  }
+
+  // 3. Build row objects
+  const categories = Object.keys(cellMap).sort((a, b) => {
+    // INCOME first, then alphabetical by label
+    if (PIVOT_INCOME_CATS.has(a) && !PIVOT_INCOME_CATS.has(b)) return -1;
+    if (PIVOT_INCOME_CATS.has(b) && !PIVOT_INCOME_CATS.has(a)) return 1;
+    return (CATEGORY_LABELS[a] ?? a).localeCompare(CATEGORY_LABELS[b] ?? b);
+  });
+
+  const rows = categories.map(cat => {
+    const values = intervals.map(k => cellMap[cat]?.[k] ?? 0);
+    const total = values.reduce((s, v) => s + v, 0);
+    return {
+      category: cat,
+      label: CATEGORY_LABELS[cat] ?? cat,
+      isIncome: PIVOT_INCOME_CATS.has(cat),
+      values,
+      total,
+      average: total / NUM_INTERVALS,
+    };
+  });
+
+  // 4. Net row: income - spend per interval
+  const netValues = intervals.map((_, i) => {
+    let income = 0, spend = 0;
+    for (const r of rows) {
+      if (r.isIncome) income += r.values[i];
+      else            spend  += r.values[i];
+    }
+    return income - spend;
+  });
+  const netTotal = netValues.reduce((s, v) => s + v, 0);
+
+  return {
+    intervals,
+    intervalLabels: intervals.map(labelFn),
+    rows,
+    netRow: { values: netValues, total: netTotal, average: netTotal / NUM_INTERVALS },
+  };
+}
+
+// Always show full currency with two decimals so the pivot reconciles exactly.
+// `tabular-nums` on cells keeps digits column-aligned.
+function formatCell(n: number): string {
+  return n.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+const PivotTable: React.FC = () => {
+  const transactions = useStore(s => s.transactions);
+  const [interval, setInterval] = useState<PivotInterval>('month');
+
+  const matrix = useMemo(() => buildPivot(transactions, interval), [transactions, interval]);
+
+  if (matrix.rows.length === 0) {
+    return (
+      <div className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
+            <Grid3x3 size={11} /> Pivot Analytics
+          </div>
+        </div>
+        <div className="text-center py-10">
+          <Grid3x3 size={42} className="mx-auto mb-3 text-text-muted opacity-30" />
+          <p className="text-[11px] font-black uppercase tracking-widest text-text-muted">
+            No transactions yet · log spending or income to build the pivot
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-surface border-4 border-black rounded-3xl shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden">
+      <div className="p-5 pb-3 flex items-center justify-between flex-wrap gap-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
+          <Grid3x3 size={11} /> Pivot Analytics
+        </div>
+        <div className="flex gap-1 p-1 bg-input border-2 border-border rounded-full">
+          {(['month', 'week'] as PivotInterval[]).map(i => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setInterval(i)}
+              className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                interval === i
+                  ? 'bg-black text-action-primary shadow-[2px_2px_0px_0px_var(--color-action-primary)]'
+                  : 'text-text-muted hover:text-text-main'
+              }`}
+            >
+              {i === 'month' ? 'Monthly View' : 'Weekly View'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse tabular-nums">
+          <thead>
+            <tr className="bg-input">
+              <th className="sticky left-0 z-20 bg-input border-b-2 border-r-2 border-border px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-text-muted min-w-35">
+                Category
+              </th>
+              {matrix.intervalLabels.map(label => (
+                <th
+                  key={label}
+                  className="border-b-2 border-border px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-text-muted min-w-20"
+                >
+                  {label}
+                </th>
+              ))}
+              <th className="border-b-2 border-l-2 border-border px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-text-muted min-w-20">
+                Total
+              </th>
+              <th className="border-b-2 border-border px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-text-muted min-w-20">
+                Avg
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.rows.map((row, rowIdx) => {
+              const rowTone = row.isIncome ? 'text-capture-readable' : 'text-text-main';
+              return (
+                <tr key={row.category} className={rowIdx % 2 === 0 ? 'bg-surface' : 'bg-input/30'}>
+                  <td className={`sticky left-0 z-10 ${rowIdx % 2 === 0 ? 'bg-surface' : 'bg-input/30'} border-b border-r-2 border-border/40 px-4 py-2.5 text-left text-[11px] font-black uppercase tracking-wide ${rowTone}`}>
+                    {row.label}
+                  </td>
+                  {row.values.map((v, i) => (
+                    <td key={i} className="border-b border-border/30 px-4 py-2.5 text-right text-[11px] font-bold">
+                      {v === 0
+                        ? <span className="text-text-muted/30">—</span>
+                        : <span className={row.isIncome ? 'text-capture-readable' : 'text-text-main'}>{formatCell(v)}</span>
+                      }
+                    </td>
+                  ))}
+                  <td className={`border-b border-l-2 border-border/40 px-4 py-2.5 text-right text-[11px] font-black ${rowTone}`}>
+                    {row.total === 0 ? <span className="text-text-muted/30">—</span> : formatCell(row.total)}
+                  </td>
+                  <td className={`border-b border-border/30 px-4 py-2.5 text-right text-[11px] font-bold ${rowTone}`}>
+                    {row.average === 0 ? <span className="text-text-muted/30">—</span> : formatCell(row.average)}
+                  </td>
+                </tr>
+              );
+            })}
+            <tr className="bg-black">
+              <td className="sticky left-0 z-10 bg-black border-r-2 border-border px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-action-primary">
+                Net Total
+              </td>
+              {matrix.netRow.values.map((v, i) => (
+                <td key={i} className="px-4 py-3 text-right text-[11px] font-black tabular-nums">
+                  {v === 0
+                    ? <span className="text-text-muted/30">—</span>
+                    : <span className={v > 0 ? 'text-action-capture' : 'text-action-bleed'}>
+                        {v > 0 ? '+' : '−'}{formatCell(Math.abs(v))}
+                      </span>
+                  }
+                </td>
+              ))}
+              <td className="border-l-2 border-border px-4 py-3 text-right text-[11px] font-black tabular-nums">
+                {matrix.netRow.total === 0
+                  ? <span className="text-text-muted/30">—</span>
+                  : <span className={matrix.netRow.total > 0 ? 'text-action-capture' : 'text-action-bleed'}>
+                      {matrix.netRow.total > 0 ? '+' : '−'}{formatCell(Math.abs(matrix.netRow.total))}
+                    </span>
+                }
+              </td>
+              <td className="px-4 py-3 text-right text-[11px] font-black tabular-nums">
+                {matrix.netRow.average === 0
+                  ? <span className="text-text-muted/30">—</span>
+                  : <span className={matrix.netRow.average > 0 ? 'text-action-capture' : 'text-action-bleed'}>
+                      {matrix.netRow.average > 0 ? '+' : '−'}{formatCell(Math.abs(matrix.netRow.average))}
+                    </span>
+                }
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
 
 export const Audit: React.FC = () => {
   const transactions = useStore(s => s.transactions);
@@ -70,7 +320,9 @@ export const Audit: React.FC = () => {
 
   const { totalOutflow, wealthCaptured, totalAllocated, chartData, rankedCategories, allocatedItems } = useMemo(() => {
     let total = 0;
-    const ALLOCATED_CATEGORIES = new Set(['VAULT_DEPOSIT', 'DEBT_PAYMENT']);
+    // Allocated = pre-reserved money (vault funding, debt principal, recurring bills).
+    // These get their own panel and stay out of the discretionary spend pie chart.
+    const ALLOCATED_CATEGORIES = new Set(['VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT']);
     const INTERNAL_CATEGORIES  = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
     const grouped = filteredTransactions
@@ -100,7 +352,11 @@ export const Audit: React.FC = () => {
     const allocatedGrouped = filteredTransactions
       .filter(tx => ALLOCATED_CATEGORIES.has(tx.category))
       .reduce((acc, tx) => {
-        const key = tx.category === 'VAULT_DEPOSIT' ? 'Vault Deposits' : 'Debt Payments';
+        const key = tx.category === 'VAULT_DEPOSIT'
+          ? 'Vault Deposits'
+          : tx.category === 'BILL_PAYMENT'
+          ? 'Bill Payments'
+          : 'Debt Payments';
         if (!acc[key]) acc[key] = { name: key, total: 0 };
         acc[key].total += tx.amount;
         return acc;
@@ -134,7 +390,8 @@ export const Audit: React.FC = () => {
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const EXCLUDED = new Set(['INCOME', 'SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+    // MoM compares discretionary spend only — bills, debt, vault funding are pre-reserved.
+    const EXCLUDED = new Set(['INCOME', 'SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
     const spendFor = (start: Date, end: Date) => {
       const cats: Record<string, number> = {};
@@ -251,6 +508,9 @@ export const Audit: React.FC = () => {
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Captured penalties and savings transfers</p>
         </div>
       </div>
+
+      {/* Pivot Analytics */}
+      <PivotTable />
 
       {/* Month vs Last Month */}
       {(spendingComparison.thisMonth > 0 || spendingComparison.lastMonth > 0) && (

@@ -9,7 +9,14 @@ import { OnboardingModal } from '../components/Onboarding';
 import { BottomSheet } from '../components/BottomSheet';
 import { TransactionForm } from '../components/TransactionForm';
 
-const HIDDEN_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'PENALTY', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+// Categories excluded from "discretionary spend" tallies. Bills + debt payments come from
+// pre-reserved money (upcomingBills / debt minimums) — counting them as today's spend
+// would double-deduct against the safe-spend allowance.
+const HIDDEN_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'PENALTY', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL', 'BILL_PAYMENT', 'DEBT_PAYMENT']);
+
+// Categories excluded from the Recent Activity feed — purely internal moves only.
+// Bills and debt payments should remain visible so users have a paper trail.
+const ACTIVITY_HIDDEN = new Set(['VAULT_TRANSFER']);
 
 const SPEND_CATEGORIES = [
   { key: 'FOOD', label: 'Food' },
@@ -55,7 +62,7 @@ export default function Dashboard() {
 
   const recentTxs = useMemo(() =>
     transactions
-      .filter(tx => !HIDDEN_CATEGORIES.has(tx.category))
+      .filter(tx => !ACTIVITY_HIDDEN.has(tx.category))
       .slice(0, 6),
     [transactions]
   );
@@ -354,7 +361,27 @@ export default function Dashboard() {
       </div>
 
       {/* Bill Queue */}
-      {widgetVisible('alert') && nextPayday && billQueue && billQueue.length > 0 && (
+      {widgetVisible('alert') && nextPayday && billQueue && billQueue.length > 0 && (() => {
+        const today = new Date();
+        const todayDay = today.getDate();
+        const daysInThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        // For a given dueDay, work out days remaining within THIS cycle.
+        // Negative = overdue, 0 = due today, positive = upcoming.
+        const daysUntil = (dueDay?: number): number | null => {
+          if (!dueDay || dueDay < 1 || dueDay > 31) return null;
+          const effective = Math.min(dueDay, daysInThisMonth);
+          return effective - todayDay;
+        };
+        const sortedBills = [...billQueue].sort((a, b) => {
+          const da = daysUntil(a.dueDay);
+          const db = daysUntil(b.dueDay);
+          if (da === null && db === null) return 0;
+          if (da === null) return 1;
+          if (db === null) return -1;
+          return da - db;
+        });
+
+        return (
         <div className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between mb-4">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
@@ -365,24 +392,45 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="space-y-2">
-            {billQueue.map(bill => (
-              <button
-                key={bill.id}
-                type="button"
-                onClick={() => payBillFromQueue(bill.id)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-input border-4 border-black rounded-2xl hover:border-action-capture hover:bg-action-capture/10 transition-all group"
-              >
-                <div className="w-5 h-5 rounded-md border-[3px] border-black bg-surface group-hover:bg-action-capture group-hover:border-black transition-all shrink-0" />
-                <span className="font-black uppercase text-sm text-text-main flex-1 text-left truncate">{bill.name}</span>
-                <span className="font-black tabular-nums text-sm text-text-main shrink-0">{format(bill.amount)}</span>
-              </button>
-            ))}
+            {sortedBills.map(bill => {
+              const d = daysUntil(bill.dueDay);
+              const isOverdue = d !== null && d < 0;
+              const isUrgent  = d !== null && d >= 0 && d <= 3;
+              const dueLabel = d === null
+                ? null
+                : isOverdue   ? `${Math.abs(d)}d overdue`
+                : d === 0     ? 'Due today'
+                : `Due in ${d}d`;
+              const dueColor = isOverdue
+                ? 'bg-action-bleed text-white border-action-bleed'
+                : isUrgent
+                ? 'bg-action-primary text-primary-contrast border-black'
+                : 'bg-input text-text-muted border-border';
+              return (
+                <button
+                  key={bill.id}
+                  type="button"
+                  onClick={() => payBillFromQueue(bill.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 bg-input border-4 rounded-2xl hover:bg-action-capture/10 transition-all group ${isOverdue ? 'border-action-bleed' : 'border-black hover:border-action-capture'}`}
+                >
+                  <div className="w-5 h-5 rounded-md border-[3px] border-black bg-surface group-hover:bg-action-capture group-hover:border-black transition-all shrink-0" />
+                  <span className="font-black uppercase text-sm text-text-main flex-1 text-left truncate">{bill.name}</span>
+                  {dueLabel && (
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border-2 ${dueColor} shrink-0`}>
+                      {dueLabel}
+                    </span>
+                  )}
+                  <span className="font-black tabular-nums text-sm text-text-main shrink-0">{format(bill.amount)}</span>
+                </button>
+              );
+            })}
           </div>
           <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mt-3">
             Tap a bill to mark it paid · removes it from your upcoming total
           </p>
         </div>
-      )}
+        );
+      })()}
 
       {/* Pillars */}
       {widgetVisible('vault-status') && <div className="grid grid-cols-2 gap-4">
