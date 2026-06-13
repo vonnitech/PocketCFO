@@ -67,16 +67,45 @@ export const calculateCurrentMonthDeposits = (transactions: Transaction[], nextP
     .reduce((sum, tx) => sum + tx.amount, 0);
 };
 
+// Length of the current pay cycle in days, inferred from the next payday
+// (one calendar month back → next payday). Falls back to 30 if unparseable.
+export const calculatePayCycleLength = (nextPayday: string): number => {
+  if (!nextPayday) return 30;
+  const [y, m, d] = nextPayday.split('-').map(Number);
+  if (!y || !m || !d) return 30;
+  const next = new Date(y, m - 1, d);
+  const prev = new Date(y, m - 2, d); // same day, previous month
+  const days = Math.round((next.getTime() - prev.getTime()) / 86_400_000);
+  return days > 0 ? days : 30;
+};
+
 export const calculateRawSafeSpend = (state: AppState): number => {
   if (!state.nextPayday) return 0;
   const days = calculateDaysUntilPayday(state.nextPayday);
-  const deposited = calculateCurrentMonthDeposits(state.transactions, state.nextPayday);
-  const remainingSavingsGoal = Math.max(0, (state.monthlySavingsGoal || 0) - deposited);
-  // Bills only reserve against current balance if it can cover them.
-  // Otherwise the bills are coming out of the next paycheck and shouldn't squeeze pre-payday spend.
+
+  // Bills are reserved out of current cash only if the balance can cover them;
+  // otherwise they're funded by the next paycheck and don't squeeze pre-payday spend.
   const upcoming = state.upcomingBills || 0;
   const billsToReserve = state.liquidAssets >= upcoming ? upcoming : 0;
-  return Math.max(0, (state.liquidAssets - billsToReserve - remainingSavingsGoal) / days);
+  // Cash safety: never green-light spending more than the current balance can sustain
+  // until payday (after reserving any unpaid bills).
+  const dailyFromCash = (state.liquidAssets - billsToReserve) / days;
+
+  // Income-based budget: savings is funded from your monthly take-home, not frozen
+  // in your pre-payday balance. So the sustainable daily allowance is what's left of
+  // your income after bills and your savings promise, spread across the pay cycle.
+  // This honors the savings goal fully (it's subtracted) without zeroing out a balance
+  // that the next paycheck will replenish.
+  const takeHome = state.monthlyTakeHome || 0;
+  if (takeHome > 0) {
+    const cycleDays = calculatePayCycleLength(state.nextPayday);
+    const monthlyDiscretionary = Math.max(0, takeHome - (state.fixedBills || 0) - (state.monthlySavingsGoal || 0));
+    const dailyFromBudget = monthlyDiscretionary / cycleDays;
+    return Math.max(0, Math.min(dailyFromBudget, dailyFromCash));
+  }
+
+  // No take-home configured → fall back to pure cash horizon (bills reserved only).
+  return Math.max(0, dailyFromCash);
 };
 
 export const calculateTrueSafeSpend = (state: AppState): number => {
