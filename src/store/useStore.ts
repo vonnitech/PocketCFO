@@ -168,7 +168,10 @@ export interface AppState {
   // Security
   isLocked: boolean;
   lockEnabled: boolean;
-  securityPIN: string;
+  // PBKDF2-derived hash of the user's PIN + the per-user salt. Empty strings
+  // mean the user hasn't configured a PIN yet. The raw PIN is never stored.
+  pinHash: string;
+  pinSalt: string;
 
   // FIRE config (persisted)
   fireConfig: {
@@ -255,7 +258,8 @@ export const INITIAL_STATE: AppState = {
 
   isLocked: false,
   lockEnabled: false,
-  securityPIN: '1234',
+  pinHash: '',
+  pinSalt: '',
 
   fireConfig: null,
   incomeHistory: [],
@@ -292,10 +296,15 @@ interface StoreActions {
   removeSquadMember: (id: string) => void;
   addIncome: (amount: number, source: string) => void;
   massImportTransactions: (txs: Transaction[]) => Promise<void>;
+  updateTransaction: (id: string, updates: Partial<Pick<Transaction, 'category' | 'merchant' | 'amount'>>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
   addDebt: (debt: Omit<Debt, 'id'>) => void;
   updateDebt: (id: string, updates: Partial<Omit<Debt, 'id'>>) => void;
   removeDebt: (id: string) => void;
   makeDebtPayment: (debtId: string, extraAmount: number) => void;
+  addSubscription: (name: string, amount: number) => Promise<void>;
+  setSubscriptionUsage: (id: string, usage: Subscription['usage']) => Promise<void>;
+  cancelSubscription: (id: string) => Promise<void>;
   updateBaseline: (income: number, savingsGoal: number) => void;
   saveFireConfig: (config: NonNullable<AppState['fireConfig']>) => Promise<void>;
   clearFireConfig: () => Promise<void>;
@@ -478,16 +487,35 @@ export const useStore = create<StoreState>()(
         //   1. profile.bill_queue from Supabase (applied above in merged) — cross-device truth
         //   2. localStorage cache for this user — survives refreshes on this device
         //   3. Rehydrate from the recurring template — fresh cycle
+        //
+        // IMPORTANT: distinguish cached === null (no cache exists, safe to regenerate)
+        // from cached === [] (user paid every bill, queue intentionally empty). The latter
+        // must be respected — otherwise every refresh re-spawns every bill.
+        const cached = loadLocalBillQueue(userId) as BillQueueItem[] | null;
+
         if (!nextState.billQueue || nextState.billQueue.length === 0) {
-          const cached = loadLocalBillQueue(userId) as BillQueueItem[] | null;
-          if (cached && cached.length > 0) {
+          if (Array.isArray(cached)) {
+            // Cache exists (possibly empty = "all paid"). Honour it verbatim.
             nextState.billQueue = cached;
           } else if (Array.isArray(nextState.recurringBills) && nextState.recurringBills.length > 0) {
+            // No cache → fresh cycle. Regenerate from the recurring template.
             const fresh = (nextState.recurringBills as BillQueueItem[]).map(b => ({ ...b, id: crypto.randomUUID() }));
             nextState.billQueue = fresh;
             saveLocalBillQueue(userId, fresh);
             // Push to Supabase too so other devices see the fresh queue.
             pushProfileUpdate(userId, { bill_queue: fresh }).catch(() => {});
+          }
+        } else if (Array.isArray(cached) && cached.length < nextState.billQueue.length) {
+          // Supabase queue is non-empty AND localStorage has STRICTLY FEWER items (possibly
+          // zero) that are all present in Supabase → the user paid bills on this device but
+          // the write hasn't synced yet (race with debounce / network). Trust localStorage
+          // and re-sync Supabase so we don't repeatedly resurrect the paid bills.
+          const supaIds = new Set((nextState.billQueue as BillQueueItem[]).map(b => b.id));
+          const isStrictSubset = cached.every(b => supaIds.has(b.id));
+          if (isStrictSubset) {
+            nextState.billQueue = cached;
+            (supabase.from('profiles') as any).update({ bill_queue: cached }).eq('id', userId)
+              .then((r: any) => { if (r?.error) console.error('[fetchUserData] queue resync failed:', r.error); });
           }
         }
 
@@ -624,19 +652,42 @@ export const useStore = create<StoreState>()(
       const recurringToUse: BillQueueItem[] = newBillQueue !== undefined ? newBillQueue : (recurringBills || []);
       const billsTotal    = recurringToUse.reduce((s, b) => s + b.amount, 0);
 
-      // Only regenerate the bill queue when the pay cycle period changes or the bill
-      // template is modified. Preserves ticked-off progress within the current cycle.
-      const fingerprint   = (bills: BillQueueItem[]) => bills.map(b => `${b.name}:${b.amount}:${b.dueDay ?? ''}`).join('|');
-      const paydayChanged = nextPayday !== currentNextPayday;
-      const billsChanged  = newBillQueue !== undefined && fingerprint(newBillQueue) !== fingerprint(recurringBills || []);
-      const shouldRegen   = paydayChanged || billsChanged || currentBillQueue.length === 0;
+      // A bill's identity within a cycle = name + amount (ids are regenerated each
+      // cycle, so they can't be used to match across a save).
+      const billKey  = (b: BillQueueItem) => `${b.name.toLowerCase()}:${b.amount.toFixed(2)}`;
+      // Normalize to YYYY-MM-DD so a stored timestamp ("2026-06-30T00:00:00Z") and a
+      // date-input value ("2026-06-30") don't read as a changed payday and force a
+      // full regen — which was resurrecting paid bills on every Save.
+      const dayOnly  = (s: string) => (s || '').slice(0, 10);
+      const isNewCycle = dayOnly(nextPayday) !== dayOnly(currentNextPayday);
 
-      const freshQueue: BillQueueItem[]   = shouldRegen
-        ? recurringToUse.map(b => ({ ...b, id: crypto.randomUUID() }))
-        : currentBillQueue;
-      // Always sync upcomingBills to current template total when bills are explicitly passed in
-      const effectiveUpcomingBills = (shouldRegen || newBillQueue !== undefined)
-        ? billsTotal
+      // Why this matters: the bill queue doubles as the paid-state tracker — a paid
+      // bill is simply ABSENT from currentBillQueue. So we must never rebuild the
+      // queue from the full template mid-cycle, or paid bills come back. Only a
+      // genuine payday change (= a new cycle) resets paid progress.
+      let freshQueue: BillQueueItem[];
+      if (isNewCycle) {
+        // New pay cycle → every bill is due again. Full regen with fresh ids.
+        freshQueue = recurringToUse.map(b => ({ ...b, id: crypto.randomUUID() }));
+      } else if (newBillQueue !== undefined) {
+        // Same cycle, template was (re)saved — possibly with bills added/removed/edited.
+        // Preserve cycle progress: keep the still-unpaid queue items, and append ONLY
+        // bills that didn't exist in the previous template. Paid bills (absent from the
+        // queue AND present in the old template) are neither kept nor re-added → stay paid.
+        // First-time setup falls out naturally: old template empty ⇒ everything is "new".
+        const oldKeys = new Set((recurringBills || []).map(billKey));
+        const keptUnpaid = currentBillQueue.filter(q => recurringToUse.some(r => billKey(r) === billKey(q)));
+        const newlyAdded = recurringToUse
+          .filter(r => !oldKeys.has(billKey(r)))
+          .map(r => ({ ...r, id: crypto.randomUUID() }));
+        freshQueue = [...keptUnpaid, ...newlyAdded];
+      } else {
+        // Nothing about the bills was passed in (e.g. capital-only save) → leave queue intact.
+        freshQueue = currentBillQueue;
+      }
+      // Always sync upcomingBills to actual queue total so it can't drift
+      const effectiveUpcomingBills = newBillQueue !== undefined
+        ? freshQueue.reduce((s, b) => s + b.amount, 0)
         : currentUpcomingBills;
 
       const calcState = {
@@ -1018,6 +1069,63 @@ export const useStore = create<StoreState>()(
       }
     },
 
+    updateTransaction: async (id, updates) => {
+      const { userId } = get() as StoreState;
+      set((state: any) => ({
+        ...state,
+        transactions: state.transactions.map((t: Transaction) =>
+          t.id === id ? { ...t, ...updates } : t
+        ),
+      }));
+      if (userId) {
+        const dbUpdates: Record<string, unknown> = {};
+        if (updates.category !== undefined) dbUpdates.category = updates.category;
+        if (updates.merchant  !== undefined) dbUpdates.merchant  = updates.merchant;
+        if (updates.amount    !== undefined) dbUpdates.amount    = updates.amount;
+        try {
+          const { error } = await (supabase.from('transactions') as any).update(dbUpdates).eq('id', id);
+          if (error) console.error('[updateTransaction] failed:', error);
+        } catch (err) {
+          console.error('[updateTransaction] threw:', err);
+        }
+      }
+    },
+
+    // Removes a transaction record and reverses its impact on liquidAssets so the
+    // running balance stays correct. Vault / debt / bill-queue side-effects are NOT
+    // unwound — those are owned by their own actions and reversing them here would
+    // risk silently corrupting state. The user is expected to clean those up manually
+    // if needed (typically only relevant when undoing a vault/debt/bill payment).
+    deleteTransaction: async (id) => {
+      const { userId, transactions } = get() as StoreState;
+      const tx = transactions.find(t => t.id === id);
+      if (!tx) return;
+
+      // Cash flow reversal: incomes added cash, everything else removed it.
+      const isIncome = tx.category === 'INCOME' || tx.category === 'VAULT_WITHDRAWAL';
+      const liquidDelta = isIncome ? -tx.amount : tx.amount;
+
+      set((state: any) => {
+        const nextState = {
+          ...state,
+          transactions: state.transactions.filter((t: Transaction) => t.id !== id),
+          liquidAssets: Math.max(0, state.liquidAssets + liquidDelta),
+        };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
+
+      if (userId) {
+        const { liquidAssets } = get() as StoreState;
+        pushProfileUpdate(userId, { liquid_assets: liquidAssets }).catch(() => {});
+        try {
+          const { error } = await supabase.from('transactions').delete().eq('id', id);
+          if (error) console.error('[deleteTransaction] delete failed:', error);
+        } catch (err) {
+          console.error('[deleteTransaction] threw:', err);
+        }
+      }
+    },
+
     // ── Split ─────────────────────────────────────────────────────────────────
 
     addSplitTransaction: async (split) => {
@@ -1197,6 +1305,101 @@ export const useStore = create<StoreState>()(
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
+    },
+
+    // ── Subscriptions ───────────────────────────────────────────────────────
+    // Each action persists to the Supabase `subscriptions` table so adds/edits
+    // survive a refresh — the page previously only mutated local state.
+
+    addSubscription: async (name, amount) => {
+      const { userId } = get() as StoreState;
+      if (!userId) return;
+
+      const newSub: Subscription = {
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        amount,
+        usage: 'Active',
+        billingCycle: 'Monthly',
+      };
+      const { error } = await (supabase.from('subscriptions') as any).insert({
+        id:            newSub.id,
+        user_id:       userId,
+        name:          newSub.name,
+        amount:        newSub.amount,
+        usage:         newSub.usage,
+        billing_cycle: newSub.billingCycle,
+      });
+      if (error) { console.error('[addSubscription] insert failed:', error); return; }
+
+      set((state: any) => {
+        const nextState = {
+          ...state,
+          subscriptions: [...state.subscriptions, newSub],
+          fixedBills: state.fixedBills + amount,
+        };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
+      pushProfileUpdate(userId, { fixed_bills: (get() as StoreState).fixedBills }).catch(() => {});
+    },
+
+    setSubscriptionUsage: async (id, usage) => {
+      const { userId } = get() as StoreState;
+      set((state: any) => ({
+        ...state,
+        subscriptions: state.subscriptions.map((s: Subscription) => s.id === id ? { ...s, usage } : s),
+      }));
+      if (!userId) return;
+      try {
+        const { error } = await (supabase.from('subscriptions') as any).update({ usage }).eq('id', id);
+        if (error) console.error('[setSubscriptionUsage] update failed:', error);
+      } catch (err) {
+        console.error('[setSubscriptionUsage] threw:', err);
+      }
+    },
+
+    cancelSubscription: async (id) => {
+      const { userId, subscriptions } = get() as StoreState;
+      const sub = subscriptions.find(s => s.id === id);
+      if (!sub) return;
+
+      if (userId) {
+        try {
+          const { error } = await (supabase.from('subscriptions') as any).delete().eq('id', id);
+          if (error) { console.error('[cancelSubscription] delete failed:', error); return; }
+        } catch (err) {
+          console.error('[cancelSubscription] threw:', err);
+          return;
+        }
+      }
+
+      set((state: any) => {
+        const newExp = (state.stats?.experience || 0) + 50;
+        const nextState = {
+          ...state,
+          subscriptions: state.subscriptions.filter((s: Subscription) => s.id !== id),
+          fixedBills: Math.max(0, state.fixedBills - sub.amount),
+          monthlySavingsGoal: state.monthlySavingsGoal + sub.amount,
+          stats: {
+            ...state.stats,
+            experience: newExp,
+            level: Math.floor(newExp / 1000) + 1,
+            subscriptionsCancelled: (state.stats?.subscriptionsCancelled || 0) + 1,
+            lifetimeCapture: (state.stats?.lifetimeCapture || 0) + sub.amount,
+          },
+        };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
+
+      if (userId) {
+        const s = get() as StoreState;
+        pushProfileUpdate(userId, {
+          fixed_bills:                 s.fixedBills,
+          monthly_savings_goal:        s.monthlySavingsGoal,
+          stat_subscriptions_cancelled: s.stats.subscriptionsCancelled,
+          stat_lifetime_capture:        s.stats.lifetimeCapture,
+        }).catch(() => {});
+      }
     },
 
     updateBaseline: async (income, savingsGoal) => {
@@ -1644,11 +1847,19 @@ export const useStore = create<StoreState>()(
 
       if (userId) {
         const { liquidAssets, upcomingBills, billQueue: updatedQueue } = get() as StoreState;
-        pushProfileUpdate(userId, {
-          liquid_assets: liquidAssets,
-          upcoming_bills: upcomingBills,
-          bill_queue: updatedQueue,
-        }).catch(() => {});
+        // Bill payments are discrete deliberate actions involving money — they must
+        // commit IMMEDIATELY. The debounced pushProfileUpdate was racing with page
+        // refreshes: if the user reloaded within 1.5s of paying, the update never
+        // hit Supabase and the next fetchUserData pulled the stale (pre-payment)
+        // queue, making the paid bill reappear.
+        (supabase.from('profiles') as any)
+          .update({
+            liquid_assets:  liquidAssets,
+            upcoming_bills: upcomingBills,
+            bill_queue:     updatedQueue,
+          })
+          .eq('id', userId)
+          .then((r: any) => { if (r?.error) console.error('[payBillFromQueue] profile update failed:', r.error); });
         (supabase.from('transactions') as any).insert({
           id:          txId,
           user_id:     userId,

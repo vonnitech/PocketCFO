@@ -42,7 +42,15 @@ interface ExportSnapshot {
 
 // ── CSV ──────────────────────────────────────────────────────────────────────
 
-const INCOME_CATEGORIES = new Set(['INCOME', 'VAULT_WITHDRAWAL']);
+const INCOME_CATEGORIES   = new Set(['INCOME', 'VAULT_WITHDRAWAL']);
+const TRANSFER_CATEGORIES = new Set(['VAULT_DEPOSIT', 'VAULT_TRANSFER', 'SAVINGS']);
+
+function txType(category: string): 'Income' | 'Transfer' | 'Bill' | 'Spend' {
+  if (INCOME_CATEGORIES.has(category))   return 'Income';
+  if (TRANSFER_CATEGORIES.has(category)) return 'Transfer';
+  if (category === 'BILL_PAYMENT' || category === 'DEBT_PAYMENT') return 'Bill';
+  return 'Spend';
+}
 
 export function exportLedgerCSV(transactions: Transaction[]): void {
   const rows = [...transactions]
@@ -52,7 +60,7 @@ export function exportLedgerCSV(transactions: Transaction[]): void {
       Merchant: t.merchant,
       Category: t.category,
       Amount:   t.amount.toFixed(2),
-      Type:     INCOME_CATEGORIES.has(t.category) ? 'Income' : 'Spend',
+      Type:     txType(t.category),
       Flip:     t.isFlip ? 'YES' : 'NO',
       Penalty:  (t.flipAmount || 0).toFixed(2),
     }));
@@ -289,8 +297,37 @@ export interface ImportMapping {
   date: string;       // header name
   merchant: string;
   amount: string;
+  category: string;   // optional header name — '' means use defaultCategory for every row
   reverseSigns: boolean;
   defaultCategory: string;
+}
+
+// Normalize a raw category value from any bank / app export to one of our buckets.
+// Recognises common variants: "food", "Restaurants", "grocery", "transport", "uber", etc.
+function normalizeCategory(raw: string, fallback: string): string {
+  const norm = raw.toLowerCase().replace(/[^a-z]/g, '');
+  if (!norm) return fallback;
+
+  // Direct match first (e.g. "FOOD" → "FOOD")
+  const upper = raw.trim().toUpperCase();
+  if (['FOOD','TRANSPORT','FUN','SHOPPING','HEALTH','HOME','WORK','OTHER','INCOME','SAVINGS'].includes(upper)) {
+    return upper;
+  }
+
+  // Keyword groups → app category. Order matters: more specific buckets are
+  // tested first so collisions (e.g. "Car insurance" matching both "car" and
+  // "insurance") resolve to the right one. HOME patterns checked before AUTO/TRANSPORT
+  // so "Home, Auto" → HOME instead of TRANSPORT.
+  if (/food|restaurant|grocer|dining|cafe|coffee|takeout|delivery|meal/.test(norm)) return 'FOOD';
+  if (/home|rent|mortgage|utilit|electric|water|internet|phone|insurance/.test(norm)) return 'HOME';
+  if (/auto|vehicle|car|transport|uber|lyft|taxi|rideshare|ridesharing|gas|fuel|petrol|parking|transit|metro|bus|train|toll/.test(norm)) return 'TRANSPORT';
+  if (/health|medical|pharmacy|doctor|dental|fitness|gym/.test(norm)) return 'HEALTH';
+  if (/fun|entertainment|movie|game|hobby|concert|streaming|netflix|spotify|bar|alcohol/.test(norm)) return 'FUN';
+  if (/shop|amazon|target|walmart|cloth|apparel|retail|electronic/.test(norm)) return 'SHOPPING';
+  if (/work|business|office|tax|professional|saas|software/.test(norm)) return 'WORK';
+  if (/income|salary|paycheck|payroll|deposit|refund|interest|dividend/.test(norm)) return 'INCOME';
+  if (/saving|invest|vault|brokerage|retirement|ira|401k/.test(norm)) return 'SAVINGS';
+  return fallback;
 }
 
 export function buildTransactionsFromMapping(parsed: ParsedFile, map: ImportMapping): Transaction[] {
@@ -301,7 +338,7 @@ export function buildTransactionsFromMapping(parsed: ParsedFile, map: ImportMapp
     const rawAmount = (row[map.amount] || '').trim().replace(/[$€£,\s]/g, '');
     if (!rawDate && !merchant && !rawAmount) continue;
     let amount = parseFloat(rawAmount);
-    if (isNaN(amount)) continue;
+    if (isNaN(amount) || amount === 0) continue;  // Skip $0 rows (e.g. CC payment grouping artifacts)
     if (map.reverseSigns) amount = -amount;
     // We store spend as positive amounts. If sign is negative, it's a credit/income.
     const isIncome = amount < 0;
@@ -316,15 +353,100 @@ export function buildTransactionsFromMapping(parsed: ParsedFile, map: ImportMapp
       const d = new Date(rawDate);
       return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
     })();
+
+    // Resolve category: income flag wins, then mapped column (normalized), then default.
+    let resolvedCategory: string;
+    if (isIncome) {
+      resolvedCategory = 'INCOME';
+    } else if (map.category) {
+      resolvedCategory = normalizeCategory(row[map.category] || '', map.defaultCategory || 'OTHER');
+    } else {
+      resolvedCategory = map.defaultCategory || 'OTHER';
+    }
+
     out.push({
       id:         crypto.randomUUID(),
       merchant:   merchant.toUpperCase() || 'IMPORTED',
       amount:     finalAmount,
-      category:   isIncome ? 'INCOME' : (map.defaultCategory || 'UNCATEGORIZED'),
+      category:   resolvedCategory,
       date:       new Date(isoDate).toISOString(),
       isFlip:     false,
       flipAmount: 0,
     });
   }
   return out;
+}
+
+// ── Recurring detection ──────────────────────────────────────────────────────
+
+export interface RecurringCandidate {
+  key:         string;              // stable identifier for selection toggles
+  merchant:    string;
+  amount:      number;              // positive — sign is captured in `kind`
+  dueDay:      number;              // 1-31, most common day of month
+  kind:        'expense' | 'income';
+  occurrences: number;
+}
+
+// Detects groups of transactions that look like monthly recurrings — same merchant,
+// same amount, appearing 2+ times. Day-of-month is the median across occurrences.
+export function detectRecurring(parsed: ParsedFile, map: ImportMapping): RecurringCandidate[] {
+  if (!map.merchant || !map.amount || !map.date) return [];
+
+  // Group rows: { merchant + |amount| → { sign, dayOfMonth[] } }
+  const groups = new Map<string, { merchant: string; amount: number; isIncome: boolean; days: number[] }>();
+
+  for (const row of parsed.rows) {
+    const rawDate    = (row[map.date] || '').trim();
+    const merchant   = (row[map.merchant] || '').trim();
+    const rawAmount  = (row[map.amount] || '').trim().replace(/[$€£,\s]/g, '');
+    if (!rawDate || !merchant || !rawAmount) continue;
+    let amount = parseFloat(rawAmount);
+    if (isNaN(amount) || amount === 0) continue;
+    if (map.reverseSigns) amount = -amount;
+    const isIncome = amount < 0;
+    const absAmt = Math.abs(amount);
+
+    // Skip clearly non-recurring transfer artifacts
+    if (/payment.*transfer|credit card payment/i.test(merchant)) continue;
+
+    // Parse day-of-month from the date
+    let day = 0;
+    if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) day = parseInt(rawDate.slice(8, 10), 10);
+    else {
+      const m = rawDate.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-]/);
+      if (m) day = parseInt(m[2], 10);
+      else { const d = new Date(rawDate); if (!isNaN(d.getTime())) day = d.getDate(); }
+    }
+    if (day < 1 || day > 31) continue;
+
+    const key = `${merchant.toUpperCase()}|${absAmt.toFixed(2)}`;
+    const existing = groups.get(key);
+    if (existing) existing.days.push(day);
+    else groups.set(key, { merchant, amount: absAmt, isIncome, days: [day] });
+  }
+
+  const median = (xs: number[]): number => {
+    const s = [...xs].sort((a, b) => a - b);
+    return s[Math.floor(s.length / 2)];
+  };
+
+  const candidates: RecurringCandidate[] = [];
+  for (const [key, g] of groups.entries()) {
+    if (g.days.length < 2) continue;  // Need at least 2 occurrences to call it recurring
+    candidates.push({
+      key,
+      merchant: g.merchant,
+      amount:   g.amount,
+      dueDay:   median(g.days),
+      kind:     g.isIncome ? 'income' : 'expense',
+      occurrences: g.days.length,
+    });
+  }
+
+  // Sort: expenses first (more actionable), then by occurrences desc
+  return candidates.sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === 'expense' ? -1 : 1;
+    return b.occurrences - a.occurrences;
+  });
 }

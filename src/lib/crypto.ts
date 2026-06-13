@@ -68,3 +68,38 @@ export async function hashPin(pin: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
+// ── Salted PBKDF2 PIN hash + constant-time verify ──────────────────────────
+// Used by the Screen Lock. PBKDF2 with 100k iterations + per-user salt makes
+// brute forcing the 10K-entry PIN space costly (~hours on commodity hardware)
+// instead of instant. The hash is stored alongside the salt; the raw PIN
+// never leaves the device beyond the moment of entry.
+export async function hashPinSalted(pin: string, saltB64: string): Promise<string> {
+  const salt = fromB64(saltB64);
+  const raw = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(pin),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+    raw,
+    256,
+  );
+  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Constant-time string compare — prevents timing attacks even though the
+// blast radius for a 4-digit PIN is tiny. Both inputs must be the same length.
+export function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+export function newSaltB64(): string {
+  return toB64(generateSalt());
+}

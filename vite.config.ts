@@ -10,28 +10,28 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['icon.svg', 'icon-192x192.png', 'icon-512x512.png'],
       manifest: {
         name: 'Pocket CFO',
-        short_name: 'PocketCFO',
+        short_name: 'Pocket CFO',
         description: 'Your personal CFO — track spending, crush debt, build wealth.',
         theme_color: '#facc15',
-        background_color: '#F4F6F5',
+        background_color: '#FAFAF9',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
         icons: [
-          {
-            src: '/icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
-          },
+          // SVG fallback — resolution-independent for browsers that support it
+          { src: '/icon.svg',         sizes: 'any',     type: 'image/svg+xml', purpose: 'any maskable' },
+          // PNG raster icons — required by iOS, older Android, and the Chrome install prompt preview
+          { src: '/icon-192x192.png', sizes: '192x192', type: 'image/png',     purpose: 'any' },
+          { src: '/icon-512x512.png', sizes: '512x512', type: 'image/png',     purpose: 'any' },
+          { src: '/icon-512x512.png', sizes: '512x512', type: 'image/png',     purpose: 'maskable' },
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg}'],
+        globPatterns: ['**/*.{js,css,html,svg,png}'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },

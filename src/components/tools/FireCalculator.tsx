@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Flame, Target, TrendingUp, RotateCcw, ShieldCheck, Zap, Link as LinkIcon, Anchor, Lock, LockOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { userKey } from '../../lib/userScopedStorage';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const R = 0.07 / 12;
@@ -206,11 +207,11 @@ function LiveBadge() {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 const DEFAULTS = { currentAge: '28', targetAge: '45', annualExpenses: '40000', partTimeIncome: '20000', externalInvestments: '' };
-const SS_KEY = 'pocket-cfo-fire-inputs-v1';
+const SS_BASE = 'pocket-cfo-fire-inputs-v1';
 
 function loadSaved(): typeof DEFAULTS & { strategy: FireStrategy } {
   try {
-    const raw = sessionStorage.getItem(SS_KEY);
+    const raw = sessionStorage.getItem(userKey(SS_BASE));
     if (raw) return { ...DEFAULTS, strategy: 'STANDARD', ...JSON.parse(raw) };
   } catch {}
   return { ...DEFAULTS, strategy: 'STANDARD' };
@@ -218,8 +219,9 @@ function loadSaved(): typeof DEFAULTS & { strategy: FireStrategy } {
 
 function saveField(key: string, value: string) {
   try {
-    const cur = JSON.parse(sessionStorage.getItem(SS_KEY) ?? '{}');
-    sessionStorage.setItem(SS_KEY, JSON.stringify({ ...cur, [key]: value }));
+    const k = userKey(SS_BASE);
+    const cur = JSON.parse(sessionStorage.getItem(k) ?? '{}');
+    sessionStorage.setItem(k, JSON.stringify({ ...cur, [key]: value }));
   } catch {}
 }
 
@@ -262,7 +264,7 @@ export function FireCalculator() {
   const setStrategy = (v: FireStrategy) => { setStrategyRaw(v); saveField('strategy', v); };
 
   const reset = () => {
-    sessionStorage.removeItem(SS_KEY);
+    sessionStorage.removeItem(userKey(SS_BASE));
     setCaRaw(DEFAULTS.currentAge);
     setTaRaw(DEFAULTS.targetAge);
     setAeRaw(DEFAULTS.annualExpenses);

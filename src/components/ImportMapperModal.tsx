@@ -1,17 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Upload, FileSpreadsheet, Check, AlertCircle } from 'lucide-react';
-import { parseImportFile, buildTransactionsFromMapping, ParsedFile, ImportMapping } from '../core/export';
+import { X, Upload, FileSpreadsheet, Check, AlertCircle, Repeat, TrendingUp } from 'lucide-react';
+import { parseImportFile, buildTransactionsFromMapping, detectRecurring, ParsedFile, ImportMapping, RecurringCandidate } from '../core/export';
 import { Transaction } from '../types';
+
+export interface ImportPayload {
+  transactions:    Transaction[];
+  recurringBills:  { name: string; amount: number; dueDay: number }[];
+  recurringIncome: number;   // 0 if user opted out; else the largest selected recurring income amount
+}
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onImport: (transactions: Transaction[]) => void;
+  onImport: (payload: ImportPayload) => void;
 }
 
 const CATEGORY_OPTIONS = [
-  'UNCATEGORIZED', 'FOOD', 'TRANSPORT', 'FUN', 'SHOPPING',
+  'FOOD', 'TRANSPORT', 'FUN', 'SHOPPING',
   'HEALTH', 'HOME', 'WORK', 'OTHER',
 ];
 
@@ -26,23 +32,33 @@ function guess(headers: string[], keywords: string[]): string {
 }
 
 export function ImportMapperModal({ open, onClose, onImport }: Props) {
-  const [step, setStep] = useState<'upload' | 'map' | 'preview'>('upload');
+  const [step, setStep] = useState<'upload' | 'map' | 'preview' | 'recurring'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<ParsedFile | null>(null);
   const [mapping, setMapping] = useState<ImportMapping>({
-    date: '', merchant: '', amount: '', reverseSigns: false, defaultCategory: 'UNCATEGORIZED',
+    date: '', merchant: '', amount: '', category: '', reverseSigns: false, defaultCategory: 'OTHER',
   });
   const [error, setError] = useState<string>('');
   const [parsing, setParsing] = useState(false);
+  // Recurring detection state — only populated when we transition to the 'recurring' step
+  const [selectedRecurring, setSelectedRecurring] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) {
       // Reset on close
       setStep('upload'); setFile(null); setParsed(null); setError(''); setParsing(false);
-      setMapping({ date: '', merchant: '', amount: '', reverseSigns: false, defaultCategory: 'UNCATEGORIZED' });
+      setMapping({ date: '', merchant: '', amount: '', category: '', reverseSigns: false, defaultCategory: 'OTHER' });
+      setSelectedRecurring(new Set());
     }
   }, [open]);
+
+  // Detect recurring candidates from the parsed file + current mapping. Cheap memo —
+  // only runs when the user advances to the recurring step or tweaks the mapping.
+  const candidates: RecurringCandidate[] = useMemo(() => {
+    if (!parsed || !mapping.date || !mapping.merchant || !mapping.amount) return [];
+    return detectRecurring(parsed, mapping);
+  }, [parsed, mapping]);
 
   const handleFile = async (f: File) => {
     setError('');
@@ -60,8 +76,16 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
         date:            guess(result.headers, ['date', 'posted', 'transactiondate']),
         merchant:        guess(result.headers, ['merchant', 'description', 'narration', 'payee', 'name']),
         amount:          guess(result.headers, ['amount', 'value', 'debit', 'credit']),
+        // Best-effort: prefer a column named exactly "category" (LunchMoney, etc.) over
+        // prefix matches like "category_group" which are often empty subcategory fields.
+        category:        (() => {
+          const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+          return result.headers.find(h => norm(h) === 'category')
+            || result.headers.find(h => norm(h).includes('category') || norm(h).includes('tag'))
+            || '';
+        })(),
         reverseSigns:    false,
-        defaultCategory: 'UNCATEGORIZED',
+        defaultCategory: 'OTHER',
       });
       setStep('map');
     } catch (e) {
@@ -85,9 +109,29 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
     ? buildTransactionsFromMapping(parsed, mapping)
     : [];
 
-  const confirmImport = () => {
+  // Preview "Import" button: jump to recurring step if there's anything to confirm,
+  // otherwise fire the import directly.
+  const advanceFromPreview = () => {
     if (allTxs.length === 0) return;
-    onImport(allTxs);
+    if (candidates.length > 0) {
+      // Pre-select all expense candidates; leave income unchecked (user opts in)
+      setSelectedRecurring(new Set(candidates.filter(c => c.kind === 'expense').map(c => c.key)));
+      setStep('recurring');
+    } else {
+      onImport({ transactions: allTxs, recurringBills: [], recurringIncome: 0 });
+      onClose();
+    }
+  };
+
+  const confirmFinalImport = () => {
+    if (allTxs.length === 0) return;
+    const picked = candidates.filter(c => selectedRecurring.has(c.key));
+    const bills = picked
+      .filter(c => c.kind === 'expense')
+      .map(c => ({ name: c.merchant.toUpperCase(), amount: c.amount, dueDay: c.dueDay }));
+    const incomes = picked.filter(c => c.kind === 'income').map(c => c.amount);
+    const recurringIncome = incomes.length > 0 ? Math.max(...incomes) : 0;
+    onImport({ transactions: allTxs, recurringBills: bills, recurringIncome });
     onClose();
   };
 
@@ -182,6 +226,27 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                       </div>
                     ))}
 
+                    {/* Optional category column — uses the source file's existing category data when available */}
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">
+                        Category Column <span className="text-text-muted/50">(Optional)</span>
+                      </label>
+                      <select
+                        value={mapping.category}
+                        title="Select category column"
+                        onChange={e => setMapping(m => ({ ...m, category: e.target.value }))}
+                        className="w-full bg-input border-4 border-black rounded-2xl px-3 py-2.5 font-black text-sm text-text-main outline-none focus:border-action-capture"
+                      >
+                        <option value="">— Use default for all rows —</option>
+                        {parsed.headers.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
+                        Map your file's category column. Values like "food", "Restaurants", "Transport" auto-normalize.
+                      </p>
+                    </div>
+
                     <div className="flex items-center justify-between px-3 py-3 bg-input border-4 border-black rounded-2xl">
                       <div className="min-w-0">
                         <p className="text-sm font-black uppercase tracking-wide text-text-main">Reverse signs</p>
@@ -264,11 +329,94 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                       </button>
                       <button
                         type="button"
-                        onClick={confirmImport}
+                        onClick={advanceFromPreview}
                         disabled={allTxs.length === 0}
                         className="flex-1 h-12 border-4 border-black rounded-full bg-action-capture text-capture-contrast font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                       >
-                        <Check size={14} strokeWidth={3} /> Import {allTxs.length}
+                        {candidates.length > 0
+                          ? <><Repeat size={14} strokeWidth={3} /> Next · {candidates.length} Recurring</>
+                          : <><Check size={14} strokeWidth={3} /> Import {allTxs.length}</>
+                        }
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {step === 'recurring' && (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-2 bg-action-primary/10 border-2 border-action-primary/30 rounded-2xl px-3 py-2.5">
+                      <Repeat size={14} strokeWidth={2.5} className="text-action-primary shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-main">
+                          {candidates.length} Recurring pattern{candidates.length !== 1 ? 's' : ''} detected
+                        </p>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1 leading-snug">
+                          Selected items get added to your recurring bills / monthly income — separate from the {allTxs.length} transactions also being imported.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {candidates.map(c => {
+                        const checked = selectedRecurring.has(c.key);
+                        return (
+                          <button
+                            key={c.key}
+                            type="button"
+                            onClick={() => setSelectedRecurring(s => {
+                              const next = new Set(s);
+                              if (next.has(c.key)) next.delete(c.key); else next.add(c.key);
+                              return next;
+                            })}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 border-4 rounded-2xl transition-all text-left ${
+                              checked
+                                ? 'border-action-capture bg-action-capture/10'
+                                : 'border-border bg-input hover:border-black'
+                            }`}
+                          >
+                            <div className={`w-5 h-5 rounded-md border-[3px] border-black shrink-0 flex items-center justify-center ${checked ? 'bg-action-capture' : 'bg-surface'}`}>
+                              {checked && <Check size={11} strokeWidth={3} className="text-capture-contrast" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-black uppercase tracking-tight text-text-main truncate">
+                                {c.merchant}
+                              </p>
+                              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-0.5">
+                                {c.kind === 'expense'
+                                  ? <>Bill · day {c.dueDay} · seen {c.occurrences}×</>
+                                  : <>Income · seen {c.occurrences}×</>
+                                }
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className={`text-sm font-black italic tabular-nums ${c.kind === 'income' ? 'text-capture-readable' : 'text-text-main'}`}>
+                                {c.kind === 'income' ? '+' : '−'}${c.amount.toFixed(2)}
+                              </p>
+                              {c.kind === 'income' && checked && (
+                                <p className="text-[9px] font-black uppercase tracking-widest text-action-primary flex items-center gap-1 justify-end mt-0.5">
+                                  <TrendingUp size={9} strokeWidth={3} /> Sets Take-Home
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setStep('preview')}
+                        className="flex-1 h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest hover:bg-input transition-all"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={confirmFinalImport}
+                        className="flex-1 h-12 border-4 border-black rounded-full bg-action-capture text-capture-contrast font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Check size={14} strokeWidth={3} /> Confirm Import
                       </button>
                     </div>
                   </div>

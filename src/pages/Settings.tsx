@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Eye, EyeOff, Sun, Moon, SlidersHorizontal, ChevronRight, Lock, LockOpen,
-  Download, Upload, Trash2, Smartphone, RefreshCw, Zap, Trophy, Shield, Medal,
-  User, Check, ChevronDown, FileText, FileSpreadsheet, FileDown,
+  Trash2, Smartphone, RefreshCw, Zap, Trophy, Shield, Medal,
+  User, Check, ChevronDown, FileDown, FileUp, Fingerprint,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
@@ -11,8 +11,15 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import { supabase } from '../core/supabase';
 import { calculateTrueSafeSpend } from '../core/math';
 import { exportLedgerCSV, exportWorkbookXLSX, exportReportPDF } from '../core/export';
-import { ImportMapperModal } from '../components/ImportMapperModal';
-import { Transaction } from '../types';
+import { ImportMapperModal, ImportPayload } from '../components/ImportMapperModal';
+import { SetPinModal } from '../components/SetPinModal';
+import { BillQueueItem } from '../store/useStore';
+import {
+  isPlatformAuthenticatorAvailable, hasEnrolledCredential,
+  enrollCredential, clearEnrolledCredential,
+} from '../lib/webauthn';
+import { logSecurityEvent } from '../core/telemetry';
+import { clearUserLocalData } from '../lib/userScopedStorage';
 
 const DEFAULT_PRIMARY = '#facc15';
 const DEFAULT_CAPTURE = '#00CC55';
@@ -97,7 +104,54 @@ const WIDGET_META = [
 
 export default function Settings() {
   const state = useStore();
-  const { theme, setTheme, privacyMode, togglePrivacyMode, dashboardWidgets, updateDashboardWidgets, lockEnabled, setState, setThemeColors } = state;
+  const { theme, setTheme, privacyMode, togglePrivacyMode, dashboardWidgets, updateDashboardWidgets, lockEnabled, pinHash, setState, setThemeColors } = state;
+
+  // PIN modal: 'create' the first time a user turns lock ON, 'change' when they
+  // tap the rotate-PIN button later. Closed when null.
+  const [pinModal, setPinModal] = useState<'create' | 'change' | null>(null);
+  const handleLockToggle = () => {
+    if (lockEnabled) {
+      // Turning OFF — wipe the PIN material so re-enabling forces a fresh setup.
+      // Also drop any enrolled biometric credential since it's tied to the lock.
+      if (state.userId) clearEnrolledCredential(state.userId);
+      setState({ lockEnabled: false, pinHash: '', pinSalt: '' });
+    } else {
+      // Turning ON — require a PIN first. The modal sets lockEnabled=true on success.
+      setPinModal('create');
+    }
+  };
+
+  // Biometric enrollment state — async check on mount, refresh after enroll/clear
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [bioEnrolled,  setBioEnrolled]  = useState(false);
+  const [bioBusy,      setBioBusy]      = useState(false);
+  const [bioError,     setBioError]     = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    isPlatformAuthenticatorAvailable().then(v => { if (!cancelled) setBioAvailable(v); });
+    if (state.userId) setBioEnrolled(hasEnrolledCredential(state.userId));
+    return () => { cancelled = true; };
+  }, [state.userId, lockEnabled, pinHash]);
+
+  const toggleBiometrics = async () => {
+    if (!state.userId) return;
+    setBioError('');
+    setBioBusy(true);
+    try {
+      if (bioEnrolled) {
+        clearEnrolledCredential(state.userId);
+        setBioEnrolled(false);
+      } else {
+        await enrollCredential(state.userId, state.firstName || 'Pocket CFO');
+        setBioEnrolled(true);
+        logSecurityEvent({ type: 'webauthn.enrolled' });
+      }
+    } catch (err) {
+      setBioError((err as Error).message || 'Biometric enrollment failed');
+    } finally {
+      setBioBusy(false);
+    }
+  };
   const { isInstallable, isInstalled, install } = usePWAInstall();
 
   const toggleWidget = (id: string) => {
@@ -123,8 +177,37 @@ export default function Settings() {
     debts:          state.debts,
     subscriptions:  state.subscriptions,
   });
-  const handleImport = (txs: Transaction[]) => {
-    state.massImportTransactions(txs);
+  const handleImport = (payload: ImportPayload) => {
+    state.massImportTransactions(payload.transactions);
+
+    // Merge any newly-detected recurring bills into the existing template, deduping
+    // by (lowercase name + amount) so re-importing doesn't double-add the same bills.
+    if (payload.recurringBills.length > 0) {
+      const existing = state.recurringBills || [];
+      const seen = new Set(existing.map(b => `${b.name.toLowerCase()}|${b.amount.toFixed(2)}`));
+      const additions: BillQueueItem[] = [];
+      for (const b of payload.recurringBills) {
+        const key = `${b.name.toLowerCase()}|${b.amount.toFixed(2)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        additions.push({ id: crypto.randomUUID(), name: b.name, amount: b.amount, dueDay: b.dueDay });
+      }
+      if (additions.length > 0) {
+        const next = [...existing, ...additions];
+        const total = next.reduce((s, b) => s + b.amount, 0);
+        // Re-save the current pay cycle with the augmented bill list so the queue + math sync.
+        state.setHorizon(state.liquidAssets, state.nextPayday, total, state.hardDailyCap, next);
+      }
+    }
+
+    // Recurring income → offer to set the user's monthly take-home if they don't have one,
+    // or if the detected amount is meaningfully higher than what's saved.
+    if (payload.recurringIncome > 0) {
+      const current = state.monthlyTakeHome || 0;
+      if (payload.recurringIncome > current) {
+        state.updateBaseline(payload.recurringIncome, state.monthlySavingsGoal || 0);
+      }
+    }
   };
   const [accentOpen, setAccentOpen] = useState(true);
 
@@ -173,12 +256,19 @@ export default function Settings() {
       monthly_savings_goal: 0, next_payday: null, upcoming_bills: 0,
       hard_daily_cap: 0, has_completed_onboarding: false, is_configured: false,
     }).eq('id', userId);
+    // Clear browser-local tool state too (FIRE inputs, recon locks, bill-queue
+    // cache, tour flag) so the wipe is a true reset — not just the cloud rows.
+    clearUserLocalData(userId);
     setState({ ...INITIAL_STATE, userId, dataLoaded: true });
     setWiping(false);
   };
 
   const exportData = () => {
-    const dataStr = JSON.stringify(state, null, 2);
+    // Strip security material — the PIN hash + salt are device-local secrets
+    // and have no business sitting in a backup file the user might share.
+    const { pinHash: _ph, pinSalt: _ps, ...safeState } = state as any;
+    void _ph; void _ps;
+    const dataStr = JSON.stringify(safeState, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
     const a = document.createElement('a');
     a.setAttribute('href', dataUri);
@@ -281,18 +371,57 @@ export default function Settings() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-black uppercase tracking-widest text-text-main">Screen Lock</p>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-0.5">
-                PIN lock when app is backgrounded · default PIN: 1234
+                4-digit PIN required when app is backgrounded
               </p>
             </div>
             <button
               type="button"
-              onClick={() => setState({ lockEnabled: !lockEnabled })}
+              onClick={handleLockToggle}
               className={`flex items-center justify-center gap-2 min-w-20 px-4 py-2.5 border-4 border-black rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 shrink-0 ${lockEnabled ? 'bg-black text-action-primary' : 'bg-input text-text-main'}`}
             >
               {lockEnabled ? <Lock size={13} strokeWidth={2.5} /> : <LockOpen size={13} strokeWidth={2.5} />}
               {lockEnabled ? 'On' : 'Off'}
             </button>
           </div>
+
+          {lockEnabled && pinHash && (
+            <button
+              type="button"
+              onClick={() => setPinModal('change')}
+              className="w-full h-10 border-2 border-border rounded-2xl bg-input text-text-muted font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:border-black hover:text-text-main transition-all"
+            >
+              <Lock size={12} strokeWidth={2.5} /> Change PIN
+            </button>
+          )}
+
+          {/* Biometric unlock — gated on having an active PIN-protected session */}
+          {lockEnabled && pinHash && bioAvailable && (
+            <>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black uppercase tracking-widest text-text-main flex items-center gap-1.5">
+                    <Fingerprint size={14} strokeWidth={2.5} /> Biometric Unlock
+                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-0.5">
+                    Touch ID / Face ID instead of typing the PIN
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleBiometrics}
+                  disabled={bioBusy}
+                  className={`flex items-center justify-center gap-2 min-w-20 px-4 py-2.5 border-4 border-black rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 shrink-0 disabled:opacity-40 ${bioEnrolled ? 'bg-action-capture text-capture-contrast' : 'bg-input text-text-main'}`}
+                >
+                  {bioBusy ? '...' : bioEnrolled ? 'On' : 'Off'}
+                </button>
+              </div>
+              {bioError && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-action-bleed">
+                  {bioError}
+                </p>
+              )}
+            </>
+          )}
 
           <div className="h-px bg-border opacity-30" />
 
@@ -378,11 +507,11 @@ export default function Settings() {
             <div className="grid grid-cols-3 gap-2">
               <button type="button" onClick={() => exportLedgerCSV(state.transactions)}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
-                <FileText size={14} /> CSV
+                <FileDown size={14} /> CSV
               </button>
               <button type="button" onClick={() => exportWorkbookXLSX(snapshot())}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
-                <FileSpreadsheet size={14} /> XLSX
+                <FileDown size={14} /> XLSX
               </button>
               <button type="button" onClick={() => exportReportPDF(snapshot())}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
@@ -393,7 +522,7 @@ export default function Settings() {
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60 mt-2">Import</p>
             <button type="button" onClick={() => setImportOpen(true)}
               className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
-              <Upload size={16} /> IMPORT STATEMENT (CSV / XLSX)
+              <FileUp size={16} /> IMPORT STATEMENT (CSV / XLSX)
             </button>
 
             <details className="border-2 border-border rounded-2xl px-3 py-2">
@@ -401,22 +530,22 @@ export default function Settings() {
               <div className="mt-2 space-y-2">
                 <button type="button" onClick={exportData}
                   className="w-full h-9 border-2 border-border rounded-full bg-input text-text-muted font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:text-text-main transition-all">
-                  <Download size={12} /> Export JSON
+                  <FileDown size={12} /> Export JSON
                 </button>
                 <motion.label className="w-full h-9 border-2 border-border rounded-full bg-input text-text-muted font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-pointer hover:text-text-main transition-all">
-                  <Upload size={12} /> Import JSON
+                  <FileUp size={12} /> Import JSON
                   <input type="file" title="Import JSON State" className="hidden" accept=".json" onChange={importData} />
                 </motion.label>
               </div>
             </details>
             {isInstalled ? (
               <div className="w-full h-12 border-4 border-action-capture rounded-full bg-action-capture/10 text-capture-readable font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
-                <Smartphone size={16} /> INSTALLED
+                <Smartphone size={16} /> PWA INSTALLED
               </div>
             ) : (
               <button type="button" onClick={install} disabled={!isInstallable}
                 className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                <Smartphone size={16} /> {isInstallable ? 'INSTALL PWA' : 'INSTALL PWA (USE CHROME)'}
+                <Smartphone size={16} /> {isInstallable ? 'INSTALL PWA' : 'ON iOS: SHARE → ADD TO HOME SCREEN'}
               </button>
             )}
             <button type="button" onClick={() => setState({ isConfigured: false } as any)}
@@ -545,6 +674,7 @@ export default function Settings() {
       </Link>
 
       <ImportMapperModal open={importOpen} onClose={() => setImportOpen(false)} onImport={handleImport} />
+      <SetPinModal open={pinModal !== null} mode={pinModal ?? 'create'} onClose={() => setPinModal(null)} />
     </motion.div>
   );
 }

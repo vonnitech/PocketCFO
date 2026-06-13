@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, User, UserPlus, LogIn, AlertOctagon, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, LogIn, AlertOctagon, CheckCircle, KeyRound, ArrowLeft } from 'lucide-react';
 import { supabase } from '../core/supabase';
 
-type Mode = 'login' | 'signup';
+// Modes:
+//  login   — email + password sign in (+ forgot-password link)
+//  signup  — email + password + first name new account
+//  reset   — user typed their email and asked us to send a recovery link
+//  recover — user clicked the recovery link from the email; set a new password
+type Mode = 'login' | 'signup' | 'reset' | 'recover';
 
-export function AuthGate() {
-  const [mode, setMode]           = useState<Mode>('login');
+interface Props {
+  recoveryMode?: boolean;
+  onRecoveryDone?: () => void;
+}
+
+export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
+  const [mode, setMode]           = useState<Mode>(recoveryMode ? 'recover' : 'login');
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [firstName, setFirstName] = useState('');
@@ -14,28 +24,33 @@ export function AuthGate() {
   const [error, setError]         = useState('');
   const [notice, setNotice]       = useState('');
 
+  // If App flips recoveryMode on after mount (e.g. user opens the email link
+  // while AuthGate is already up), force the recover view.
+  useEffect(() => {
+    if (recoveryMode) { setMode('recover'); setError(''); setNotice(''); }
+  }, [recoveryMode]);
+
   const clearMessages = () => { setError(''); setNotice(''); };
-  const passwordAutoComplete = mode === 'login' ? 'current-password' : 'new-password';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) return;
     setLoading(true);
     clearMessages();
 
     try {
       if (mode === 'login') {
+        if (!email.trim() || !password) return;
         const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (authError) throw authError;
-        // App.tsx onAuthStateChange listener handles routing on success
-      } else {
+
+      } else if (mode === 'signup') {
+        if (!email.trim() || !password) return;
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: { data: { first_name: firstName.trim() } },
         });
         if (authError) throw authError;
-        // Persist first_name to the profile row the trigger just created
         if (data.user && firstName.trim()) {
           await (supabase.from('profiles') as any)
             .update({ first_name: firstName.trim() })
@@ -45,6 +60,30 @@ export function AuthGate() {
         setMode('login');
         setPassword('');
         setFirstName('');
+
+      } else if (mode === 'reset') {
+        if (!email.trim()) return;
+        // The redirect URL must be allow-listed under Supabase Auth → URL Configuration.
+        const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: window.location.origin,
+        });
+        if (authError) throw authError;
+        // Always show the same generic message regardless of whether the email
+        // exists — prevents account enumeration via the reset endpoint.
+        setNotice('If an account exists for that email, a reset link is on its way.');
+        setPassword('');
+
+      } else if (mode === 'recover') {
+        if (!password || password.length < 8) {
+          setError('PASSWORD MUST BE AT LEAST 8 CHARACTERS');
+          return;
+        }
+        const { error: authError } = await supabase.auth.updateUser({ password });
+        if (authError) throw authError;
+        setNotice('Password updated. Welcome back.');
+        setPassword('');
+        // Hand control back to App.tsx — it'll re-evaluate routing and load the app.
+        setTimeout(() => onRecoveryDone?.(), 600);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Authentication failed';
@@ -53,6 +92,22 @@ export function AuthGate() {
       setLoading(false);
     }
   };
+
+  const headline =
+    mode === 'login'   ? 'Sign In'
+    : mode === 'signup' ? 'Create Account'
+    : mode === 'reset'  ? 'Reset Password'
+    :                     'Set New Password';
+
+  const submitLabel =
+    mode === 'login'   ? <><LogIn size={16} strokeWidth={3} /> Sign In</>
+    : mode === 'signup' ? <><UserPlus size={16} strokeWidth={3} /> Create Account</>
+    : mode === 'reset'  ? <><Mail size={16} strokeWidth={3} /> Send Reset Link</>
+    :                     <><KeyRound size={16} strokeWidth={3} /> Update Password</>;
+
+  const showEmail    = mode === 'login' || mode === 'signup' || mode === 'reset';
+  const showPassword = mode === 'login' || mode === 'signup' || mode === 'recover';
+  const showName     = mode === 'signup';
 
   return (
     <div className="fixed inset-0 z-9999 bg-base dot-bg flex flex-col items-center justify-center px-4 font-mono">
@@ -79,11 +134,23 @@ export function AuthGate() {
           className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4"
         >
           <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-none">
-            {mode === 'login' ? 'Sign In' : 'Create Account'}
+            {headline}
           </h1>
 
+          {mode === 'reset' && (
+            <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-snug">
+              Enter the email you signed up with. We'll send a link to set a new password.
+            </p>
+          )}
+
+          {mode === 'recover' && (
+            <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-snug">
+              Pick a new password. You'll be signed in afterward.
+            </p>
+          )}
+
           {/* First Name — signup only */}
-          {mode === 'signup' && (
+          {showName && (
             <div className="relative">
               <User
                 size={14}
@@ -102,41 +169,71 @@ export function AuthGate() {
           )}
 
           {/* Email */}
-          <div className="relative">
-            <Mail
-              size={14}
-              strokeWidth={2.5}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-            />
-            <input
-              type="email"
-              autoComplete="email"
-              placeholder="EMAIL ADDRESS"
-              required
-              value={email}
-              onChange={e => { setEmail(e.target.value); clearMessages(); }}
-              className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
-            />
-          </div>
+          {showEmail && (
+            <div className="relative">
+              <Mail
+                size={14}
+                strokeWidth={2.5}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+              />
+              <input
+                type="email"
+                autoComplete="email"
+                placeholder="EMAIL ADDRESS"
+                required
+                value={email}
+                onChange={e => { setEmail(e.target.value); clearMessages(); }}
+                className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+              />
+            </div>
+          )}
 
           {/* Password */}
-          <div className="relative">
-            <Lock
-              size={14}
-              strokeWidth={2.5}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-            />
-            <input
-              type="password"
-              autoComplete={passwordAutoComplete}
-              placeholder="PASSWORD"
-              required
-              minLength={8}
-              value={password}
-              onChange={e => { setPassword(e.target.value); clearMessages(); }}
-              className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
-            />
-          </div>
+          {showPassword && (
+            <div className="relative">
+              <Lock
+                size={14}
+                strokeWidth={2.5}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+              />
+              {mode === 'login' ? (
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="PASSWORD"
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); clearMessages(); }}
+                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+                />
+              ) : (
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={mode === 'recover' ? 'NEW PASSWORD' : 'PASSWORD'}
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); clearMessages(); }}
+                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Forgot password link — only in login mode */}
+          {mode === 'login' && (
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={() => { setMode('reset'); setPassword(''); clearMessages(); }}
+                className="text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           {/* Error / notice */}
           <AnimatePresence mode="wait">
@@ -173,23 +270,43 @@ export function AuthGate() {
             whileTap={{ scale: 0.97 }}
             className="w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2.5 shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-brutal-sm"
           >
-            {loading
-              ? <span className="animate-pulse">Signing in...</span>
-              : mode === 'login'
-                ? <><LogIn size={16} strokeWidth={3} /> Sign In</>
-                : <><UserPlus size={16} strokeWidth={3} /> Create Account</>
-            }
+            {loading ? <span className="animate-pulse">Working...</span> : submitLabel}
           </motion.button>
 
           {/* Mode toggle */}
           <div className="flex items-center justify-center pt-1 border-t-2 border-border/30">
-            <button
-              type="button"
-              onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setFirstName(''); clearMessages(); }}
-              className="text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
-            >
-              {mode === 'login' ? '→ Create new account' : '← Back to sign in'}
-            </button>
+            {mode === 'login' && (
+              <button
+                type="button"
+                onClick={() => { setMode('signup'); setFirstName(''); clearMessages(); }}
+                className="text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+              >
+                → Create new account
+              </button>
+            )}
+            {mode === 'signup' && (
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setFirstName(''); clearMessages(); }}
+                className="text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+              >
+                ← Back to sign in
+              </button>
+            )}
+            {mode === 'reset' && (
+              <button
+                type="button"
+                onClick={() => { setMode('login'); clearMessages(); }}
+                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+              >
+                <ArrowLeft size={11} strokeWidth={3} /> Back to sign in
+              </button>
+            )}
+            {mode === 'recover' && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted/60">
+                Choose a strong, new password
+              </span>
+            )}
           </div>
         </form>
 

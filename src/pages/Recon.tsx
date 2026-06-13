@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap, AlertCircle, Lock } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { useStore, Impulse } from '../store/useStore';
+import { userKey } from '../lib/userScopedStorage';
 import { BottomSheet } from '../components/BottomSheet';
 import {
   calculateTrueSafeSpend,
@@ -18,23 +19,23 @@ import {
 
 type Step = 'RAW_SPEND' | 'HABIT_CHECK' | 'SELECT_HABIT' | 'SUMMARY';
 
-const TIER_LOCK_KEY = 'pocket-cfo-tier-lock-v1';
-const BREAK_COUNT_KEY = 'pocket-cfo-tier-breaks-v1';
+const TIER_LOCK_BASE = 'pocket-cfo-tier-lock-v1';
+const BREAK_COUNT_BASE = 'pocket-cfo-tier-breaks-v1';
 
 interface TierLock { tierId: SpendTierId; lockedUntil: string; }
 
 function getBreakCount(): number {
-  try { return parseInt(localStorage.getItem(BREAK_COUNT_KEY) ?? '0', 10) || 0; }
+  try { return parseInt(localStorage.getItem(userKey(BREAK_COUNT_BASE)) ?? '0', 10) || 0; }
   catch { return 0; }
 }
 
 function getTierLock(): TierLock | null {
   try {
-    const raw = localStorage.getItem(TIER_LOCK_KEY);
+    const raw = localStorage.getItem(userKey(TIER_LOCK_BASE));
     if (!raw) return null;
     const lock: TierLock = JSON.parse(raw);
     if (new Date(lock.lockedUntil) < new Date()) {
-      localStorage.removeItem(TIER_LOCK_KEY);
+      localStorage.removeItem(userKey(TIER_LOCK_BASE));
       return null;
     }
     return lock;
@@ -66,15 +67,15 @@ export default function Recon() {
   const lockTier = (days: number) => {
     const lockedUntil = new Date(Date.now() + days * 86400000).toISOString();
     const lock: TierLock = { tierId: selectedTierId, lockedUntil };
-    localStorage.setItem(TIER_LOCK_KEY, JSON.stringify(lock));
+    localStorage.setItem(userKey(TIER_LOCK_BASE), JSON.stringify(lock));
     setTierLock(lock);
   };
 
   const confirmUnlock = () => {
     const next = getBreakCount() + 1;
-    localStorage.setItem(BREAK_COUNT_KEY, String(next));
+    localStorage.setItem(userKey(BREAK_COUNT_BASE), String(next));
     setBreakCount(next);
-    localStorage.removeItem(TIER_LOCK_KEY);
+    localStorage.removeItem(userKey(TIER_LOCK_BASE));
     setTierLock(null);
     setShowConfession(false);
   };

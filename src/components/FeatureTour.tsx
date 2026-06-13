@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Wallet, Zap, ShieldCheck, Scissors, List, TrendingUp, X, ChevronRight } from 'lucide-react';
+import { userKey } from '../lib/userScopedStorage';
 
 const STEPS = [
   {
@@ -41,13 +42,13 @@ const STEPS = [
   },
 ] as const;
 
-const TOUR_KEY = 'pocket-cfo-tour-v1';
+const TOUR_BASE = 'pocket-cfo-tour-v1';
 
 export function useFeatureTour() {
-  const [visible, setVisible] = useState(() => !localStorage.getItem(TOUR_KEY));
+  const [visible, setVisible] = useState(() => !localStorage.getItem(userKey(TOUR_BASE)));
 
   const dismiss = () => {
-    localStorage.setItem(TOUR_KEY, '1');
+    localStorage.setItem(userKey(TOUR_BASE), '1');
     setVisible(false);
   };
 

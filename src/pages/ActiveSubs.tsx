@@ -4,12 +4,11 @@ import { Skull, X, ShieldCheck, Plus } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { useStore } from '../store/useStore';
 import { Subscription } from '../store/useStore';
-import { calculateNewBaselineBills, calculateNewWealthTarget } from '../core/math';
 import { executeSubCancel } from '../db';
 
 export default function ActiveSubs() {
   const storeState = useStore();
-  const { setState, privacyMode, updateState } = storeState;
+  const { privacyMode, addSubscription, setSubscriptionUsage, cancelSubscription } = storeState;
   const state = storeState;
 
   const totalBleed = useMemo(() => state.subscriptions.reduce((acc, sub) => acc + sub.amount, 0), [state.subscriptions]);
@@ -20,7 +19,7 @@ export default function ActiveSubs() {
   const [newSubAmount, setNewSubAmount] = useState('');
 
   const setUsage = (id: string, usage: 'Active' | 'Low Use' | 'Idle') => {
-    setState({ subscriptions: state.subscriptions.map(s => s.id === id ? { ...s, usage } : s) });
+    setSubscriptionUsage(id, usage);
   };
 
   const executeCancelSub = async () => {
@@ -29,30 +28,14 @@ export default function ActiveSubs() {
     try {
       await executeSubCancel({ id: sub.id, name: sub.name, monthlyCost: sub.amount, status: 'ACTIVE', dateAdded: Date.now(), dateKilled: null });
     } catch (e) { console.error('Failed to log to IDB', e); }
-    updateState(prev => {
-      const newExp = (prev.stats?.experience || 0) + 50;
-      return {
-        ...prev,
-        subscriptions: prev.subscriptions.filter(s => s.id !== sub.id),
-        fixedBills: calculateNewBaselineBills(prev.fixedBills, sub.amount),
-        monthlySavingsGoal: calculateNewWealthTarget(prev.monthlySavingsGoal, sub.amount),
-        stats: { ...prev.stats, experience: newExp, level: Math.floor(newExp / 1000) + 1, subscriptionsCancelled: (prev.stats?.subscriptionsCancelled || 0) + 1, lifetimeCapture: (prev.stats?.lifetimeCapture || 0) + sub.amount }
-      };
-    });
+    await cancelSubscription(sub.id);
     setSubToCancel(null);
   };
 
   const submitNewSub = () => {
     const amt = parseFloat(newSubAmount);
     if (!newSubName.trim() || !amt || amt <= 0) return;
-    const newSub: Subscription = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newSubName.trim(),
-      amount: amt,
-      usage: 'Active',
-      billingCycle: 'Monthly',
-    };
-    updateState(prev => ({ ...prev, subscriptions: [...prev.subscriptions, newSub], fixedBills: prev.fixedBills + amt }));
+    addSubscription(newSubName.trim(), amt);
     setIsAddingSub(false);
     setNewSubName('');
     setNewSubAmount('');

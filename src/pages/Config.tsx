@@ -175,7 +175,15 @@ export default function Config() {
               )}
             </div>
             <div className="space-y-2">
-              {configBills.map(bill => (
+              {/* Sort by due day ascending so the user sees the calendar flow naturally.
+                  Bills without a due day fall to the bottom — they're still editable. */}
+              {[...configBills].sort((a, b) => {
+                const da = parseInt(a.dueDay, 10);
+                const db = parseInt(b.dueDay, 10);
+                const va = isNaN(da) ? 999 : da;
+                const vb = isNaN(db) ? 999 : db;
+                return va - vb;
+              }).map(bill => (
                 <div key={bill.id} className="flex items-center gap-2 bg-input border-4 border-black rounded-2xl px-3 py-2">
                   <input
                     type="text"

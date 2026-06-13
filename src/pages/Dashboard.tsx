@@ -63,7 +63,7 @@ export default function Dashboard() {
   const recentTxs = useMemo(() =>
     transactions
       .filter(tx => !ACTIVITY_HIDDEN.has(tx.category))
-      .slice(0, 6),
+      .slice(0, 3),
     [transactions]
   );
 
@@ -97,7 +97,7 @@ export default function Dashboard() {
     return { last7Days: days, streak: s };
   }, [transactions, reconHistory]);
 
-  const { monthlySpend, monthlyIncome, monthlyBudget, monthlyPct, daysLeft, projectedSpend } = useMemo(() => {
+  const { monthlySpend, monthlyIncome, monthlyBudget, monthlyPct } = useMemo(() => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthTxs = transactions.filter(tx => new Date(tx.date) >= monthStart);
@@ -134,7 +134,7 @@ export default function Dashboard() {
       }));
   }, [transactions]);
 
-  const { targetRate, actualRate, actualSaved } = useMemo(() => {
+  const { actualRate } = useMemo(() => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const saved = transactions
@@ -508,168 +508,47 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Net Cash Flow */}
-      {!isFirstTime && monthlyIncome > 0 && (() => {
-        const netFlow = monthlyIncome - monthlySpend;
-        const isPositive = netFlow >= 0;
+      {/* Month at a Glance — net flow, budget pace, savings rate compressed into one strip */}
+      {!isFirstTime && (monthlyIncome > 0 || monthlyBudget > 0 || monthlyTakeHome > 0) && (() => {
+        const netFlow      = monthlyIncome - monthlySpend;
+        const netPositive  = netFlow >= 0;
+        const showNetFlow  = monthlyIncome > 0;
+        const showBudget   = monthlyBudget > 0;
+        const showSavings  = monthlyTakeHome > 0;
+        const netClass     = netPositive ? 'text-text-main' : 'text-action-bleed';
+        const budgetClass  = monthlyPct >= 90 ? 'text-action-bleed' : monthlyPct >= 70 ? 'text-action-primary' : 'text-text-main';
+        const savingsClass = actualRate  >= 20 ? 'text-text-main'    : actualRate  >= 10 ? 'text-action-primary' : 'text-action-bleed';
         return (
-          <div className={`border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] ${isPositive ? 'bg-surface' : 'bg-action-bleed/5'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Net Cash Flow</p>
-              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border-2 ${isPositive ? `bg-action-capture border-action-capture ${captureTxt}` : 'bg-action-bleed border-action-bleed text-white'}`}>
-                {isPositive ? 'Surplus' : 'Deficit'}
-              </span>
-            </div>
-            <p className={`text-4xl font-black italic tracking-tighter tabular-nums break-all min-w-0 ${isPositive ? 'text-text-main' : 'text-action-bleed'}`}>
-              {isPositive ? '+' : '-'}{format(Math.abs(netFlow))}
-            </p>
-            <div className="flex gap-5 mt-3 pt-3 border-t-2 border-border/30">
-              <div className="flex items-center gap-1.5">
-                <ArrowDownLeft size={13} strokeWidth={2.5} className="text-capture-readable shrink-0" />
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{format(monthlyIncome)} in</span>
+          <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-4 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+            <div className="grid grid-cols-3 gap-4">
+
+              {/* Net Flow */}
+              <div className={`${showBudget || showSavings ? 'border-r-2 border-black dark:border-white pr-4' : ''}`}>
+                <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Net Flow</p>
+                <p className={`text-xl font-black tabular-nums mt-1 truncate ${netClass}`}>
+                  {showNetFlow ? `${netPositive ? '+' : '−'}${format(Math.abs(netFlow))}` : '—'}
+                </p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <ArrowUpRight size={13} strokeWidth={2.5} className="text-action-bleed shrink-0" />
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{format(monthlySpend)} out</span>
+
+              {/* Budget Spent */}
+              <div className={`${showSavings ? 'border-r-2 border-black dark:border-white pr-4' : ''}`}>
+                <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Budget Spent</p>
+                <p className={`text-xl font-black tabular-nums mt-1 ${budgetClass}`}>
+                  {showBudget ? `${monthlyPct.toFixed(0)}%` : '—'}
+                </p>
+              </div>
+
+              {/* Savings Rate */}
+              <div>
+                <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Savings Rate</p>
+                <p className={`text-xl font-black tabular-nums mt-1 ${savingsClass}`}>
+                  {showSavings ? `${actualRate.toFixed(1)}%` : '—'}
+                </p>
               </div>
             </div>
           </div>
         );
       })()}
-
-      {/* Monthly Budget Progress */}
-      {!isFirstTime && monthlyBudget > 0 && (
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Monthly Budget</p>
-            <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-black uppercase tracking-widest ${monthlyPct >= 90 ? 'text-action-bleed' : monthlyPct >= 70 ? 'text-action-primary' : 'text-capture-readable'}`}>
-                {monthlyPct.toFixed(0)}%
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{daysLeft}d left</span>
-            </div>
-          </div>
-          <div className="h-3 bg-input border-2 border-border rounded-full overflow-hidden mb-2">
-            <motion.div
-              className={`h-full rounded-full ${monthlyPct >= 90 ? 'bg-action-bleed' : monthlyPct >= 70 ? 'bg-action-primary' : 'bg-action-capture'}`}
-              initial={{ width: 0 }}
-              animate={{ width: `${monthlyPct}%` }}
-              transition={{ type: 'spring', stiffness: 200, damping: 30 }}
-            />
-          </div>
-          <div className="flex justify-between text-[10px] font-bold uppercase tracking-wide text-text-muted">
-            <span>{format(monthlySpend)} spent</span>
-            <span>{format(monthlyBudget)} budget</span>
-          </div>
-          {projectedSpend > 0 && (
-            <div className="flex justify-between text-[10px] mt-2 pt-2 border-t-2 border-border/30">
-              <span className="font-bold uppercase tracking-wide text-text-muted">Month-end pace</span>
-              <span className={`font-black uppercase tracking-widest ${projectedSpend > monthlyBudget ? 'text-action-bleed' : 'text-capture-readable'}`}>
-                ~{format(projectedSpend)} {projectedSpend > monthlyBudget ? '· over' : '· on track'}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Savings Rate */}
-      {!isFirstTime && monthlyTakeHome > 0 && (
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Savings Rate</p>
-            <div className={`px-2.5 py-1 rounded-full border-2 border-black text-[11px] font-black uppercase tracking-widest ${
-              actualRate >= 20 ? 'bg-action-capture text-capture-contrast' :
-              actualRate >= 10 ? 'bg-action-primary text-black' :
-              'bg-action-bleed text-white'
-            }`}>
-              {actualRate >= 20 ? 'On Track' : actualRate >= 10 ? 'Getting There' : 'Build It Up'}
-            </div>
-          </div>
-          <div className="flex items-end gap-5 mb-4">
-            <div>
-              <span className="text-4xl font-black italic tracking-tighter text-text-main tabular-nums">
-                {actualRate.toFixed(1)}%
-              </span>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1">
-                {format(actualSaved)} saved this month
-              </p>
-            </div>
-            <div className="mb-1 text-right flex-1">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Target</span>
-              <p className="text-lg font-black italic tracking-tighter text-text-muted">{targetRate.toFixed(1)}%</p>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <div className="h-3 bg-input border-2 border-border rounded-full overflow-hidden">
-              <motion.div
-                className={`h-full rounded-full ${
-                  actualRate >= 20 ? 'bg-action-capture' :
-                  actualRate >= 10 ? 'bg-action-primary' :
-                  'bg-action-bleed'
-                }`}
-                initial={{ width: 0 }}
-                animate={{ width: `${actualRate}%` }}
-                transition={{ type: 'spring', stiffness: 200, damping: 30 }}
-              />
-            </div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              Aim for 20%+ · target line shows your goal
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 7-Day Trend + Streak */}
-      {widgetVisible('momentum') && !isFirstTime && (
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">7-Day Trend</p>
-            {streak > 0 && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-action-primary border-2 border-black rounded-full">
-                <span className="text-[11px] font-black uppercase tracking-widest text-black">{streak}d streak</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-end gap-1.5 h-16">
-            {last7Days.map(day => {
-              const ratio = safeSpendLimit > 0 ? day.spend / safeSpendLimit : 0;
-              const barH = Math.max(4, Math.min(100, ratio * 100));
-              const barColor = day.spend === 0
-                ? 'bg-border'
-                : ratio <= 1 ? 'bg-action-capture' : ratio <= 1.3 ? 'bg-action-primary' : 'bg-action-bleed';
-              return (
-                <div key={day.key} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full flex items-end h-13">
-                    <motion.div
-                      className={`w-full rounded-t ${barColor} ${day.isToday ? 'ring-2 ring-black ring-offset-1' : ''}`}
-                      initial={{ height: 0 }}
-                      animate={{ height: `${barH}%` }}
-                      transition={{ type: 'spring', stiffness: 200, damping: 28 }}
-                    />
-                  </div>
-                  <span className={`text-[11px] font-bold uppercase ${day.isToday ? 'text-text-main font-black' : 'text-text-muted'}`}>
-                    {day.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-4 mt-3 pt-3 border-t-2 border-border/30">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-action-capture" />
-              <span className="text-[11px] font-bold uppercase text-text-muted">Under</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-action-primary" />
-              <span className="text-[11px] font-bold uppercase text-text-muted">Near</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-action-bleed" />
-              <span className="text-[11px] font-bold uppercase text-text-muted">Over</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* First-time welcome */}
       {isFirstTime && (

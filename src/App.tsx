@@ -6,6 +6,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { useStore, INITIAL_STATE } from './store/useStore';
 import { initDB } from './db';
 import { supabase, isSupabaseConfigured } from './core/supabase';
+import { setTelemetryUser } from './core/telemetry';
+import { useIdleLock } from './hooks/useIdleLock';
 import { AuthGate } from './components/AuthGate';
 import { ScreenLock } from './components/ScreenLock';
 import { FeatureTour, useFeatureTour } from './components/FeatureTour';
@@ -127,6 +129,10 @@ function App() {
 
   const [session, setSession]           = useState<Session | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
+  // Set by Supabase when the user clicks a password-reset email link — even
+  // though a (temporary) session is established, we should NOT show the main
+  // app until they've actually set a new password.
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
     initDB();
@@ -142,6 +148,9 @@ function App() {
     document.addEventListener('visibilitychange', onHide);
     return () => document.removeEventListener('visibilitychange', onHide);
   }, []);
+
+  // Lock after 5 minutes of pointer/keyboard inactivity (complements the visibility check above)
+  useIdleLock();
 
   // Payday lifecycle: run on mount and each time app comes to foreground
   useEffect(() => {
@@ -170,6 +179,7 @@ function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      setTelemetryUser(s?.user?.id ?? null);
       if (!s) setSessionLoaded(true);
       // Only wipe on an explicit sign-out — not on INITIAL_SESSION or TOKEN_REFRESHED
       // events that may fire with null before Supabase loads the stored session.
@@ -177,6 +187,13 @@ function App() {
       // hiding the LOG SPEND button on every page load.
       if (event === 'SIGNED_OUT') {
         useStore.getState().setState({ ...INITIAL_STATE });
+        setRecoveryMode(false);
+      }
+      // PASSWORD_RECOVERY fires when Supabase processes the recovery link's
+      // hash from the URL. We pin the UI to the "set new password" view until
+      // the user actually finishes the update.
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
       }
     });
 
@@ -286,11 +303,13 @@ function App() {
   // Waiting for initial session check
   if (!sessionLoaded) return <SyncFallback />;
 
-  // No authenticated session → show login/signup gate
-  if (!session) {
+  // No authenticated session OR mid-recovery → show login/signup gate.
+  // In recovery mode AuthGate locks into "set new password" until the
+  // updateUser call completes and we toggle recoveryMode back to false.
+  if (!session || recoveryMode) {
     return (
       <ErrorBoundary>
-        <AuthGate />
+        <AuthGate recoveryMode={recoveryMode} onRecoveryDone={() => setRecoveryMode(false)} />
       </ErrorBoundary>
     );
   }

@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, X, Upload } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
+import { Search, X, Upload, Trash2, AlertCircle } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { CSVImport } from '../components/CSVImport';
+import type { Transaction } from '../types';
 
 const CATEGORY_META: Record<string, { label: string; bg: string; text: string }> = {
   VAULT_DEPOSIT:    { label: 'Vaulted',    bg: 'bg-action-capture',       text: 'text-capture-contrast' },
@@ -20,6 +21,11 @@ const CATEGORY_META: Record<string, { label: string; bg: string; text: string }>
 };
 
 const INCOME_CATEGORIES = new Set(['INCOME', 'VAULT_WITHDRAWAL']);
+
+const EDITABLE_CATEGORIES = [
+  'FOOD', 'TRANSPORT', 'FUN', 'SHOPPING', 'HEALTH', 'HOME', 'WORK', 'OTHER',
+  'INCOME', 'SAVINGS', 'BILL_PAYMENT', 'DEBT_PAYMENT',
+];
 
 const FILTER_TABS = [
   { id: 'ALL',              label: 'All' },
@@ -52,11 +58,23 @@ export default function Transactions() {
   const privacyMode           = useStore(s => s.privacyMode);
   const allTransactionsLoaded = useStore(s => s.allTransactionsLoaded);
   const fetchMoreTransactions = useStore(s => s.fetchMoreTransactions);
+  const deleteTransaction     = useStore(s => s.deleteTransaction);
+  const updateTransaction     = useStore(s => s.updateTransaction);
 
   const [search,        setSearch]        = useState('');
   const [category,      setCategory]      = useState('ALL');
   const [importOpen,    setImportOpen]    = useState(false);
   const [loadingMore,   setLoadingMore]   = useState(false);
+  const [editMode,      setEditMode]      = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
+  const [deleting,      setDeleting]      = useState(false);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try { await deleteTransaction(pendingDelete.id); }
+    finally { setDeleting(false); setPendingDelete(null); }
+  };
 
   // Infinite scroll — when the sentinel enters the viewport, fetch the next page.
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -101,14 +119,27 @@ export default function Transactions() {
             {transactions.length} transactions on record
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setImportOpen(true)}
-          className="shrink-0 flex items-center gap-2 h-10 px-4 bg-surface border-2 border-border rounded-2xl font-black text-[10px] uppercase tracking-widest text-text-muted hover:border-black hover:text-text-main transition-all shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
-        >
-          <Upload size={13} strokeWidth={2.5} />
-          Import
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setEditMode(e => !e)}
+            className={`flex items-center gap-1.5 h-10 px-3 border-2 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+              editMode
+                ? 'bg-black text-action-primary border-black'
+                : 'bg-surface text-text-muted border-border hover:border-black hover:text-text-main'
+            }`}
+          >
+            {editMode ? <><X size={13} strokeWidth={3} /> Done</> : <><Trash2 size={13} strokeWidth={2.5} /> Edit</>}
+          </button>
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-2 h-10 px-4 bg-surface border-2 border-border rounded-2xl font-black text-[10px] uppercase tracking-widest text-text-muted hover:border-black hover:text-text-main transition-all shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+          >
+            <Upload size={13} strokeWidth={2.5} />
+            Import
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -128,6 +159,8 @@ export default function Transactions() {
         {search && (
           <button
             type="button"
+            title="Clear search"
+            aria-label="Clear search"
             onClick={() => setSearch('')}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main transition-colors"
           >
@@ -189,10 +222,23 @@ export default function Transactions() {
                   key={tx.id}
                   className={`flex items-center gap-3 px-4 py-3.5 ${i < txs.length - 1 ? 'border-b-2 border-border' : ''}`}
                 >
-                  {/* Category chip */}
-                  <span className={`shrink-0 inline-flex items-center h-6 px-2.5 rounded-full ${m.bg} ${m.text} text-[9px] font-black uppercase tracking-widest`}>
-                    {m.label}
-                  </span>
+                  {/* Category chip — editable in edit mode */}
+                  {editMode ? (
+                    <select
+                      title="Change category"
+                      value={tx.category}
+                      onChange={e => updateTransaction(tx.id, { category: e.target.value })}
+                      className="shrink-0 h-6 px-1.5 rounded-full bg-input border-2 border-black text-[9px] font-black uppercase tracking-widest text-text-main outline-none cursor-pointer"
+                    >
+                      {EDITABLE_CATEGORIES.map(c => (
+                        <option key={c} value={c}>{CATEGORY_META[c]?.label ?? c}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className={`shrink-0 inline-flex items-center h-6 px-2.5 rounded-full ${m.bg} ${m.text} text-[9px] font-black uppercase tracking-widest`}>
+                      {m.label}
+                    </span>
+                  )}
 
                   {/* Merchant */}
                   <p className="flex-1 min-w-0 text-[11px] font-black uppercase tracking-wide text-text-main truncate">
@@ -203,6 +249,19 @@ export default function Transactions() {
                   <p className={`shrink-0 text-sm font-black tabular-nums ${credit ? 'text-action-primary' : 'text-text-main'}`}>
                     {credit ? '+' : '-'}{formatCurrency(tx.amount, privacyMode)}
                   </p>
+
+                  {/* Delete — only in edit mode */}
+                  {editMode && (
+                    <button
+                      type="button"
+                      title="Delete transaction"
+                      aria-label="Delete transaction"
+                      onClick={() => setPendingDelete(tx)}
+                      className="shrink-0 w-8 h-8 -mr-1 flex items-center justify-center text-action-bleed border-2 border-action-bleed/40 hover:bg-action-bleed hover:text-white hover:border-action-bleed rounded-lg transition-colors"
+                    >
+                      <Trash2 size={13} strokeWidth={2.5} />
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -222,6 +281,78 @@ export default function Transactions() {
           End of history
         </p>
       )}
+
+      {/* Delete confirmation */}
+      <AnimatePresence>
+        {pendingDelete && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              onClick={() => !deleting && setPendingDelete(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+            >
+              <div className="bg-surface border-4 border-black rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-sm w-full pointer-events-auto overflow-hidden">
+                <div className="px-5 py-4 border-b-4 border-black bg-action-bleed/10 flex items-center gap-2">
+                  <AlertCircle size={16} strokeWidth={2.5} className="text-action-bleed shrink-0" />
+                  <p className="text-[11px] font-black uppercase tracking-widest text-action-bleed">Delete Transaction</p>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  <div className="bg-input border-2 border-border rounded-2xl px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                      {new Date(pendingDelete.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      <span className="mx-1.5">·</span>{pendingDelete.category}
+                    </p>
+                    <p className="text-sm font-black uppercase tracking-wide text-text-main mt-1 truncate">
+                      {pendingDelete.merchant}
+                    </p>
+                    <p className="text-lg font-black italic tabular-nums text-text-main mt-1">
+                      {(pendingDelete.category === 'INCOME' || pendingDelete.category === 'VAULT_WITHDRAWAL') ? '+' : '-'}{formatCurrency(pendingDelete.amount, false)}
+                    </p>
+                  </div>
+
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-relaxed space-y-1.5">
+                    <p>
+                      Removing this record will <span className="text-text-main">{(pendingDelete.category === 'INCOME' || pendingDelete.category === 'VAULT_WITHDRAWAL') ? 'subtract' : 'add back'} {formatCurrency(pendingDelete.amount, false)}</span> {(pendingDelete.category === 'INCOME' || pendingDelete.category === 'VAULT_WITHDRAWAL') ? 'from' : 'to'} your cash balance.
+                    </p>
+                    {(pendingDelete.category === 'VAULT_DEPOSIT' || pendingDelete.category === 'DEBT_PAYMENT' || pendingDelete.category === 'BILL_PAYMENT') && (
+                      <p className="text-action-bleed">
+                        Vault, debt, and bill-queue balances are <span className="underline">not</span> auto-reversed — fix them manually if needed.
+                      </p>
+                    )}
+                    <p>This action cannot be undone.</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPendingDelete(null)}
+                      disabled={deleting}
+                      className="flex-1 h-11 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-[11px] tracking-widest hover:bg-input transition-all disabled:opacity-40"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmDelete}
+                      disabled={deleting}
+                      className="flex-1 h-11 border-4 border-action-bleed rounded-full bg-action-bleed text-white font-black uppercase text-[11px] tracking-widest hover:bg-action-bleed/90 transition-all disabled:opacity-40 flex items-center justify-center gap-1.5"
+                    >
+                      <Trash2 size={12} strokeWidth={3} /> {deleting ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

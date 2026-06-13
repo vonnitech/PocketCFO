@@ -1,9 +1,10 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, Target, ShieldAlert, ShieldCheck, ArrowUpRight, Search, X, TrendingUp, TrendingDown, Upload, Grid3x3 } from 'lucide-react';
+import { Activity, Target, ShieldCheck, ArrowUpRight, TrendingUp, TrendingDown, Upload, Grid3x3 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { Transaction } from '../types';
 import { CSVImport } from '../components/CSVImport';
+import { WealthVsLifestyleChart } from '../components/WealthVsLifestyleChart';
 
 type Period = 'week' | 'month' | 'all';
 
@@ -26,28 +27,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   BILL_PAYMENT: 'Bill',
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  FOOD:      'bg-input text-text-muted border-border',
-  TRANSPORT: 'bg-input text-text-muted border-border',
-  FUN:       'bg-input text-text-muted border-border',
-  SHOPPING:  'bg-input text-text-muted border-border',
-  HEALTH:    'bg-input text-text-muted border-border',
-  HOME:      'bg-input text-text-muted border-border',
-  WORK:      'bg-input text-text-muted border-border',
-  SOCIAL:    'bg-input text-text-muted border-border',
-  PENALTY:   'bg-action-bleed/20 text-action-bleed border-action-bleed/40',
-  VAULT_DEPOSIT: 'bg-action-capture/20 text-capture-readable border-action-capture/40',
-  DEBT_PAYMENT:  'bg-action-primary/20 text-black border-action-primary/40',
-  INCOME:    'bg-action-capture/20 text-capture-readable border-action-capture/40',
-  SAVINGS:   'bg-action-capture/20 text-capture-readable border-action-capture/40',
-};
-
-function catBadge(category: string) {
-  const label = CATEGORY_LABELS[category] ?? category;
-  const color = CATEGORY_COLORS[category] ?? 'bg-input text-text-muted border-border';
-  return { label, color };
-}
-
 // ── Pivot Table ──────────────────────────────────────────────────────────────
 
 type PivotInterval = 'month' | 'week';
@@ -56,6 +35,8 @@ type PivotInterval = 'month' | 'week';
 const PIVOT_EXCLUDED = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 // Categories that count as income in the NET TOTAL row
 const PIVOT_INCOME_CATS = new Set(['INCOME']);
+// Pre-committed obligations — shown below a divider, excluded from NET TOTAL
+const PIVOT_ALLOCATED_CATS = new Set(['BILL_PAYMENT', 'DEBT_PAYMENT']);
 
 const NUM_INTERVALS = 6;
 
@@ -79,11 +60,21 @@ function weekLabel(key: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+interface PivotRow {
+  category: string;
+  label: string;
+  isIncome: boolean;
+  isAllocated: boolean;
+  values: number[];
+  total: number;
+  average: number;
+}
 interface PivotMatrix {
-  intervals: string[];          // column keys, oldest → newest
-  intervalLabels: string[];     // human-friendly labels
-  rows: { category: string; label: string; isIncome: boolean; values: number[]; total: number; average: number }[];
-  netRow: { values: number[]; total: number; average: number };
+  intervals: string[];
+  intervalLabels: string[];
+  rows: PivotRow[];
+  netRow: { values: number[]; total: number; average: number };          // income − discretionary
+  allocatedRow: { values: number[]; total: number; average: number };   // bill + debt subtotal
 }
 
 function buildPivot(transactions: Transaction[], interval: PivotInterval): PivotMatrix {
@@ -113,26 +104,31 @@ function buildPivot(transactions: Transaction[], interval: PivotInterval): Pivot
 
   // 3. Build row objects
   const categories = Object.keys(cellMap).sort((a, b) => {
-    // INCOME first, then alphabetical by label
+    // INCOME first, then allocated last, then alphabetical by label
     if (PIVOT_INCOME_CATS.has(a) && !PIVOT_INCOME_CATS.has(b)) return -1;
     if (PIVOT_INCOME_CATS.has(b) && !PIVOT_INCOME_CATS.has(a)) return 1;
+    if (PIVOT_ALLOCATED_CATS.has(a) && !PIVOT_ALLOCATED_CATS.has(b)) return 1;
+    if (PIVOT_ALLOCATED_CATS.has(b) && !PIVOT_ALLOCATED_CATS.has(a)) return -1;
     return (CATEGORY_LABELS[a] ?? a).localeCompare(CATEGORY_LABELS[b] ?? b);
   });
 
-  const rows = categories.map(cat => {
+  const rows: PivotRow[] = categories.map(cat => {
     const values = intervals.map(k => cellMap[cat]?.[k] ?? 0);
     const total = values.reduce((s, v) => s + v, 0);
     return {
       category: cat,
       label: CATEGORY_LABELS[cat] ?? cat,
       isIncome: PIVOT_INCOME_CATS.has(cat),
+      isAllocated: PIVOT_ALLOCATED_CATS.has(cat),
       values,
       total,
       average: total / NUM_INTERVALS,
     };
   });
 
-  // 4. Net row: income - spend per interval
+  // 4. Net row: true cash flow = income − everything (discretionary + committed
+  // obligations). Bills are real money out, so they count toward the net even
+  // though they're also listed separately under "Committed Capital" below.
   const netValues = intervals.map((_, i) => {
     let income = 0, spend = 0;
     for (const r of rows) {
@@ -143,11 +139,18 @@ function buildPivot(transactions: Transaction[], interval: PivotInterval): Pivot
   });
   const netTotal = netValues.reduce((s, v) => s + v, 0);
 
+  // 5. Allocated subtotal row (bill + debt)
+  const allocatedValues = intervals.map((_, i) =>
+    rows.filter(r => r.isAllocated).reduce((s, r) => s + r.values[i], 0)
+  );
+  const allocatedTotal = allocatedValues.reduce((s, v) => s + v, 0);
+
   return {
     intervals,
     intervalLabels: intervals.map(labelFn),
     rows,
-    netRow: { values: netValues, total: netTotal, average: netTotal / NUM_INTERVALS },
+    netRow:       { values: netValues,       total: netTotal,       average: netTotal / NUM_INTERVALS },
+    allocatedRow: { values: allocatedValues, total: allocatedTotal, average: allocatedTotal / NUM_INTERVALS },
   };
 }
 
@@ -234,7 +237,8 @@ const PivotTable: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {matrix.rows.map((row, rowIdx) => {
+            {/* ── Discretionary rows (income + variable spend) ── */}
+            {matrix.rows.filter(r => !r.isAllocated).map((row, rowIdx) => {
               const rowTone = row.isIncome ? 'text-capture-readable' : 'text-text-main';
               return (
                 <tr key={row.category} className={rowIdx % 2 === 0 ? 'bg-surface' : 'bg-input/30'}>
@@ -258,8 +262,10 @@ const PivotTable: React.FC = () => {
                 </tr>
               );
             })}
-            <tr className="bg-black">
-              <td className="sticky left-0 z-10 bg-black border-r-2 border-border px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-action-primary">
+
+            {/* ── NET TOTAL (income − discretionary only) ── */}
+            <tr className="bg-action-primary/10 border-t-2 border-b-2 border-border">
+              <td className="sticky left-0 z-10 bg-action-primary/10 border-r-2 border-border px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-action-primary">
                 Net Total
               </td>
               {matrix.netRow.values.map((v, i) => (
@@ -289,6 +295,56 @@ const PivotTable: React.FC = () => {
                 }
               </td>
             </tr>
+
+            {/* ── Allocated obligations divider + rows ── */}
+            {matrix.rows.some(r => r.isAllocated) && (<>
+              <tr>
+                <td
+                  colSpan={matrix.intervals.length + 3}
+                  className="px-4 py-1.5 bg-input border-y border-border/60"
+                >
+                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-text-muted/50">
+                    Committed Capital
+                  </span>
+                </td>
+              </tr>
+              {matrix.rows.filter(r => r.isAllocated).map((row, rowIdx) => (
+                <tr key={row.category} className={rowIdx % 2 === 0 ? 'bg-input/20' : 'bg-input/40'}>
+                  <td className={`sticky left-0 z-10 ${rowIdx % 2 === 0 ? 'bg-input/20' : 'bg-input/40'} border-b border-r-2 border-border/30 px-4 py-2.5 text-left text-[11px] font-black uppercase tracking-wide text-text-muted`}>
+                    {row.label}
+                  </td>
+                  {row.values.map((v, i) => (
+                    <td key={i} className="border-b border-border/20 px-4 py-2.5 text-right text-[11px] font-bold text-text-muted">
+                      {v === 0 ? <span className="text-text-muted/20">—</span> : formatCell(v)}
+                    </td>
+                  ))}
+                  <td className="border-b border-l-2 border-border/30 px-4 py-2.5 text-right text-[11px] font-black text-text-muted">
+                    {row.total === 0 ? <span className="text-text-muted/20">—</span> : formatCell(row.total)}
+                  </td>
+                  <td className="border-b border-border/20 px-4 py-2.5 text-right text-[11px] font-bold text-text-muted">
+                    {row.average === 0 ? <span className="text-text-muted/20">—</span> : formatCell(row.average)}
+                  </td>
+                </tr>
+              ))}
+              {matrix.allocatedRow.total > 0 && (
+                <tr className="bg-input/50 border-t border-border/40">
+                  <td className="sticky left-0 z-10 bg-input/50 border-r-2 border-border/30 px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-widest text-text-muted/70">
+                    Total Committed
+                  </td>
+                  {matrix.allocatedRow.values.map((v, i) => (
+                    <td key={i} className="px-4 py-2.5 text-right text-[11px] font-black text-text-muted/70 tabular-nums">
+                      {v === 0 ? <span className="text-text-muted/20">—</span> : formatCell(v)}
+                    </td>
+                  ))}
+                  <td className="border-l-2 border-border/30 px-4 py-2.5 text-right text-[11px] font-black text-text-muted/70 tabular-nums">
+                    {formatCell(matrix.allocatedRow.total)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-[11px] font-bold text-text-muted/70 tabular-nums">
+                    {formatCell(matrix.allocatedRow.average)}
+                  </td>
+                </tr>
+              )}
+            </>)}
           </tbody>
         </table>
       </div>
@@ -301,15 +357,11 @@ export const Audit: React.FC = () => {
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const [shouldLoadChart, setShouldLoadChart] = useState(false);
   const [period, setPeriod] = useState<Period>('month');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [csvOpen, setCsvOpen] = useState(false);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
     setShouldLoadChart(false);
-    setCategoryFilter(null);
-    setSearchQuery('');
   };
 
   const filteredTransactions = useMemo(() => {
@@ -318,15 +370,17 @@ export const Audit: React.FC = () => {
     return transactions.filter(tx => new Date(tx.date) >= start);
   }, [transactions, period]);
 
-  const { totalOutflow, wealthCaptured, totalAllocated, chartData, rankedCategories, allocatedItems } = useMemo(() => {
+  const { totalOutflow, wealthCaptured, totalAllocated, chartData, allocatedItems, totalCommitted, committedItems } = useMemo(() => {
     let total = 0;
-    // Allocated = pre-reserved money (vault funding, debt principal, recurring bills).
+    // Captured wealth = savings plus money moved into vaults / investments.
+    const CAPTURED_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT']);
+    // Allocated = pre-reserved obligations (debt principal, recurring bills).
     // These get their own panel and stay out of the discretionary spend pie chart.
-    const ALLOCATED_CATEGORIES = new Set(['VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT']);
+    const ALLOCATED_CATEGORIES = new Set(['DEBT_PAYMENT', 'BILL_PAYMENT']);
     const INTERNAL_CATEGORIES  = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
     const grouped = filteredTransactions
-      .filter(tx => tx.category !== 'SAVINGS' && !ALLOCATED_CATEGORIES.has(tx.category) && tx.category !== 'INCOME' && !INTERNAL_CATEGORIES.has(tx.category))
+      .filter(tx => !CAPTURED_CATEGORIES.has(tx.category) && !ALLOCATED_CATEGORIES.has(tx.category) && tx.category !== 'INCOME' && !INTERNAL_CATEGORIES.has(tx.category))
       .reduce((acc, tx) => {
         const key = CATEGORY_LABELS[tx.category] ?? tx.category;
         if (!acc[key]) acc[key] = { name: key, base: 0, impulse: 0 };
@@ -346,17 +400,15 @@ export const Audit: React.FC = () => {
     }).filter(i => i.total > 0);
 
     const captured = filteredTransactions
-      .filter(tx => tx.category === 'SAVINGS')
+      .filter(tx => CAPTURED_CATEGORIES.has(tx.category))
       .reduce((acc, tx) => acc + tx.amount, 0);
 
+    // Capital Allocated = deliberate net-worth moves (debt principal payoff).
+    // Bills are NOT allocated capital — they're fixed obligations, tracked separately.
     const allocatedGrouped = filteredTransactions
-      .filter(tx => ALLOCATED_CATEGORIES.has(tx.category))
+      .filter(tx => tx.category === 'DEBT_PAYMENT')
       .reduce((acc, tx) => {
-        const key = tx.category === 'VAULT_DEPOSIT'
-          ? 'Vault Deposits'
-          : tx.category === 'BILL_PAYMENT'
-          ? 'Bill Payments'
-          : 'Debt Payments';
+        const key = 'Debt Payments';
         if (!acc[key]) acc[key] = { name: key, total: 0 };
         acc[key].total += tx.amount;
         return acc;
@@ -365,23 +417,28 @@ export const Audit: React.FC = () => {
     const allocated = Object.values(allocatedGrouped);
     const totalAlloc = allocated.reduce((acc, a) => acc + a.total, 0);
 
+    // Committed = recurring fixed obligations (bills) you're required to pay.
+    const committedGrouped = filteredTransactions
+      .filter(tx => tx.category === 'BILL_PAYMENT')
+      .reduce((acc, tx) => {
+        const key = 'Bill Payments';
+        if (!acc[key]) acc[key] = { name: key, total: 0 };
+        acc[key].total += tx.amount;
+        return acc;
+      }, {} as Record<string, { name: string; total: number }>);
+
+    const committed = Object.values(committedGrouped);
+    const totalCommit = committed.reduce((acc, c) => acc + c.total, 0);
+
     return {
       totalOutflow: total,
       wealthCaptured: captured,
       totalAllocated: totalAlloc,
       chartData: formatted,
-      rankedCategories: formatted.sort((a, b) => b.total - a.total),
       allocatedItems: allocated,
+      totalCommitted: totalCommit,
+      committedItems: committed,
     };
-  }, [filteredTransactions]);
-
-  // Unique categories present in the current period for filter pills
-  const availableCategories = useMemo(() => {
-    const cats = new Set<string>();
-    filteredTransactions.forEach(tx => {
-      if (tx.category !== 'INCOME') cats.add(tx.category);
-    });
-    return Array.from(cats).sort();
   }, [filteredTransactions]);
 
   // Month-over-month spending comparison (always calendar-based, ignores period filter)
@@ -422,18 +479,6 @@ export const Audit: React.FC = () => {
     return { thisMonth: thisMonth.total, lastMonth: lastMonth.total, delta, pct, categories };
   }, [transactions]);
 
-  // Individual transaction list filtered by search + category
-  const displayTransactions = useMemo(() => {
-    return filteredTransactions
-      .filter(tx => {
-        const q = searchQuery.trim().toLowerCase();
-        const matchesSearch = q === '' || tx.merchant.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q);
-        const matchesCategory = categoryFilter === null || tx.category === categoryFilter;
-        return matchesSearch && matchesCategory;
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [filteredTransactions, searchQuery, categoryFilter]);
-
   useEffect(() => {
     if (shouldLoadChart || chartData.length === 0) return;
     const container = chartContainerRef.current;
@@ -453,8 +498,6 @@ export const Audit: React.FC = () => {
     observer.observe(container);
     return () => observer.disconnect();
   }, [chartData.length, shouldLoadChart]);
-
-  const hasActiveFilter = searchQuery.trim() !== '' || categoryFilter !== null;
 
   return (
     <div className="space-y-6">
@@ -505,12 +548,15 @@ export const Audit: React.FC = () => {
             <ShieldCheck size={11} /> WEALTH CAPTURED
           </div>
           <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-capture-readable tabular-nums">+${wealthCaptured.toFixed(2)}</p>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Captured penalties and savings transfers</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Savings captures and vault investments</p>
         </div>
       </div>
 
       {/* Pivot Analytics */}
       <PivotTable />
+
+      {/* Wealth vs Lifestyle — this month's split between future-building and discretionary spend */}
+      <WealthVsLifestyleChart />
 
       {/* Month vs Last Month */}
       {(spendingComparison.thisMonth > 0 || spendingComparison.lastMonth > 0) && (
@@ -627,7 +673,7 @@ export const Audit: React.FC = () => {
         </div>
       )}
 
-      {/* Capital Allocated */}
+      {/* Capital Allocated — deliberate net-worth moves (debt payoff) */}
       {allocatedItems.length > 0 && (
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase mb-3">
@@ -636,7 +682,7 @@ export const Audit: React.FC = () => {
           <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-text-main tabular-nums mb-1">
             ${totalAllocated.toFixed(2)}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-4">Deliberately moved · vaults and debt payments</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-4">Deliberately moved · debt principal payoff</p>
           <div className="space-y-2">
             {allocatedItems.map(item => (
               <div key={item.name} className="flex justify-between items-center bg-input border-2 border-border rounded-2xl px-4 py-3">
@@ -648,163 +694,23 @@ export const Audit: React.FC = () => {
         </div>
       )}
 
-      {/* Breakdown */}
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3">Expense Analysis</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {rankedCategories.map(category => (
-          <div
-            key={category.name}
-            className={`bg-surface border-4 rounded-2xl p-4 flex justify-between items-center shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)] ${
-              category.impulse > category.base ? 'border-action-bleed' : 'border-border'
-            }`}
-          >
-            <div className="min-w-0 flex-1">
-              <p className="font-black text-sm uppercase tracking-tighter text-text-main flex items-center gap-2 truncate">
-                <span className="truncate">{category.name}</span>
-                {category.impulse > category.base && <ShieldAlert size={14} className="text-action-bleed shrink-0" />}
-              </p>
-              {category.impulse > 0 && (
-                <div className="flex gap-3 mt-1 text-[10px] font-bold uppercase text-text-muted flex-wrap">
-                  <span>Base: ${category.base.toFixed(2)}</span>
-                  <span className="text-action-bleed font-black">Taxed: ${category.impulse.toFixed(2)}</span>
-                </div>
-              )}
-            </div>
-            <span className={`font-black text-lg sm:text-xl italic shrink-0 ml-2 tabular-nums ${category.impulse > category.base ? 'text-action-bleed' : 'text-text-main'}`}>
-              ${category.total.toFixed(2)}
-            </span>
+      {/* Committed — recurring fixed obligations (bills) */}
+      {committedItems.length > 0 && (
+        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-action-bleed rounded-full text-action-bleed text-[10px] font-black tracking-widest uppercase mb-3">
+            <ShieldCheck size={11} /> COMMITTED
           </div>
-        ))}
-
-        {rankedCategories.length === 0 && (
-          <div className="text-center py-16 bg-surface border-4 border-dashed border-border rounded-3xl md:col-span-2">
-            <Activity size={48} className="mx-auto mb-4 text-text-muted opacity-30" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No transactions logged yet.</p>
-          </div>
-        )}
-        </div>
-      </div>
-
-      {/* Transaction Search + Filter */}
-      {filteredTransactions.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Transaction Log</p>
-
-          {/* Search input */}
-          <div className="relative">
-            <Search size={16} strokeWidth={2.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <input
-              type="search"
-              inputMode="search"
-              placeholder="Search merchant or category..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full h-14 bg-input border-4 border-black rounded-2xl pl-12 pr-4 font-black text-sm text-text-main placeholder:text-text-muted focus:bg-surface focus:border-action-capture outline-none transition-colors mb-4 tabular-nums"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                title="Clear search"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-[calc(50%-0.5rem)] -translate-y-1/2 text-text-muted hover:text-text-main"
-              >
-                <X size={15} strokeWidth={2.5} />
-              </button>
-            )}
-          </div>
-
-          {/* Category filter pills */}
-          <div className="flex gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setCategoryFilter(null)}
-              className={`px-3 py-1.5 rounded-full border-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                categoryFilter === null
-                  ? 'bg-black border-black text-white'
-                  : 'bg-input border-border text-text-muted hover:border-black hover:text-text-main'
-              }`}
-            >
-              All
-            </button>
-            {availableCategories.map(cat => {
-              const { label } = catBadge(cat);
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
-                  className={`px-3 py-1.5 rounded-full border-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                    categoryFilter === cat
-                      ? 'bg-black border-black text-white'
-                      : 'bg-input border-border text-text-muted hover:border-black hover:text-text-main'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Results count */}
-          {hasActiveFilter && (
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
-                {displayTransactions.length} result{displayTransactions.length !== 1 ? 's' : ''}
-              </p>
-              <button
-                type="button"
-                onClick={() => { setSearchQuery(''); setCategoryFilter(null); }}
-                className="text-[10px] font-black uppercase tracking-widest text-action-bleed hover:underline"
-              >
-                Clear filters
-              </button>
-            </div>
-          )}
-
-          {/* Transaction rows */}
+          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-text-main tabular-nums mb-1">
+            ${totalCommitted.toFixed(2)}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-4">Fixed obligations · bills you're required to pay</p>
           <div className="space-y-2">
-            {displayTransactions.map(tx => {
-              const { label, color } = catBadge(tx.category);
-              const date = new Date(tx.date);
-              const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-              const isIncome = tx.category === 'INCOME';
-              return (
-                <div
-                  key={tx.id}
-                  className="bg-surface border-2 border-border rounded-2xl px-4 py-3 flex items-center gap-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-sm text-text-main truncate">{tx.merchant}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-[10px] font-bold text-text-muted">{dateStr}</span>
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${color}`}>
-                        {label}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={`font-black text-sm tabular-nums ${isIncome ? 'text-capture-readable' : 'text-text-main'}`}>
-                      {isIncome ? '+' : '-'}${tx.amount.toFixed(2)}
-                    </p>
-                    {tx.flipAmount > 0 && (
-                      <p className="text-[10px] font-bold text-action-bleed tabular-nums">+${tx.flipAmount.toFixed(2)} tax</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {displayTransactions.length === 0 && hasActiveFilter && (
-              <div className="text-center py-12 bg-surface border-2 border-dashed border-border rounded-3xl px-6">
-                <Search size={36} className="mx-auto mb-3 text-text-muted opacity-30" />
-                <p className="text-[11px] font-black uppercase tracking-widest text-text-muted">
-                  {searchQuery.trim()
-                    ? `No matches for "${searchQuery.trim()}"`
-                    : 'No transactions match your filter.'}
-                </p>
+            {committedItems.map(item => (
+              <div key={item.name} className="flex justify-between items-center bg-input border-2 border-border rounded-2xl px-4 py-3">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{item.name}</span>
+                <span className="font-black italic text-text-main tabular-nums">${item.total.toFixed(2)}</span>
               </div>
-            )}
+            ))}
           </div>
         </div>
       )}
