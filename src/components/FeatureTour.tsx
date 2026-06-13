@@ -20,13 +20,13 @@ const STEPS = [
     icon: ShieldCheck,
     color: 'bg-action-capture',
     title: 'Impulse Tax',
-    body: 'When logging a purchase, toggle "Impulse Buy" to apply a tax rate. The penalty amount is automatically swept into your first savings vault · punishing bad habits and rewarding good ones.',
+    body: 'When logging a purchase, toggle "Impulse Buy" to add a self-imposed tax on top. The penalty is earmarked into your first vault here in your ledger · a nudge to actually move that cash and make bad habits cost you.',
   },
   {
     icon: TrendingUp,
     color: 'bg-action-primary',
     title: 'Savings Vaults',
-    body: 'Create vaults for specific goals · emergency fund, holiday, new phone. Impulse taxes and surplus sweeps automatically route money into them without you lifting a finger.',
+    body: 'Create vaults for specific goals · emergency fund, holiday, new phone. Impulse taxes and surplus sweeps get earmarked into them in your ledger so you can watch goals fill up · then move the real money in your bank to match.',
   },
   {
     icon: Scissors,

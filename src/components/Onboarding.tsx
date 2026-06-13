@@ -10,7 +10,12 @@ export function OnboardingModal() {
   const setState               = useStore(s => s.setState);
   const setHorizon             = useStore(s => s.setHorizon);
 
-  const [firstName, setFirstName] = useState('');
+  // Name is usually captured at signup and loaded into the store. Only ask for it
+  // here if it's genuinely missing (e.g. OAuth signups), so we never ask twice.
+  const existingFirstName = useStore(s => s.firstName);
+  const askName = !existingFirstName?.trim();
+
+  const [firstName, setFirstName] = useState(() => existingFirstName || '');
   const [balance,   setBalance]   = useState('');
   const [takeHome,  setTakeHome]  = useState('');
   const [payDay,    setPayDay]    = useState('');
@@ -93,25 +98,27 @@ export function OnboardingModal() {
             </p>
           </div>
 
-          {/* First Name */}
-          <div className="overflow-hidden">
-            <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-1.5">
-              Your First Name
-            </label>
-            <div className="relative">
-              <User size={14} strokeWidth={2.5}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-              <input
-                type="text"
-                autoComplete="given-name"
-                placeholder="e.g. Alex"
-                autoFocus
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                className={inputClass}
-              />
+          {/* First Name — only shown if not already captured at signup */}
+          {askName && (
+            <div className="overflow-hidden">
+              <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-1.5">
+                Your First Name
+              </label>
+              <div className="relative">
+                <User size={14} strokeWidth={2.5}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                <input
+                  type="text"
+                  autoComplete="given-name"
+                  placeholder="e.g. Alex"
+                  autoFocus
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Current Bank Balance */}
           <div className="overflow-hidden">
@@ -127,6 +134,7 @@ export function OnboardingModal() {
                 step="0.01"
                 placeholder="0.00"
                 required
+                autoFocus={!askName}
                 value={balance}
                 onChange={e => setBalance(e.target.value)}
                 onFocus={e => e.target.select()}
