@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'icon-192x192.png', 'icon-512x512.png'],
+      includeAssets: ['icon.svg', 'icon-mark.svg', 'favicon.svg', 'favicon-32x32.png', 'icon-192x192.png', 'icon-512x512.png'],
       manifest: {
         name: 'Pocket CFO',
         short_name: 'Pocket CFO',

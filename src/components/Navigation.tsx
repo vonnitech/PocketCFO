@@ -4,6 +4,7 @@ import { Terminal, ShieldCheck, PieChart, Zap, Compass, Settings, Search, Users,
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../core/supabase';
+import { BrandLogo } from './BrandLogo';
 
 const coreTools = [
   { path: '/',              icon: Terminal,    label: 'Dashboard',    shortLabel: 'Home' },
@@ -116,31 +117,8 @@ export default function Navigation() {
       <nav className="hidden md:flex flex-col h-screen bg-surface border-r-4 border-border px-4 py-5 transition-colors duration-300">
 
         {/* Brand */}
-        <div className="flex items-center justify-between mb-7 px-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-action-primary border-2 border-black rounded-lg flex items-center justify-center shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-              <span className="text-black text-sm font-black leading-none">$</span>
-            </div>
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-text-main">Pocket CFO</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              title={privacyMode ? 'Disable privacy mode' : 'Enable privacy mode'}
-              onClick={() => togglePrivacyMode()}
-              className={`w-8 h-8 border-2 rounded-lg flex items-center justify-center transition-all ${privacyMode ? 'bg-action-bleed border-action-bleed text-white' : 'border-border bg-input hover:bg-surface'}`}
-            >
-              {privacyMode ? <EyeOff size={13} strokeWidth={2.5} /> : <Eye size={13} strokeWidth={2.5} />}
-            </button>
-            <button
-              type="button"
-              title="Toggle theme"
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              className="w-8 h-8 border-2 border-border rounded-lg bg-input flex items-center justify-center hover:bg-surface transition-all"
-            >
-              {theme === 'light' ? <Moon size={13} strokeWidth={2.5} /> : <Sun size={13} strokeWidth={2.5} />}
-            </button>
-          </div>
+        <div className="mb-7 px-1">
+          <BrandLogo />
         </div>
 
         <div className="flex flex-col flex-1 overflow-y-auto no-scrollbar gap-5">
@@ -160,6 +138,27 @@ export default function Navigation() {
 
           {/* Settings + Sign out */}
           <div className="mt-auto pt-4 border-t-2 border-border/30 space-y-1">
+            {/* Quick toggles — privacy + theme */}
+            <div className="flex gap-1.5 mb-1.5">
+              <button
+                type="button"
+                title={privacyMode ? 'Disable privacy mode' : 'Enable privacy mode'}
+                onClick={() => togglePrivacyMode()}
+                className={`flex-1 h-9 flex items-center justify-center gap-1.5 border-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${privacyMode ? 'bg-action-bleed border-action-bleed text-white' : 'border-border bg-input text-text-muted hover:text-text-main hover:border-black'}`}
+              >
+                {privacyMode ? <EyeOff size={13} strokeWidth={2.5} /> : <Eye size={13} strokeWidth={2.5} />}
+                <span>{privacyMode ? 'Hidden' : 'Privacy'}</span>
+              </button>
+              <button
+                type="button"
+                title="Toggle theme"
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                className="flex-1 h-9 flex items-center justify-center gap-1.5 border-2 border-border bg-input rounded-xl text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main hover:border-black transition-all"
+              >
+                {theme === 'light' ? <Moon size={13} strokeWidth={2.5} /> : <Sun size={13} strokeWidth={2.5} />}
+                <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
+              </button>
+            </div>
             <NavItem path="/settings" icon={Settings} label="Settings" />
             <button
               type="button"

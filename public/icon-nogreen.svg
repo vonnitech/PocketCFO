@@ -4,5 +4,5 @@
   <circle cx="256" cy="256" r="130" fill="#000"/>
   <rect x="206" y="192" width="40" height="132" rx="10" fill="#facc15"/>
   <circle cx="264" cy="230" r="50" fill="#facc15"/>
-  <circle cx="276" cy="230" r="22" fill="#00CC55"/>
+  <circle cx="276" cy="230" r="22" fill="#000"/>
 </svg>

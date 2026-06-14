@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+  <defs>
+    <mask id="counter">
+      <rect width="512" height="512" fill="#fff"/>
+      <circle cx="284" cy="218" r="40" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#counter)">
+    <rect x="170" y="150" width="74" height="224" rx="12"/>
+    <circle cx="266" cy="218" r="92"/>
+  </g>
+</svg>
