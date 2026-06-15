@@ -4,6 +4,7 @@ import { Flame, Target, TrendingUp, RotateCcw, ShieldCheck, Zap, Link as LinkIco
 import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { userKey } from '../../lib/userScopedStorage';
+import { currencySymbol } from '../../lib/currency';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const R = 0.07 / 12;
@@ -61,13 +62,14 @@ function neededMonthly(assets: number, target: number, months: number): number {
 }
 
 function fmt(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n.toFixed(0)}`;
+  const s = currencySymbol();
+  if (n >= 1_000_000) return `${s}${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${s}${(n / 1_000).toFixed(0)}K`;
+  return `${s}${n.toFixed(0)}`;
 }
 
 function fmtFull(n: number): string {
-  return '$' + Math.round(n).toLocaleString();
+  return currencySymbol() + Math.round(n).toLocaleString();
 }
 
 // Calculates the next stepping-stone milestone above the current balance.
@@ -657,12 +659,12 @@ export function FireCalculator() {
           )}
         </div>
 
-        <Field label="Annual Expenses in Retirement" prefix="$" value={ae} onChange={setAe} />
+        <Field label="Annual Expenses in Retirement" prefix={currencySymbol()} value={ae} onChange={setAe} />
 
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Existing Investments (Outside App)</p>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none select-none text-lg">$</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none select-none text-lg">{currencySymbol()}</span>
             <input
               type="number"
               title="Existing investments outside the app"
@@ -684,7 +686,7 @@ export function FireCalculator() {
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Monthly Vault Contribution</p>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none select-none text-lg">$</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none select-none text-lg">{currencySymbol()}</span>
             <input
               type="number"
               title="Monthly vault contribution override"
@@ -729,7 +731,7 @@ export function FireCalculator() {
         </div>
 
         {strategy === 'BARISTA' && (
-          <Field label="Expected Part-Time Income (annual)" prefix="$" value={ptIncome} onChange={setPtIncome} />
+          <Field label="Expected Part-Time Income (annual)" prefix={currencySymbol()} value={ptIncome} onChange={setPtIncome} />
         )}
 
         {(strategy === 'FAT' || strategy === 'LEAN' || strategy === 'BARISTA') && calc && (

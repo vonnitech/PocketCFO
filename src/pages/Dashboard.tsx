@@ -4,6 +4,7 @@ import { Wallet, Shield, TrendingUp, X, Zap, Search, ChevronRight, ArrowUpRight,
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
+import { currencySymbol } from '../lib/currency';
 import { toLocalDateKey, calculateDaysUntilPayday } from '../core/math';
 import { OnboardingModal } from '../components/Onboarding';
 import { BottomSheet } from '../components/BottomSheet';
@@ -173,6 +174,9 @@ export default function Dashboard() {
 
   const format = (val: number) => formatCurrency(val, false);
   const maskBal = (val: number) => privacyMode ? '••••••' : formatCurrency(val, false);
+  // Whole-dollar (no cents) for tight summary stat cells — keeps the true amount,
+  // just trims the noise so it fits on mobile instead of truncating.
+  const fmtWhole = (val: number) => `${currencySymbol()}${Math.round(Math.abs(val)).toLocaleString()}`;
 
   return (
     <>
@@ -305,7 +309,7 @@ export default function Dashboard() {
         {hardCapSweep > 0 && (
           <div className="mt-3 px-3 py-2 bg-black border-2 border-black rounded-xl">
             <p className="font-mono text-[10px] font-black tracking-widest text-emerald-500">
-              [SURPLUS INTERCEPTED: +${hardCapSweep.toFixed(2)} TO VAULT]
+              [SURPLUS INTERCEPTED: +{format(hardCapSweep)} TO VAULT]
             </p>
           </div>
         )}
@@ -520,28 +524,28 @@ export default function Dashboard() {
         const savingsClass = actualRate  >= 20 ? 'text-text-main'    : actualRate  >= 10 ? 'text-action-primary' : 'text-action-bleed';
         return (
           <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-4 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-3">
 
               {/* Net Flow */}
-              <div className={`${showBudget || showSavings ? 'border-r-2 border-black dark:border-white pr-4' : ''}`}>
-                <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Net Flow</p>
-                <p className={`text-xl font-black tabular-nums mt-1 truncate ${netClass}`}>
-                  {showNetFlow ? `${netPositive ? '+' : '−'}${format(Math.abs(netFlow))}` : '—'}
+              <div className={`min-w-0 ${showBudget || showSavings ? 'border-r-2 border-black dark:border-white pr-3' : ''}`}>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide leading-tight min-h-[2.2em]">Net Flow</p>
+                <p className={`text-sm sm:text-xl font-black tabular-nums mt-0.5 truncate ${netClass}`}>
+                  {showNetFlow ? `${netPositive ? '+' : '−'}${fmtWhole(netFlow)}` : '—'}
                 </p>
               </div>
 
               {/* Budget Spent */}
-              <div className={`${showSavings ? 'border-r-2 border-black dark:border-white pr-4' : ''}`}>
-                <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Budget Spent</p>
-                <p className={`text-xl font-black tabular-nums mt-1 ${budgetClass}`}>
+              <div className={`min-w-0 ${showSavings ? 'border-r-2 border-black dark:border-white pr-3' : ''}`}>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide leading-tight min-h-[2.2em]">Budget Spent</p>
+                <p className={`text-sm sm:text-xl font-black tabular-nums mt-0.5 truncate ${budgetClass}`}>
                   {showBudget ? `${monthlyPct.toFixed(0)}%` : '—'}
                 </p>
               </div>
 
               {/* Savings Rate */}
-              <div>
-                <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Savings Rate</p>
-                <p className={`text-xl font-black tabular-nums mt-1 ${savingsClass}`}>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide leading-tight min-h-[2.2em]">Savings Rate</p>
+                <p className={`text-sm sm:text-xl font-black tabular-nums mt-0.5 truncate ${savingsClass}`}>
                   {showSavings ? `${actualRate.toFixed(1)}%` : '—'}
                 </p>
               </div>
@@ -737,7 +741,7 @@ export default function Dashboard() {
 
               <div className="relative mb-3">
                 <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                  <span className="text-2xl font-black text-text-muted">$</span>
+                  <span className="text-2xl font-black text-text-muted">{currencySymbol()}</span>
                 </div>
                 <input
                   type="number"

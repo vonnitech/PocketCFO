@@ -56,7 +56,7 @@ function NavItem({ path, icon: Icon, label, accent }: {
   );
 }
 
-function SheetLink({ path, icon: Icon, label, accent, onClick }: {
+function SheetLink({ path, icon: Icon, label, onClick }: {
   path: string; icon: React.ElementType; label: string; accent?: boolean; onClick: () => void;
 }) {
   return (

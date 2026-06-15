@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore';
 import { Transaction } from '../types';
 import { CSVImport } from '../components/CSVImport';
 import { WealthVsLifestyleChart } from '../components/WealthVsLifestyleChart';
+import { currencyDef, getActiveCurrency } from '../lib/currency';
 
 type Period = 'week' | 'month' | 'all';
 
@@ -154,15 +155,15 @@ function buildPivot(transactions: Transaction[], interval: PivotInterval): Pivot
   };
 }
 
-// Always show full currency with two decimals so the pivot reconciles exactly.
+// Full currency in the user's chosen currency so the pivot reconciles exactly.
 // `tabular-nums` on cells keeps digits column-aligned.
 function formatCell(n: number): string {
-  return n.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const def = currencyDef(getActiveCurrency());
+  try {
+    return n.toLocaleString(def.locale, { style: 'currency', currency: def.code });
+  } catch {
+    return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  }
 }
 
 const PivotTable: React.FC = () => {
@@ -540,14 +541,14 @@ export const Audit: React.FC = () => {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-bleed border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase mb-3">
             <Activity size={11} /> TOTAL OUTFLOW
           </div>
-          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-action-bleed tabular-nums">-${totalOutflow.toFixed(2)}</p>
+          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-action-bleed tabular-nums">-{formatCell(totalOutflow)}</p>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Pure spend + penalties</p>
         </div>
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase mb-3">
             <ShieldCheck size={11} /> WEALTH CAPTURED
           </div>
-          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-capture-readable tabular-nums">+${wealthCaptured.toFixed(2)}</p>
+          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-capture-readable tabular-nums">+{formatCell(wealthCaptured)}</p>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Savings captures and vault investments</p>
         </div>
       </div>
@@ -569,13 +570,13 @@ export const Audit: React.FC = () => {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1">This Month</p>
               <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">
-                ${spendingComparison.thisMonth.toFixed(2)}
+                {formatCell(spendingComparison.thisMonth)}
               </p>
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1">Last Month</p>
               <p className="text-2xl font-black italic tracking-tighter text-text-muted tabular-nums">
-                ${spendingComparison.lastMonth.toFixed(2)}
+                {formatCell(spendingComparison.lastMonth)}
               </p>
             </div>
           </div>
@@ -590,8 +591,8 @@ export const Audit: React.FC = () => {
               }
               <span className="text-[10px] font-black uppercase tracking-widest">
                 {spendingComparison.delta <= 0
-                  ? `$${Math.abs(spendingComparison.delta).toFixed(2)} under`
-                  : `$${Math.abs(spendingComparison.delta).toFixed(2)} over`
+                  ? `${formatCell(Math.abs(spendingComparison.delta))} under`
+                  : `${formatCell(Math.abs(spendingComparison.delta))} over`
                 }
                 {spendingComparison.pct !== null && ` (${Math.abs(spendingComparison.pct).toFixed(0)}%)`}
               </span>
@@ -609,10 +610,10 @@ export const Audit: React.FC = () => {
                       <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{cat.name}</span>
                       <div className="flex items-center gap-2 text-[10px] font-black tabular-nums">
                         <span className={cat.thisMonth > cat.lastMonth ? 'text-action-bleed' : 'text-text-main'}>
-                          ${cat.thisMonth.toFixed(2)}
+                          {formatCell(cat.thisMonth)}
                         </span>
                         <span className="text-text-muted/40">vs</span>
-                        <span className="text-text-muted">${cat.lastMonth.toFixed(2)}</span>
+                        <span className="text-text-muted">{formatCell(cat.lastMonth)}</span>
                       </div>
                     </div>
                     <div className="h-2 bg-input rounded-full overflow-hidden">
@@ -680,14 +681,14 @@ export const Audit: React.FC = () => {
             <ArrowUpRight size={11} /> CAPITAL ALLOCATED
           </div>
           <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-text-main tabular-nums mb-1">
-            ${totalAllocated.toFixed(2)}
+            {formatCell(totalAllocated)}
           </p>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-4">Deliberately moved · debt principal payoff</p>
           <div className="space-y-2">
             {allocatedItems.map(item => (
               <div key={item.name} className="flex justify-between items-center bg-input border-2 border-border rounded-2xl px-4 py-3">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{item.name}</span>
-                <span className="font-black italic text-text-main tabular-nums">${item.total.toFixed(2)}</span>
+                <span className="font-black italic text-text-main tabular-nums">{formatCell(item.total)}</span>
               </div>
             ))}
           </div>
@@ -701,14 +702,14 @@ export const Audit: React.FC = () => {
             <ShieldCheck size={11} /> COMMITTED
           </div>
           <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-text-main tabular-nums mb-1">
-            ${totalCommitted.toFixed(2)}
+            {formatCell(totalCommitted)}
           </p>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-4">Fixed obligations · bills you're required to pay</p>
           <div className="space-y-2">
             {committedItems.map(item => (
               <div key={item.name} className="flex justify-between items-center bg-input border-2 border-border rounded-2xl px-4 py-3">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{item.name}</span>
-                <span className="font-black italic text-text-main tabular-nums">${item.total.toFixed(2)}</span>
+                <span className="font-black italic text-text-main tabular-nums">{formatCell(item.total)}</span>
               </div>
             ))}
           </div>

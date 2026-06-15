@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Upload, FileSpreadsheet, Check, AlertCircle, Repeat, TrendingUp } from 'lucide-react';
 import { parseImportFile, buildTransactionsFromMapping, detectRecurring, ParsedFile, ImportMapping, RecurringCandidate } from '../core/export';
 import { Transaction } from '../types';
+import { currencySymbol } from '../lib/currency';
 
 export interface ImportPayload {
   transactions:    Transaction[];
@@ -311,7 +312,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                               <td className="px-3 py-2 font-black text-text-main truncate">{t.merchant}</td>
                               <td className="px-3 py-2 text-text-muted">{t.category}</td>
                               <td className={`px-3 py-2 text-right font-black ${t.category === 'INCOME' ? 'text-capture-readable' : 'text-text-main'}`}>
-                                {t.category === 'INCOME' ? '+' : '−'}${t.amount.toFixed(2)}
+                                {t.category === 'INCOME' ? '+' : '−'}{currencySymbol()}{t.amount.toFixed(2)}
                               </td>
                             </tr>
                           ))}
@@ -390,7 +391,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                             </div>
                             <div className="shrink-0 text-right">
                               <p className={`text-sm font-black italic tabular-nums ${c.kind === 'income' ? 'text-capture-readable' : 'text-text-main'}`}>
-                                {c.kind === 'income' ? '+' : '−'}${c.amount.toFixed(2)}
+                                {c.kind === 'income' ? '+' : '−'}{currencySymbol()}{c.amount.toFixed(2)}
                               </p>
                               {c.kind === 'income' && checked && (
                                 <p className="text-[9px] font-black uppercase tracking-widest text-action-primary flex items-center gap-1 justify-end mt-0.5">

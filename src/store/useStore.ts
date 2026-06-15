@@ -8,6 +8,7 @@ import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split
 import { calculateTrueSafeSpend, calculateRawSafeSpend, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
 import { supabase } from '../core/supabase';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
+import { setActiveCurrency } from '../lib/currency';
 import { SpendTierId } from '../core/math';
 
 // Prevents concurrent processPayday calls from double-crediting income when
@@ -76,6 +77,8 @@ export interface BillQueueItem {
   amount: number;
   // Day of month the bill is due (1-31). Optional for back-compat with legacy bills.
   dueDay?: number;
+  // Paused bills stay in the template but don't appear in the queue or reserve cash.
+  paused?: boolean;
 }
 
 export interface IouEntry {
@@ -131,6 +134,7 @@ export interface AppState {
   };
   firstName: string;
   privacyMode: boolean;
+  currency: string;
   theme: 'light' | 'dark';
   squad: SquadMember[];
   splitHistory: SplitTransaction[];
@@ -197,7 +201,8 @@ export const deriveBillQueue = (
   paidBillKeys: string[],
 ): BillQueueItem[] => {
   const paid = new Set(paidBillKeys || []);
-  return (recurringBills || []).filter(b => !paid.has(billKey(b)));
+  // Exclude paused bills (snoozed in settings) and already-paid bills.
+  return (recurringBills || []).filter(b => !b.paused && !paid.has(billKey(b)));
 };
 
 export const INITIAL_STATE: AppState = {
@@ -237,6 +242,7 @@ export const INITIAL_STATE: AppState = {
   rolloverPool: 0,
   firstName: '',
   privacyMode: false,
+  currency: 'USD',
   theme: 'light',
   squad: [
     { id: '1', name: 'Alex', isActive: true },
@@ -280,6 +286,7 @@ interface StoreActions {
   togglePrivacyMode: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setThemeColors: (primary: string, capture: string) => Promise<void>;
+  setCurrency: (code: string) => Promise<void>;
   updateDashboardWidgets: (widgets: { id: string; visible: boolean }[]) => void;
   setState: (state: Partial<AppState>) => void;
   updateState: (fn: (prev: AppState) => AppState) => void;
@@ -470,6 +477,7 @@ export const useStore = create<StoreState>()(
             firstName:             String(profile.first_name ?? ''),
             theme:                 (profile.theme as 'light' | 'dark') ?? 'light',
             privacyMode:           Boolean(profile.privacy_mode),
+            currency:              String(profile.currency ?? 'USD'),
             hasCompletedOnboarding: Boolean(profile.has_completed_onboarding),
             isConfigured:          Boolean(profile.is_configured),
             fireConfig:            profile.fire_config ? (profile.fire_config as AppState['fireConfig']) : null,
@@ -482,6 +490,8 @@ export const useStore = create<StoreState>()(
               },
             } : {}),
           });
+          // Keep the formatter's active currency in sync with the loaded profile.
+          setActiveCurrency(String(profile.currency ?? 'USD'));
         } else {
           merged.userId      = userId;
           merged.dataLoaded  = true;
@@ -582,6 +592,19 @@ export const useStore = create<StoreState>()(
       }).eq('id', userId);
     },
 
+    setCurrency: async (code) => {
+      const { userId } = get() as StoreState;
+      setActiveCurrency(code);
+      set((state: any) => ({ ...state, currency: code }));
+      if (!userId) return;
+      try {
+        const { error } = await (supabase.from('profiles') as any).update({ currency: code }).eq('id', userId);
+        if (error) console.error('[setCurrency] update failed:', error);
+      } catch (err) {
+        console.error('[setCurrency] threw:', err);
+      }
+    },
+
     updateDashboardWidgets: async (widgets) => {
       const { userId } = get() as StoreState;
       set({ dashboardWidgets: widgets } as any);
@@ -623,7 +646,8 @@ export const useStore = create<StoreState>()(
 
       const capToUse      = newHardDailyCap !== undefined ? newHardDailyCap : (hardDailyCap ?? 0);
       const recurringToUse: BillQueueItem[] = newBillQueue !== undefined ? newBillQueue : (recurringBills || []);
-      const billsTotal    = recurringToUse.reduce((s, b) => s + b.amount, 0);
+      // Paused bills are snoozed: they don't count toward fixed bills or reserved cash.
+      const billsTotal    = recurringToUse.filter(b => !b.paused).reduce((s, b) => s + b.amount, 0);
 
       // Normalize to YYYY-MM-DD so a stored timestamp ("2026-06-30T00:00:00Z") and a
       // date-input value ("2026-06-30") don't read as a changed payday.
@@ -1044,13 +1068,12 @@ export const useStore = create<StoreState>()(
       }
     },
 
-    // Removes a transaction record and reverses its impact on liquidAssets so the
-    // running balance stays correct. Vault / debt / bill-queue side-effects are NOT
-    // unwound — those are owned by their own actions and reversing them here would
-    // risk silently corrupting state. The user is expected to clean those up manually
-    // if needed (typically only relevant when undoing a vault/debt/bill payment).
+    // Removes a transaction record and reverses its impact on liquidAssets. Deleting a
+    // BILL_PAYMENT also UN-pays the bill — it returns to the queue and is re-reserved,
+    // so the refunded cash doesn't silently become free spend. Vault/debt side-effects
+    // are still not unwound (owned by their own actions).
     deleteTransaction: async (id) => {
-      const { userId, transactions } = get() as StoreState;
+      const { userId, transactions, recurringBills, paidBillKeys } = get() as StoreState;
       const tx = transactions.find(t => t.id === id);
       if (!tx) return;
 
@@ -1058,18 +1081,33 @@ export const useStore = create<StoreState>()(
       const isIncome = tx.category === 'INCOME' || tx.category === 'VAULT_WITHDRAWAL';
       const liquidDelta = isIncome ? -tx.amount : tx.amount;
 
+      // If it's a bill payment, un-pay that bill (strip its key) so it reappears unpaid.
+      const isBillPayment = tx.category === 'BILL_PAYMENT';
+      const billName = isBillPayment ? tx.merchant.replace(/^BILL:\s*/i, '') : '';
+      const payKey   = isBillPayment ? billKey({ name: billName, amount: tx.amount }) : '';
+      const unpays   = isBillPayment && (paidBillKeys || []).includes(payKey);
+      const nextPaidKeys = unpays ? (paidBillKeys || []).filter(k => k !== payKey) : paidBillKeys;
+      const nextQueue    = unpays ? deriveBillQueue(recurringBills, nextPaidKeys) : null;
+
       set((state: any) => {
-        const nextState = {
+        const nextState: any = {
           ...state,
           transactions: state.transactions.filter((t: Transaction) => t.id !== id),
-          liquidAssets: Math.max(0, state.liquidAssets + liquidDelta),
+          liquidAssets: state.liquidAssets + liquidDelta,
         };
+        if (unpays && nextQueue) {
+          nextState.paidBillKeys  = nextPaidKeys;
+          nextState.billQueue     = nextQueue;
+          nextState.upcomingBills = nextQueue.reduce((s: number, b: BillQueueItem) => s + b.amount, 0);
+        }
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
 
       if (userId) {
-        const { liquidAssets } = get() as StoreState;
-        pushProfileUpdate(userId, { liquid_assets: liquidAssets }).catch(() => {});
+        const s = get() as StoreState;
+        const updates: Record<string, unknown> = { liquid_assets: s.liquidAssets };
+        if (unpays) { updates.paid_bill_keys = s.paidBillKeys; updates.upcoming_bills = s.upcomingBills; }
+        pushProfileUpdate(userId, updates).catch(() => {});
         try {
           const { error } = await supabase.from('transactions').delete().eq('id', id);
           if (error) console.error('[deleteTransaction] delete failed:', error);
@@ -1141,7 +1179,10 @@ export const useStore = create<StoreState>()(
 
         const nextState = {
           ...state,
-          liquidAssets:        state.liquidAssets - split.personalDeduction - split.personalFlipCaptured,
+          // You front the ENTIRE bill (others repay you via the IOU ledger), plus the
+          // flip moves to your vault. Deducting only your share here let IOU collections
+          // net you a profit on bills you hosted. Net after collections = your share + flip.
+          liquidAssets:        state.liquidAssets - split.totalBill - split.personalFlipCaptured,
           primaryVaultBalance: calculatePrimaryVaultBalance(nextVaults),
           vaults:              nextVaults,
           splitHistory:        [split, ...state.splitHistory],
@@ -1802,7 +1843,9 @@ export const useStore = create<StoreState>()(
           paidBillKeys:  nextPaidKeys,
           billQueue:     nextQueue,
           upcomingBills: nextUpcoming,
-          liquidAssets:  Math.max(0, state.liquidAssets - bill.amount),
+          // Don't clamp at 0 — paying a bill you can't cover should show a real negative
+          // balance (you're in the red), not silently hide the shortfall.
+          liquidAssets:  state.liquidAssets - bill.amount,
           transactions:  [paymentTx, ...state.transactions],
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };

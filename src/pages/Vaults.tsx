@@ -7,6 +7,7 @@ import {
 import { useStore } from '../store/useStore';
 import type { VaultAssetClass } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
+import { currencySymbol } from '../lib/currency';
 import { calculateVaultProgress, calculateCurrentMonthDeposits } from '../core/math';
 import { FundVaultSheet } from '../components/FundVaultSheet';
 import { VaultTransferSheet } from '../components/VaultTransferSheet';
@@ -487,7 +488,7 @@ export default function Vaults() {
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Savings Target</p>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted text-lg pointer-events-none select-none">$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted text-lg pointer-events-none select-none">{currencySymbol()}</span>
                     <input
                       type="number"
                       min="0"

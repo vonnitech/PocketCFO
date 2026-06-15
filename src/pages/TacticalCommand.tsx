@@ -1,6 +1,7 @@
 ﻿import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Clock, Flame, TrendingUp, Zap } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { currencySymbol } from '../lib/currency';
 
 function contrastText(hex?: string): string {
   if (!hex || hex.length < 7) return 'text-black';
@@ -60,7 +61,7 @@ export const TacticalCommand: React.FC = () => {
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wide text-text-muted block mb-1.5">Cash Available</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-text-muted text-sm">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-text-muted text-sm">{currencySymbol()}</span>
               <input
                 type="number"
                 title="Available Cash"
@@ -74,7 +75,7 @@ export const TacticalCommand: React.FC = () => {
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wide text-text-muted block mb-1.5">Monthly Burn</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-text-muted text-sm">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-text-muted text-sm">{currencySymbol()}</span>
               <input
                 type="number"
                 title="Monthly Burn"
@@ -203,7 +204,7 @@ export const TacticalCommand: React.FC = () => {
             <div>
               <p className={`text-[11px] font-black uppercase tracking-widest opacity-60 mb-1 ${captureTxt}`}>If you invest it - 10yr</p>
               <p className={`text-4xl font-black italic tabular-nums ${captureTxt}`}>
-                ${leverMath.futureValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                {currencySymbol()}{leverMath.futureValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
             <Zap size={20} className={`opacity-30 mt-1 ${captureTxt}`} strokeWidth={3} />
@@ -212,13 +213,13 @@ export const TacticalCommand: React.FC = () => {
             <div>
               <p className={`text-[8px] font-black uppercase opacity-50 mb-0.5 ${captureTxt}`}>You put in</p>
               <p className={`text-sm font-black ${captureTxt}`}>
-                ${leverMath.totalContributed.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                {currencySymbol()}{leverMath.totalContributed.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
             <div>
               <p className={`text-[8px] font-black uppercase opacity-50 mb-0.5 ${captureTxt}`}>Market adds</p>
               <p className={`text-sm font-black ${captureTxt}`}>
-                +${leverMath.compoundGain.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                +{currencySymbol()}{leverMath.compoundGain.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
           </div>
@@ -228,7 +229,7 @@ export const TacticalCommand: React.FC = () => {
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mb-0.5">If you spend it · 10yr</p>
             <p className="text-xl font-black italic text-action-bleed">
-              -${leverMath.totalBurned.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              -{currencySymbol()}{leverMath.totalBurned.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
             <p className="text-[8px] font-bold uppercase text-text-muted mt-1">Gone. Nothing to show for it.</p>
           </div>

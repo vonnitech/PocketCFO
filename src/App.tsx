@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useStore, INITIAL_STATE } from './store/useStore';
@@ -46,6 +46,17 @@ const Breakdown = lazy(() =>
 // Components
 const Navigation = lazy(() => import('./components/Navigation'));
 import { PageWrapper } from './components/PageWrapper';
+
+// Resets the main scroll container to the top on every route change. Without this,
+// the scroll position carries over between pages — landing you mid-page or at the
+// bottom of a shorter page after navigating.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    document.getElementById('main-scroll')?.scrollTo({ top: 0, left: 0 });
+  }, [pathname]);
+  return null;
+}
 
 function RouteFallback() {
   return (
@@ -326,6 +337,7 @@ function App() {
         )}
       </AnimatePresence>
       <Router>
+        <ScrollToTop />
         <PaydayBanner />
         <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">
           <div className="md:w-64 shrink-0 z-50">
@@ -334,7 +346,7 @@ function App() {
             </Suspense>
           </div>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden main-pb-safe md:pb-0 p-4 pt-4 md:p-8 relative">
+          <main id="main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden main-pb-safe md:pb-0 p-4 pt-4 md:p-8 relative">
             <div className="max-w-4xl mx-auto">
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />

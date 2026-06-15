@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, Target, ShieldCheck } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { VaultAssetClass } from '../store/useStore';
+import { currencySymbol } from '../lib/currency';
 import { BottomSheet } from './BottomSheet';
 
 const CLASS_OPTIONS: {
@@ -118,7 +119,7 @@ export function VaultFormSheet({ open, onClose, defaultClass = 'SINKING_FUND' }:
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Savings Target</p>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted text-lg pointer-events-none select-none">$</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted text-lg pointer-events-none select-none">{currencySymbol()}</span>
             <input
               type="number"
               min="0"

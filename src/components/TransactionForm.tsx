@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
+import { formatCurrency } from '../lib/utils';
 
 const CATEGORIES = [
   { key: 'FOOD',      label: 'Food' },
@@ -119,7 +120,7 @@ export function TransactionForm({ onClose }: Props = {}) {
       {isOver && (
         <div className="flex items-center justify-between bg-action-bleed/10 border-2 border-action-bleed rounded-xl px-4 py-2.5 overflow-hidden">
           <p className="text-[10px] font-black uppercase tracking-widest text-action-bleed truncate">
-            Over by ${(numAmt - safeSpendLimit).toFixed(2)} · ${penalty.toFixed(2)} penalty to savings
+            Over by {formatCurrency(numAmt - safeSpendLimit)} · {formatCurrency(penalty)} penalty to savings
           </p>
         </div>
       )}

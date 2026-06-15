@@ -1,4 +1,5 @@
 ﻿import { useMemo, useState } from 'react';
+import { currencySymbol } from '../lib/currency';
 
 type AuditPieChartDatum = {
   name: string;
@@ -29,7 +30,7 @@ const PALETTE = [
 ];
 
 function formatCurrency(value: number) {
-  return `$${value.toFixed(2)}`;
+  return `${currencySymbol()}${value.toFixed(2)}`;
 }
 
 export default function AuditPieChart({ data }: AuditPieChartProps) {

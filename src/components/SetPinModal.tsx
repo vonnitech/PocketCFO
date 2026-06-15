@@ -13,7 +13,7 @@ import { logSecurityEvent } from '../core/telemetry';
 function rejectionReason(pin: string): string | null {
   if (!/^\d{4}$/.test(pin)) return 'Must be 4 digits';
   if (/^(\d)\1{3}$/.test(pin)) return 'Avoid four of the same digit';
-  if (pin === '1234' || pin === '4321') return 'Too common — pick another';
+  if (pin === '1234' || pin === '4321') return 'Too common, pick another';
   return null;
 }
 

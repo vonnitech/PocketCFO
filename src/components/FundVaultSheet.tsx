@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Wallet, ShieldCheck } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
+import { currencySymbol } from '../lib/currency';
 import { BottomSheet } from './BottomSheet';
 
 interface Props {
@@ -58,7 +59,7 @@ export function FundVaultSheet({ vaultId, vaultName, onClose }: Props) {
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Transfer Amount</p>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted text-2xl pointer-events-none select-none">$</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted text-2xl pointer-events-none select-none">{currencySymbol()}</span>
             <input
               autoFocus
               type="number"

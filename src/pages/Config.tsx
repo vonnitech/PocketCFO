@@ -1,9 +1,10 @@
 ﻿import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Trash2, Plus, Check, X, Edit2, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Trash2, Plus, Check, X, Edit2, ArrowLeft, ChevronDown, Pause, Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Debt, BillQueueItem } from '../store/useStore';
 import { useStore } from '../store/useStore';
+import { formatCurrency } from '../lib/utils';
 
 
 
@@ -58,7 +59,7 @@ function contrastText(hex?: string): string {
 
 export default function Config() {
   const state = useStore();
-  const { setState, setHorizon, updateBaseline, addDebt, updateDebt, removeDebt, setImpulses } = state;
+  const { setHorizon, updateBaseline, addDebt, updateDebt, removeDebt, setImpulses } = state;
   const captureTxt = contrastText(state.themeColors?.secondary);
   const primaryTxt  = contrastText(state.themeColors?.primary);
 
@@ -72,8 +73,8 @@ export default function Config() {
   const [horizonCap, setHorizonCap] = useState(() => state.hardDailyCap > 0 ? String(state.hardDailyCap) : '');
 
   // Bill queue state for the Horizon card
-  const [configBills, setConfigBills] = useState<{ id: string; name: string; amount: string; dueDay: string }[]>(
-    () => (state.recurringBills || []).map(b => ({ id: b.id, name: b.name, amount: String(b.amount), dueDay: b.dueDay ? String(b.dueDay) : '' }))
+  const [configBills, setConfigBills] = useState<{ id: string; name: string; amount: string; dueDay: string; paused: boolean }[]>(
+    () => (state.recurringBills || []).map(b => ({ id: b.id, name: b.name, amount: String(b.amount), dueDay: b.dueDay ? String(b.dueDay) : '', paused: !!b.paused }))
   );
   const [newBillName, setNewBillName] = useState('');
   const [newBillAmount, setNewBillAmount] = useState('');
@@ -83,7 +84,7 @@ export default function Config() {
   // Sync configBills from store only when the component initialised before data loaded (configBills is empty but store now has bills)
   useEffect(() => {
     if (configBills.length === 0 && (state.recurringBills || []).length > 0) {
-      setConfigBills(state.recurringBills.map(b => ({ id: b.id, name: b.name, amount: String(b.amount), dueDay: b.dueDay ? String(b.dueDay) : '' })));
+      setConfigBills(state.recurringBills.map(b => ({ id: b.id, name: b.name, amount: String(b.amount), dueDay: b.dueDay ? String(b.dueDay) : '', paused: !!b.paused })));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.recurringBills]);
@@ -170,7 +171,7 @@ export default function Config() {
               <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Recurring Bills</label>
               {configBills.length > 0 && (
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-main">
-                  Total: ${configBills.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0).toFixed(2)}
+                  Total: {formatCurrency(configBills.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0))}
                 </span>
               )}
             </div>
@@ -184,7 +185,7 @@ export default function Config() {
                 const vb = isNaN(db) ? 999 : db;
                 return va - vb;
               }).map(bill => (
-                <div key={bill.id} className="flex items-center gap-2 bg-input border-4 border-black rounded-2xl px-3 py-2">
+                <div key={bill.id} className={`flex items-center gap-2 bg-input border-4 border-black rounded-2xl px-3 py-2 ${bill.paused ? 'opacity-50' : ''}`}>
                   <input
                     type="text"
                     title="Bill name"
@@ -222,6 +223,14 @@ export default function Config() {
                   />
                   <button
                     type="button"
+                    title={bill.paused ? 'Resume bill' : 'Pause bill (hidden from dashboard, not reserved)'}
+                    onClick={() => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, paused: !b.paused } : b))}
+                    className={`p-1 rounded-lg transition-colors shrink-0 ${bill.paused ? 'text-action-capture hover:bg-action-capture/10' : 'text-text-muted hover:bg-black/5'}`}
+                  >
+                    {bill.paused ? <Play size={14} strokeWidth={2.5} /> : <Pause size={14} strokeWidth={2.5} />}
+                  </button>
+                  <button
+                    type="button"
                     title="Remove bill"
                     onClick={() => setConfigBills(bills => bills.filter(b => b.id !== bill.id))}
                     className="p-1 text-action-bleed hover:bg-action-bleed/10 rounded-lg transition-colors shrink-0"
@@ -236,7 +245,7 @@ export default function Config() {
                     const canConfirm = newBillName.trim() && parseFloat(newBillAmount) > 0 && parseInt(newBillDueDay, 10) >= 1 && parseInt(newBillDueDay, 10) <= 31;
                     const confirm = () => {
                       if (!canConfirm) return;
-                      setConfigBills(bills => [...bills, { id: crypto.randomUUID(), name: newBillName.trim(), amount: newBillAmount, dueDay: newBillDueDay }]);
+                      setConfigBills(bills => [...bills, { id: crypto.randomUUID(), name: newBillName.trim(), amount: newBillAmount, dueDay: newBillDueDay, paused: false }]);
                       setNewBillName(''); setNewBillAmount(''); setNewBillDueDay(''); setIsAddingBill(false);
                     };
                     return (
@@ -340,6 +349,7 @@ export default function Config() {
                     name: b.name,
                     amount: parseFloat(b.amount) || 0,
                     ...(day >= 1 && day <= 31 ? { dueDay: day } : {}),
+                    ...(b.paused ? { paused: true } : {}),
                   };
                 })
                 .filter(b => b.amount > 0);
@@ -541,11 +551,11 @@ export default function Config() {
       {/* Architect Note */}
       <div className="bg-input border-2 border-border rounded-3xl p-5">
         <p className="text-text-muted text-[10px] font-bold uppercase leading-relaxed">
-          Pocket CFO is local-first. We do not store your financial data on our servers. Your data stays on this device unless you export it yourself.
+          Your financial data is stored securely in your own private account, protected by row-level security so only you can access it. We never sell your data, and you can export or wipe it anytime.
         </p>
         <div className="flex gap-2 mt-3">
           <span className="bg-action-capture/20 text-capture-readable border-[3px] border-action-capture/30 px-3 py-1 rounded-full text-[10px] font-black uppercase">v2.1.0-STABLE</span>
-          <span className="bg-action-primary/20 text-black border-[3px] border-action-primary/30 px-3 py-1 rounded-full text-[10px] font-black uppercase">LOCAL ONLY</span>
+          <span className="bg-action-primary/20 text-black border-[3px] border-action-primary/30 px-3 py-1 rounded-full text-[10px] font-black uppercase">PRIVATE ACCOUNT</span>
         </div>
       </div>
     </motion.div>

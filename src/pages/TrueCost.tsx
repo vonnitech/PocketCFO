@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Flame, AlertOctagon, RotateCcw } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { currencySymbol } from '../lib/currency';
 
 function contrastText(hex?: string): string {
   if (!hex || hex.length < 7) return 'text-black';
@@ -60,7 +61,7 @@ export const TrueCost: React.FC = () => {
         <div>
           <label className="label-xs block mb-2">Sticker Price</label>
           <div className="relative">
-            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted pointer-events-none">$</span>
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted pointer-events-none">{currencySymbol()}</span>
             <input
               inputMode="decimal"
               placeholder="0"
@@ -115,7 +116,7 @@ export const TrueCost: React.FC = () => {
                 <Flame size={11} strokeWidth={3} /> Interest burned
               </p>
               <p className="text-5xl md:text-6xl font-black italic text-white leading-none">
-                +${metrics.interest.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                +{currencySymbol()}{metrics.interest.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
               <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-3">
                 {((metrics.interest / parseFloat(price)) * 100).toFixed(1)}% on top · pure wealth surrender
@@ -132,13 +133,13 @@ export const TrueCost: React.FC = () => {
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
               <p className="label-xs mb-2">Monthly Hit</p>
               <p className="text-2xl font-black italic text-text-main tabular-nums">
-                ${metrics.monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencySymbol()}{metrics.monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
               <p className="label-xs mb-2">Total Drain</p>
               <p className="text-2xl font-black italic text-text-main tabular-nums">
-                ${metrics.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                {currencySymbol()}{metrics.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
           </div>

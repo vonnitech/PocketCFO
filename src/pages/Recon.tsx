@@ -2,6 +2,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap, AlertCircle, Lock } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
+import { currencySymbol } from '../lib/currency';
 import { useStore, Impulse } from '../store/useStore';
 import { userKey } from '../lib/userScopedStorage';
 import { BottomSheet } from '../components/BottomSheet';
@@ -411,7 +412,7 @@ export default function Recon() {
               </div>
 
               <div className="relative">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-3xl font-black text-text-muted pointer-events-none">$</span>
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-3xl font-black text-text-muted pointer-events-none">{currencySymbol()}</span>
                 <input
                   autoFocus
                   type="number"

@@ -3,6 +3,7 @@ import { X, Upload, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../core/supabase';
+import { currencySymbol } from '../lib/currency';
 
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
@@ -327,7 +328,7 @@ export function CSVImport({ onClose }: Props) {
                       <span className="text-[10px] font-bold text-text-muted shrink-0">{row.rawDate}</span>
                       <span className="text-[11px] font-black text-text-main truncate flex-1">{row.merchant}</span>
                       <span className={`text-[11px] font-black tabular-nums shrink-0 ${row.category === 'INCOME' ? 'text-capture-readable' : 'text-text-main'}`}>
-                        {row.category === 'INCOME' ? '+' : '-'}${row.amount.toFixed(2)}
+                        {row.category === 'INCOME' ? '+' : '-'}{currencySymbol()}{row.amount.toFixed(2)}
                       </span>
                     </div>
                     {!row.skip && (

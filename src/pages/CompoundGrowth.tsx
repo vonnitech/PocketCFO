@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, AlertOctagon, RotateCcw } from 'lucide-react';
+import { currencySymbol } from '../lib/currency';
 
 export const CompoundGrowth: React.FC = () => {
   const [principal, setPrincipal] = useState('');
@@ -69,7 +70,7 @@ export const CompoundGrowth: React.FC = () => {
         <div>
           <label className="label-xs block mb-2">Starting Principal ($)</label>
           <div className="relative">
-            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted pointer-events-none">$</span>
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted pointer-events-none">{currencySymbol()}</span>
             <input
               inputMode="decimal"
               placeholder="0"
@@ -87,7 +88,7 @@ export const CompoundGrowth: React.FC = () => {
         <div>
           <label className="label-xs block mb-2">Monthly Contribution ($)</label>
           <div className="relative">
-            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted pointer-events-none">$</span>
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted pointer-events-none">{currencySymbol()}</span>
             <input
               inputMode="decimal"
               placeholder="0"
@@ -145,7 +146,7 @@ export const CompoundGrowth: React.FC = () => {
               <TrendingUp size={11} strokeWidth={3} /> Future Value
             </div>
             <p className="text-5xl md:text-6xl font-black italic leading-none tabular-nums text-capture-readable">
-              ${fmt(metrics.futureValue)}
+              {currencySymbol()}{fmt(metrics.futureValue)}
             </p>
             {parseInt(years) > 0 && (
               <p className="text-text-muted text-[10px] font-bold uppercase tracking-widest mt-3">
@@ -159,14 +160,14 @@ export const CompoundGrowth: React.FC = () => {
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
               <p className="label-xs mb-2">Total Principal</p>
               <p className="text-2xl font-black italic text-text-main tabular-nums">
-                ${fmt(metrics.totalPrincipal)}
+                {currencySymbol()}{fmt(metrics.totalPrincipal)}
               </p>
               <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">Your money in</p>
             </div>
             <div className={`border-4 rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${metrics.marketYield > 0 ? 'bg-black border-black' : 'bg-surface border-border shadow-[6px_6px_0px_0px_var(--shadow-color)]'}`}>
               <p className={`label-xs mb-2 ${metrics.marketYield > 0 ? 'text-capture-readable' : ''}`}>Market Yield</p>
               <p className={`text-2xl font-black italic tabular-nums ${metrics.marketYield > 0 ? 'text-capture-readable' : 'text-text-main'}`}>
-                +${fmt(metrics.marketYield)}
+                +{currencySymbol()}{fmt(metrics.marketYield)}
               </p>
               <p className={`text-[11px] font-bold uppercase tracking-wide mt-1.5 ${metrics.marketYield > 0 ? 'text-capture-readable/60' : 'text-text-muted'}`}>Free market growth</p>
             </div>

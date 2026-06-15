@@ -20,6 +20,7 @@ import {
 } from '../lib/webauthn';
 import { logSecurityEvent } from '../core/telemetry';
 import { clearUserLocalData } from '../lib/userScopedStorage';
+import { CURRENCIES } from '../lib/currency';
 
 const DEFAULT_PRIMARY = '#facc15';
 const DEFAULT_CAPTURE = '#00CC55';
@@ -209,7 +210,7 @@ export default function Settings() {
       }
     }
   };
-  const [accentOpen, setAccentOpen] = useState(true);
+  const [accentOpen, setAccentOpen] = useState(false);
 
   const [firstName, setFirstName] = useState(state.firstName || '');
   const [firstNameSaved, setFirstNameSaved] = useState(false);
@@ -565,6 +566,29 @@ export default function Settings() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Currency */}
+      <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-3">Currency</p>
+        <label htmlFor="currency-select" className="block text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Display Currency</label>
+        <div className="relative">
+          <select
+            id="currency-select"
+            value={state.currency}
+            onChange={e => state.setCurrency(e.target.value)}
+            title="Display currency"
+            className="w-full appearance-none bg-input border-4 border-black rounded-2xl pl-4 pr-11 py-3 font-black text-sm text-text-main outline-none focus:border-action-capture cursor-pointer"
+          >
+            {CURRENCIES.map(c => (
+              <option key={c.code} value={c.code}>{c.code} · {c.name}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} strokeWidth={2.5} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">
+          Sets how amounts are shown across the app. No conversion. Enter amounts in your own currency.
+        </p>
       </div>
 
       {/* Accent Colors — collapsible */}

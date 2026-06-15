@@ -321,9 +321,9 @@ export default function Transactions() {
                     <p>
                       Removing this record will <span className="text-text-main">{(pendingDelete.category === 'INCOME' || pendingDelete.category === 'VAULT_WITHDRAWAL') ? 'subtract' : 'add back'} {formatCurrency(pendingDelete.amount, false)}</span> {(pendingDelete.category === 'INCOME' || pendingDelete.category === 'VAULT_WITHDRAWAL') ? 'from' : 'to'} your cash balance.
                     </p>
-                    {(pendingDelete.category === 'VAULT_DEPOSIT' || pendingDelete.category === 'DEBT_PAYMENT' || pendingDelete.category === 'BILL_PAYMENT') && (
+                    {(pendingDelete.category === 'VAULT_DEPOSIT' || pendingDelete.category === 'DEBT_PAYMENT') && (
                       <p className="text-action-bleed">
-                        Vault, debt, and bill-queue balances are <span className="underline">not</span> auto-reversed — fix them manually if needed.
+                        Vault and debt balances are <span className="underline">not</span> auto-reversed. Fix them manually if needed.
                       </p>
                     )}
                     <p>This action cannot be undone.</p>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { TrendingUp, Plus, Trash2, ChevronDown, Link as LinkIcon, Zap, Target, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { currencySymbol } from '../lib/currency';
 
 // ── Math helpers ──────────────────────────────────────────────────────────────
 const R = 0.07 / 12;
@@ -29,9 +30,10 @@ function yearsToFire(assets: number, monthly: number, target: number): number | 
 }
 
 function fmt(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n.toFixed(0)}`;
+  const s = currencySymbol();
+  if (n >= 1_000_000) return `${s}${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${s}${(n / 1_000).toFixed(0)}K`;
+  return `${s}${n.toFixed(0)}`;
 }
 
 function fmtFull(n: number): string {
@@ -406,7 +408,7 @@ export default function IncomeTracker() {
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Monthly Take-Home at That Time</p>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none text-lg">$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none text-lg">{currencySymbol()}</span>
                     <input
                       type="number"
                       inputMode="decimal"

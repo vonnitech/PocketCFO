@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Zap, Check, X, Wallet, ChevronDown, Flame } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { formatCurrency } from '../lib/utils';
+import { currencySymbol } from '../lib/currency';
 
 const DEBT_PALETTES = [
   { borderClass: '[border-left-color:#E8174B]', bgClass: 'bg-[#E8174B]', color: '#E8174B' },
@@ -119,7 +121,7 @@ export const DebtDestroyer: React.FC = () => {
         <div className="bg-surface border-4 border-border rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Total Debt</p>
           <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums mt-1">
-            ${totalDebt.toLocaleString()}
+            {currencySymbol()}{totalDebt.toLocaleString()}
           </p>
         </div>
         <div className="bg-surface border-4 border-border rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
@@ -131,7 +133,7 @@ export const DebtDestroyer: React.FC = () => {
         <div className="bg-surface border-4 border-action-bleed rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-action-bleed">Interest Cost</p>
           <p className="text-2xl font-black italic tracking-tighter text-action-bleed tabular-nums mt-1">
-            ${Math.round(plan.totalInterest).toLocaleString()}
+            {currencySymbol()}{Math.round(plan.totalInterest).toLocaleString()}
           </p>
         </div>
       </div>
@@ -288,7 +290,7 @@ export const DebtDestroyer: React.FC = () => {
                       Payment Amount
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted/40 pointer-events-none">$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted/40 pointer-events-none">{currencySymbol()}</span>
                       <input
                         autoFocus
                         type="number"
@@ -301,8 +303,8 @@ export const DebtDestroyer: React.FC = () => {
                       />
                     </div>
                     <div className="flex items-center justify-between mt-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                      <span className="flex items-center gap-1"><Wallet size={11} strokeWidth={2.5} /> Available: ${availableForDebt.toFixed(2)}</span>
-                      {payTarget.minPay > 0 && <span>Min: ${payTarget.minPay.toFixed(2)}</span>}
+                      <span className="flex items-center gap-1"><Wallet size={11} strokeWidth={2.5} /> Available: {formatCurrency(availableForDebt)}</span>
+                      {payTarget.minPay > 0 && <span>Min: {formatCurrency(payTarget.minPay)}</span>}
                     </div>
                   </div>
 
