@@ -239,7 +239,7 @@ export const TacticalSplitter: React.FC = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Fair Share</h1>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill Splitter</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Split complete</p>
         </div>
         <div className="bg-surface border-4 border-action-capture rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
@@ -286,7 +286,7 @@ export const TacticalSplitter: React.FC = () => {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Fair Share</h1>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill Splitter</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Split bills with the squad</p>
       </div>
 

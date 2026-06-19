@@ -360,10 +360,6 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
             )}
           </div>
         </form>
-
-        <p className="text-center text-[11px] font-bold uppercase tracking-widest text-text-muted/40 mt-4">
-          Your data is encrypted end-to-end.
-        </p>
       </motion.div>
     </div>
   );

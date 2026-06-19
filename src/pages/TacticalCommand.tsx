@@ -48,7 +48,7 @@ export const TacticalCommand: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Horizon</h1>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Savings Goals</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Financial lifeline & 10-year wealth builder</p>
       </div>
 

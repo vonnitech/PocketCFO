@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Eye, EyeOff, Sun, Moon, SlidersHorizontal, ChevronRight, Lock, LockOpen,
@@ -10,8 +10,7 @@ import { useStore, INITIAL_STATE } from '../store/useStore';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { supabase } from '../core/supabase';
 import { calculateTrueSafeSpend } from '../core/math';
-import { exportLedgerCSV, exportWorkbookXLSX, exportReportPDF } from '../core/export';
-import { ImportMapperModal, ImportPayload } from '../components/ImportMapperModal';
+import type { ImportPayload } from '../components/ImportMapperModal';
 import { SetPinModal } from '../components/SetPinModal';
 import { BillQueueItem } from '../store/useStore';
 import {
@@ -21,6 +20,13 @@ import {
 import { logSecurityEvent } from '../core/telemetry';
 import { clearUserLocalData } from '../lib/userScopedStorage';
 import { CURRENCIES } from '../lib/currency';
+
+// The importer statically pulls in xlsx + papaparse. Lazy-load it so those
+// libraries only download when the user actually opens the import flow, not on
+// every Settings visit. (Export functions are dynamically imported per-click below.)
+const ImportMapperModal = lazy(() =>
+  import('../components/ImportMapperModal').then(m => ({ default: m.ImportMapperModal })),
+);
 
 const DEFAULT_PRIMARY = '#facc15';
 const DEFAULT_CAPTURE = '#00CC55';
@@ -506,15 +512,15 @@ export default function Settings() {
           <div className="space-y-3 flex-1">
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60">Export</p>
             <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => exportLedgerCSV(state.transactions)}
+              <button type="button" onClick={async () => { const { exportLedgerCSV } = await import('../core/export'); exportLedgerCSV(state.transactions); }}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
                 <FileDown size={14} /> CSV
               </button>
-              <button type="button" onClick={() => exportWorkbookXLSX(snapshot())}
+              <button type="button" onClick={async () => { const { exportWorkbookXLSX } = await import('../core/export'); exportWorkbookXLSX(snapshot()); }}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
                 <FileDown size={14} /> XLSX
               </button>
-              <button type="button" onClick={() => exportReportPDF(snapshot())}
+              <button type="button" onClick={async () => { const { exportReportPDF } = await import('../core/export'); exportReportPDF(snapshot()); }}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
                 <FileDown size={14} /> PDF
               </button>
@@ -697,7 +703,11 @@ export default function Settings() {
         <ChevronRight size={18} strokeWidth={3} className="text-text-muted group-hover:text-text-main transition-colors shrink-0" />
       </Link>
 
-      <ImportMapperModal open={importOpen} onClose={() => setImportOpen(false)} onImport={handleImport} />
+      {importOpen && (
+        <Suspense fallback={null}>
+          <ImportMapperModal open={importOpen} onClose={() => setImportOpen(false)} onImport={handleImport} />
+        </Suspense>
+      )}
       <SetPinModal open={pinModal !== null} mode={pinModal ?? 'create'} onClose={() => setPinModal(null)} />
     </motion.div>
   );

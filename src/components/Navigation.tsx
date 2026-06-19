@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { Terminal, ShieldCheck, PieChart, Zap, Compass, Settings, Search, Users, Calculator, Sun, Moon, Scissors, MoreHorizontal, X, Eye, EyeOff, TrendingUp, LogOut, Flame, Receipt, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../core/supabase';
 import { BrandLogo } from './BrandLogo';
 
@@ -106,7 +107,14 @@ function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick }: {
 }
 
 export default function Navigation() {
-  const { theme, setTheme, privacyMode, togglePrivacyMode } = useStore();
+  const { theme, setTheme, privacyMode, togglePrivacyMode } = useStore(
+    useShallow(s => ({
+      theme: s.theme,
+      setTheme: s.setTheme,
+      privacyMode: s.privacyMode,
+      togglePrivacyMode: s.togglePrivacyMode,
+    })),
+  );
   const [moreOpen, setMoreOpen] = useState(false);
   const close = () => setMoreOpen(false);
   const signOut = () => supabase.auth.signOut();

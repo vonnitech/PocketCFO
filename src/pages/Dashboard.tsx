@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Wallet, Shield, TrendingUp, X, Zap, Search, ChevronRight, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { toLocalDateKey, calculateDaysUntilPayday } from '../core/math';
@@ -48,7 +49,30 @@ function relativeDate(iso: string) {
 }
 
 export default function Dashboard() {
-  const { safeSpendLimit, liquidAssets, privacyMode, addIncome, vaults, debts, transactions, reconHistory, monthlyTakeHome, fixedBills, monthlySavingsGoal, nextPayday, upcomingBills, hardDailyCap, billQueue, payBillFromQueue, dashboardWidgets, firstName, hasCompletedOnboarding, themeColors } = useStore();
+  const { safeSpendLimit, liquidAssets, privacyMode, addIncome, vaults, debts, transactions, reconHistory, monthlyTakeHome, fixedBills, monthlySavingsGoal, nextPayday, upcomingBills, hardDailyCap, billQueue, payBillFromQueue, dashboardWidgets, firstName, hasCompletedOnboarding, themeColors } = useStore(
+    useShallow(s => ({
+      safeSpendLimit: s.safeSpendLimit,
+      liquidAssets: s.liquidAssets,
+      privacyMode: s.privacyMode,
+      addIncome: s.addIncome,
+      vaults: s.vaults,
+      debts: s.debts,
+      transactions: s.transactions,
+      reconHistory: s.reconHistory,
+      monthlyTakeHome: s.monthlyTakeHome,
+      fixedBills: s.fixedBills,
+      monthlySavingsGoal: s.monthlySavingsGoal,
+      nextPayday: s.nextPayday,
+      upcomingBills: s.upcomingBills,
+      hardDailyCap: s.hardDailyCap,
+      billQueue: s.billQueue,
+      payBillFromQueue: s.payBillFromQueue,
+      dashboardWidgets: s.dashboardWidgets,
+      firstName: s.firstName,
+      hasCompletedOnboarding: s.hasCompletedOnboarding,
+      themeColors: s.themeColors,
+    })),
+  );
   const captureTxt = contrastText(themeColors?.secondary);
   const widgetVisible = (id: string) => {
     const w = dashboardWidgets.find(x => x.id === id);

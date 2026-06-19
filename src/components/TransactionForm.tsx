@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { formatCurrency } from '../lib/utils';
 
 const CATEGORIES = [
@@ -16,7 +17,9 @@ interface Props {
 }
 
 export function TransactionForm({ onClose }: Props = {}) {
-  const { logSpend, safeSpendLimit } = useStore();
+  const { logSpend, safeSpendLimit } = useStore(
+    useShallow(s => ({ logSpend: s.logSpend, safeSpendLimit: s.safeSpendLimit })),
+  );
 
   const [amount,   setAmount]   = useState('');
   const [merchant, setMerchant] = useState('');

@@ -48,7 +48,7 @@ export const CompoundGrowth: React.FC = () => {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
-            Compound Growth
+            Wealth Growth
           </h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
             Project your 10-year wealth trajectory.
