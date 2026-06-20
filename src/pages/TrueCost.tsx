@@ -67,11 +67,14 @@ export const TrueCost: React.FC = () => {
   // Full reality-check engine: loan math + opportunity cost + life energy. Returns the
   // clean data object the UI maps from, or null when inputs aren't ready.
   const metrics = useMemo(() => {
-    if (parseInt(term) < 1) return null;
+    // parseInt('') is NaN, and `NaN < 1` is false — so guard on a finite term to
+    // avoid falling through and computing results as if the term were 1 month.
+    const termMonths = parseInt(term);
+    if (!Number.isFinite(termMonths) || termMonths < 1) return null;
     const base = computeCost(
       Math.max(0, parseFloat(price) || 0),
       Math.max(0, parseFloat(apr) || 0),
-      Math.max(1, parseInt(term) || 0),
+      termMonths,
     );
     if (!base) return null;
     return { ...base, lifeEnergyDays: lifeEnergyDays(base.totalCost, Math.max(0, parseFloat(wage) || 0)) };

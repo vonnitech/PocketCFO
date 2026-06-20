@@ -4,6 +4,7 @@ import { Trash2, Plus, Check, X, Edit2, ArrowLeft, ChevronDown, Pause, Play } fr
 import { Link } from 'react-router-dom';
 import { Debt, BillQueueItem } from '../store/useStore';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { formatCurrency } from '../lib/utils';
 
 
@@ -58,7 +59,26 @@ function contrastText(hex?: string): string {
 }
 
 export default function Config() {
-  const state = useStore();
+  const state = useStore(
+    useShallow(s => ({
+      debts: s.debts,
+      hardDailyCap: s.hardDailyCap,
+      impulses: s.impulses,
+      liquidAssets: s.liquidAssets,
+      monthlySavingsGoal: s.monthlySavingsGoal,
+      monthlyTakeHome: s.monthlyTakeHome,
+      nextPayday: s.nextPayday,
+      recurringBills: s.recurringBills,
+      stats: s.stats,
+      themeColors: s.themeColors,
+      setHorizon: s.setHorizon,
+      updateBaseline: s.updateBaseline,
+      addDebt: s.addDebt,
+      updateDebt: s.updateDebt,
+      removeDebt: s.removeDebt,
+      setImpulses: s.setImpulses,
+    })),
+  );
   const { setHorizon, updateBaseline, addDebt, updateDebt, removeDebt, setImpulses } = state;
   const captureTxt = contrastText(state.themeColors?.secondary);
   const primaryTxt  = contrastText(state.themeColors?.primary);

@@ -1,7 +1,8 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jspdf + jspdf-autotable are imported dynamically inside exportReportPDF so the
+// PDF libraries (~250KB) stay out of the import/CSV/XLSX path and only load when
+// someone actually generates a PDF.
 
 import { Transaction, Subscription, Vault } from '../types';
 import { Debt } from '../store/useStore';
@@ -126,7 +127,11 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
 
 // ── PDF ──────────────────────────────────────────────────────────────────────
 
-export function exportReportPDF(snap: ExportSnapshot): void {
+export async function exportReportPDF(snap: ExportSnapshot): Promise<void> {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
   // 8.5 × 11 in @ 72pt/in → 612 × 792
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageW = doc.internal.pageSize.getWidth();

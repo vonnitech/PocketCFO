@@ -44,6 +44,8 @@ function getTierLock(): TierLock | null {
 }
 
 export default function Recon() {
+  // Full-store subscription is intentional here: calculateTrueSafeSpend(state)
+  // below needs the complete AppState, so a narrowed selector would not help.
   const state = useStore();
   const { privacyMode, impulses, reconHistory, setState, nextPayday, submitReconEntry } = state;
 

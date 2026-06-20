@@ -184,6 +184,19 @@ export default function Settings() {
     debts:          state.debts,
     subscriptions:  state.subscriptions,
   });
+
+  // Export libraries are loaded on demand. Wrap the dynamic import + generation so a
+  // failed chunk load (e.g. offline) or a generation error surfaces to the user
+  // instead of becoming a silent unhandled rejection.
+  const runExport = async (fn: (mod: typeof import('../core/export')) => void | Promise<void>) => {
+    try {
+      const mod = await import('../core/export');
+      await fn(mod);
+    } catch (err) {
+      console.error('[PocketCFO] export failed', err);
+      alert('Export failed. Please try again.');
+    }
+  };
   const handleImport = (payload: ImportPayload) => {
     state.massImportTransactions(payload.transactions);
 
@@ -512,15 +525,15 @@ export default function Settings() {
           <div className="space-y-3 flex-1">
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60">Export</p>
             <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={async () => { const { exportLedgerCSV } = await import('../core/export'); exportLedgerCSV(state.transactions); }}
+              <button type="button" onClick={() => runExport(m => m.exportLedgerCSV(state.transactions))}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
                 <FileDown size={14} /> CSV
               </button>
-              <button type="button" onClick={async () => { const { exportWorkbookXLSX } = await import('../core/export'); exportWorkbookXLSX(snapshot()); }}
+              <button type="button" onClick={() => runExport(m => m.exportWorkbookXLSX(snapshot()))}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
                 <FileDown size={14} /> XLSX
               </button>
-              <button type="button" onClick={async () => { const { exportReportPDF } = await import('../core/export'); exportReportPDF(snapshot()); }}
+              <button type="button" onClick={() => runExport(m => m.exportReportPDF(snapshot()))}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
                 <FileDown size={14} /> PDF
               </button>

@@ -3,11 +3,20 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Skull, X, ShieldCheck, Plus } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Subscription } from '../store/useStore';
 import { executeSubCancel } from '../db';
 
 export default function ActiveSubs() {
-  const storeState = useStore();
+  const storeState = useStore(
+    useShallow(s => ({
+      subscriptions: s.subscriptions,
+      privacyMode: s.privacyMode,
+      addSubscription: s.addSubscription,
+      setSubscriptionUsage: s.setSubscriptionUsage,
+      cancelSubscription: s.cancelSubscription,
+    })),
+  );
   const { privacyMode, addSubscription, setSubscriptionUsage, cancelSubscription } = storeState;
   const state = storeState;
 
