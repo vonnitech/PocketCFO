@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Terminal, ShieldCheck, PieChart, Zap, Compass, Settings, Search, Users, Calculator, Sun, Moon, Scissors, MoreHorizontal, X, Eye, EyeOff, TrendingUp, LogOut, Flame, Receipt, DollarSign } from 'lucide-react';
+import { Terminal, ShieldCheck, PieChart, Zap, Compass, Settings, Search, Users, Calculator, Sun, Moon, Scissors, MoreHorizontal, X, Eye, EyeOff, TrendingUp, LogOut, Flame, Receipt, DollarSign, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
+import { useIsPro } from '../lib/pro';
 import { supabase } from '../core/supabase';
 import { BrandLogo } from './BrandLogo';
 
@@ -16,20 +17,22 @@ const coreTools = [
   { path: '/subscriptions', icon: Scissors,    label: 'Subscriptions', shortLabel: 'Subs' },
 ];
 
-const calculatorTools = [
+// `pro: true` marks a Tool that requires Pro. Bill Splitter (viral acquisition)
+// and True Cost (free differentiator) are deliberately left free.
+const calculatorTools: { path: string; icon: React.ElementType; label: string; subtitle: string; pro?: boolean }[] = [
   { path: '/split',            icon: Users,        label: 'Bill Splitter',   subtitle: 'Divide expenses and track who owes what' },
   { path: '/true-cost',        icon: Calculator,   label: 'True Cost',       subtitle: 'Calculate the real price of purchases over time' },
-  { path: '/debt-destroyer',   icon: Zap,          label: 'Debt Payoff',     subtitle: 'Optimize your avalanche or snowball strategy' },
-  { path: '/tactical-command', icon: Compass,      label: 'Savings Goals',   subtitle: 'Track progress for large future purchases' },
+  { path: '/debt-destroyer',   icon: Zap,          label: 'Debt Payoff',     subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
+  { path: '/tactical-command', icon: Compass,      label: 'Safety Net',      subtitle: 'How long your cash lasts and your target buffer' },
   { path: '/compound-growth',  icon: TrendingUp,   label: 'Wealth Growth',   subtitle: 'Project your long-term net worth' },
-  { path: '/fire',             icon: Flame,        label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection' },
-  { path: '/income',           icon: DollarSign,   label: 'Income Tracker',  subtitle: 'Log income milestones & find your FIRE savings rate' },
+  { path: '/fire',             icon: Flame,        label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
+  { path: '/income',           icon: DollarSign,   label: 'Income Tracker',  subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
 ];
 
 const mobilePrimary = [coreTools[0], coreTools[1], coreTools[2], coreTools[4]];
 
-function NavItem({ path, icon: Icon, label, accent }: {
-  path: string; icon: React.ElementType; label: string; shortLabel?: string; accent?: boolean;
+function NavItem({ path, icon: Icon, label, accent, locked }: {
+  path: string; icon: React.ElementType; label: string; shortLabel?: string; accent?: boolean; locked?: boolean;
 }) {
   return (
     <NavLink
@@ -48,6 +51,7 @@ function NavItem({ path, icon: Icon, label, accent }: {
         <>
           <Icon size={16} strokeWidth={isActive ? 3 : 2} className="shrink-0" />
           <span className="text-[11px] font-bold uppercase tracking-wider leading-none">{label}</span>
+          {locked && <Lock size={12} strokeWidth={3} className="ml-auto shrink-0 opacity-50" />}
           {isActive && (
             <div className="absolute -left-5 top-1/2 -translate-y-1/2 w-1.5 h-5 bg-action-capture border-2 border-l-0 border-black rounded-r-full" />
           )}
@@ -78,8 +82,8 @@ function SheetLink({ path, icon: Icon, label, onClick }: {
   );
 }
 
-function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick }: {
-  path: string; icon: React.ElementType; label: string; subtitle: string; onClick: () => void;
+function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick, locked }: {
+  path: string; icon: React.ElementType; label: string; subtitle: string; onClick: () => void; locked?: boolean;
 }) {
   return (
     <NavLink
@@ -100,6 +104,7 @@ function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick }: {
             <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${isActive ? 'text-primary-contrast' : 'text-text-main'}`}>{label}</p>
             <p className={`text-[10px] font-bold mt-1 leading-snug ${isActive ? 'text-primary-contrast/60' : 'text-text-muted'}`}>{subtitle}</p>
           </div>
+          {locked && <Lock size={14} strokeWidth={3} className={`shrink-0 ${isActive ? 'text-primary-contrast/70' : 'text-text-muted'}`} />}
         </>
       )}
     </NavLink>
@@ -115,6 +120,7 @@ export default function Navigation() {
       togglePrivacyMode: s.togglePrivacyMode,
     })),
   );
+  const isPro = useIsPro();
   const [moreOpen, setMoreOpen] = useState(false);
   const close = () => setMoreOpen(false);
   const signOut = () => supabase.auth.signOut();
@@ -141,7 +147,7 @@ export default function Navigation() {
           {/* Tools nav */}
           <div className="flex flex-col gap-0.5">
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50 px-3 mb-1.5">Tools</p>
-            {calculatorTools.map(item => <NavItem key={item.path} path={item.path} icon={item.icon} label={item.label} accent />)}
+            {calculatorTools.map(item => <NavItem key={item.path} path={item.path} icon={item.icon} label={item.label} accent locked={!!item.pro && !isPro} />)}
           </div>
 
           {/* Settings + Sign out */}
@@ -263,7 +269,7 @@ export default function Navigation() {
               <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50 mb-2">Tools</p>
               <div className="flex flex-col gap-2 mb-5">
                 {calculatorTools.map(item => (
-                  <ToolSheetLink key={item.path} path={item.path} icon={item.icon} label={item.label} subtitle={item.subtitle} onClick={close} />
+                  <ToolSheetLink key={item.path} path={item.path} icon={item.icon} label={item.label} subtitle={item.subtitle} onClick={close} locked={!!item.pro && !isPro} />
                 ))}
               </div>
 

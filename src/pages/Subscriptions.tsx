@@ -1,13 +1,18 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Skull, X, ShieldCheck, Plus } from 'lucide-react';
+import { Skull, X, ShieldCheck, Plus, Lock } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Subscription } from '../store/useStore';
+import { useIsPro } from '../lib/pro';
 import { executeSubCancel } from '../db';
 
-export default function ActiveSubs() {
+// Free tier: track up to 3 subscriptions. Existing over-cap subs are grandfathered
+// (never removed); only the add action is gated.
+const FREE_SUB_CAP = 3;
+
+export default function Subscriptions() {
   const storeState = useStore(
     useShallow(s => ({
       subscriptions: s.subscriptions,
@@ -19,6 +24,8 @@ export default function ActiveSubs() {
   );
   const { privacyMode, addSubscription, setSubscriptionUsage, cancelSubscription } = storeState;
   const state = storeState;
+  const isPro = useIsPro();
+  const subCapReached = !isPro && state.subscriptions.length >= FREE_SUB_CAP;
 
   const totalBleed = useMemo(() => state.subscriptions.reduce((acc, sub) => acc + sub.amount, 0), [state.subscriptions]);
 
@@ -100,7 +107,7 @@ export default function ActiveSubs() {
               {/* Row 1: name + amount + cancel */}
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-black italic uppercase tracking-tighter text-text-main truncate">{sub.name}</h3>
+                  <h3 className="text-lg font-black italic uppercase tracking-tighter text-text-main truncate pr-1.5">{sub.name}</h3>
                   <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
                     {formatCurrency(sub.amount, privacyMode)} / {sub.billingCycle}
                   </p>
@@ -199,10 +206,15 @@ export default function ActiveSubs() {
           <motion.button
             type="button"
             whileTap={{ scale: 0.98 }}
-            onClick={() => setIsAddingSub(true)}
+            onClick={() => {
+              if (subCapReached) { window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'subscription_cap' } })); return; }
+              setIsAddingSub(true);
+            }}
             className="md:col-span-2 w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
           >
-            <Plus size={18} strokeWidth={3} /> ADD SUBSCRIPTION
+            {subCapReached
+              ? <><Lock size={18} strokeWidth={3} /> Add Subscription · Pro</>
+              : <><Plus size={18} strokeWidth={3} /> Add Subscription</>}
           </motion.button>
         )}
       </div>

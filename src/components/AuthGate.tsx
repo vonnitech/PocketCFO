@@ -152,7 +152,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         {/* Header */}
         <div className="bg-black border-4 border-black rounded-3xl px-5 py-4 mb-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[15px] font-black tracking-tight text-white">PocketCFO</span>
+            <span className="text-[15px] font-black tracking-tight text-white">Pocket CFO</span>
             <div className="w-2 h-2 rounded-full bg-action-primary animate-pulse" />
           </div>
           <p className="text-[11px] font-bold text-white/50 leading-relaxed">
@@ -302,7 +302,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
             whileTap={{ scale: 0.97 }}
             className="w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2.5 shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-brutal-sm"
           >
-            {loading ? <span className="animate-pulse">Working...</span> : submitLabel}
+            {loading ? <span className="animate-pulse">Working…</span> : submitLabel}
           </motion.button>
 
           {/* Google OAuth — login & signup only */}

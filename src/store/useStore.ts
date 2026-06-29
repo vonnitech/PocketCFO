@@ -234,7 +234,6 @@ export const INITIAL_STATE: AppState = {
   dashboardWidgets: [
     { id: 'safe-spend', visible: true },
     { id: 'vault-status', visible: true },
-    { id: 'momentum', visible: true },
     { id: 'alert', visible: true },
   ],
   impulses: [],
@@ -1619,14 +1618,19 @@ export const useStore = create<StoreState>()(
       if (userId) pushVaultUpdate(id, { deleted: false }).catch(() => {});
     },
 
-    permanentlyDeleteVault: (id) => {
+    permanentlyDeleteVault: async (id) => {
       const { userId } = get() as StoreState;
-      if (userId) {
-        (supabase.from('vaults') as any).delete().eq('id', id);
-      }
+      // Remove locally first for instant feedback.
       set((state: any) => ({
         deletedVaults: (state.deletedVaults || []).filter((v: Vault) => v.id !== id),
       }));
+      if (userId) {
+        // Must await: supabase query builders are lazy and only fire when awaited.
+        // (The old fire-and-forget call never actually deleted the row, so it
+        // reappeared on the next data load.)
+        const { error } = await (supabase.from('vaults') as any).delete().eq('id', id);
+        if (error) console.error('[vault] permanent delete failed', error);
+      }
     },
 
     submitReconEntry: ({ rawSpend, action, impulseId, impulseSpend, taxAmount, surplus, tierId, tierMultiplier, tierLimit }) => {

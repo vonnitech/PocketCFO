@@ -4,6 +4,8 @@ import { TrendingUp, Plus, Trash2, ChevronDown, Link as LinkIcon, Zap, Target, B
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { currencySymbol } from '../lib/currency';
+import { PreviewChip } from '../components/PreviewChip';
+import { ProAction } from '../components/ProAction';
 
 // ── Math helpers ──────────────────────────────────────────────────────────────
 const R = 0.07 / 12;
@@ -199,6 +201,7 @@ export default function IncomeTracker() {
             <span className="ml-2 text-action-primary"> · <Link to="/fire" className="underline underline-offset-2">lock a FIRE strategy</Link> for full projections</span>
           )}
         </p>
+        <div className="mt-2"><PreviewChip /></div>
       </div>
 
       {/* Snapshot */}
@@ -459,17 +462,19 @@ export default function IncomeTracker() {
                   >
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={!formAmount || !formLabel.trim() || !formDate}
-                    className="flex-1 h-12 border-4 border-black rounded-2xl bg-black text-capture-readable font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-capture)]"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <Target size={14} strokeWidth={3} />
-                      Log Milestone
-                    </div>
-                  </button>
+                  <ProAction feature="income_milestone">
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={!formAmount || !formLabel.trim() || !formDate}
+                      className="flex-1 h-12 border-4 border-black rounded-2xl bg-black text-capture-readable font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-capture)]"
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <Target size={14} strokeWidth={3} />
+                        Log Milestone
+                      </div>
+                    </button>
+                  </ProAction>
                 </div>
               </div>
             </motion.div>

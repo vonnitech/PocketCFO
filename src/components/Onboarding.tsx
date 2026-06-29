@@ -214,7 +214,7 @@ export function OnboardingModal() {
             className="w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[3px_3px_0px_0px_var(--color-action-primary)]"
           >
             {loading
-              ? <span className="animate-pulse">Saving...</span>
+              ? <span className="animate-pulse">Saving…</span>
               : 'Get Started →'
             }
           </motion.button>

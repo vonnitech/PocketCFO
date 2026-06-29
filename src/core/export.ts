@@ -254,7 +254,7 @@ export async function exportReportPDF(snap: ExportSnapshot): Promise<void> {
     doc.setPage(p);
     doc.setFontSize(7);
     doc.setTextColor(120);
-    doc.text(`PocketCFO · Generated ${new Date().toLocaleString()}`, margin, doc.internal.pageSize.getHeight() - 16);
+    doc.text(`Pocket CFO · Generated ${new Date().toLocaleString()}`, margin, doc.internal.pageSize.getHeight() - 16);
     doc.text(`Page ${p} of ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 16, { align: 'right' });
   }
 

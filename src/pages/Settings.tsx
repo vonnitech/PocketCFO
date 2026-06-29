@@ -20,6 +20,9 @@ import {
 import { logSecurityEvent } from '../core/telemetry';
 import { clearUserLocalData } from '../lib/userScopedStorage';
 import { CURRENCIES } from '../lib/currency';
+import { useIsPro, setProUnlocked, refreshProStatus } from '../lib/pro';
+import { PRICING } from '../lib/pricing';
+import { ProAction } from '../components/ProAction';
 
 // The importer statically pulls in xlsx + papaparse. Lazy-load it so those
 // libraries only download when the user actually opens the import flow, not on
@@ -102,16 +105,64 @@ const COLOR_THEMES = [
   { id: 'lavender-purple',   name: 'Lavender & Purple',   primary: '#B8A8D8', capture: '#7733BB' },
 ];
 
+// Free tier: 3 preset themes (Original + 2). All other presets and the custom
+// color studio are Pro. Change which two accompany 'default' here.
+const FREE_THEME_IDS = new Set(['default', 'pink-sky', 'orange-royal']);
+
 const WIDGET_META = [
   { id: 'safe-spend',   label: 'Daily Safe Spend', description: 'Your main spending limit hero card' },
   { id: 'vault-status', label: 'Savings Overview',  description: 'Vaulted & spendable balance pillars' },
-  { id: 'momentum',     label: '7-Day Trend',       description: 'Daily spending bar chart + streak' },
   { id: 'alert',        label: 'Bill Queue',        description: 'Upcoming bills checklist' },
 ];
 
 export default function Settings() {
   const state = useStore();
   const { theme, setTheme, privacyMode, togglePrivacyMode, dashboardWidgets, updateDashboardWidgets, lockEnabled, pinHash, setState, setThemeColors } = state;
+  const isPro = useIsPro();
+
+  // Kick off Stripe Checkout for a plan (the /api/checkout function builds the
+  // hosted session; we just redirect to it).
+  const startCheckout = async (plan: 'monthly' | 'annual' | 'lifetime') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, userId: user?.id, email: user?.email }),
+      });
+      const { url, error } = await res.json();
+      if (url) window.location.href = url;
+      else alert(error || 'Could not start checkout. Billing may not be configured yet.');
+    } catch {
+      alert('Could not start checkout. Billing may not be configured yet.');
+    }
+  };
+
+  // After returning from Stripe (success_url = /settings?pro=success), re-read the
+  // entitlement so the unlock reflects immediately once the webhook has run.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('pro') === 'success') {
+      refreshProStatus();
+      window.history.replaceState({}, '', '/settings#pro');
+    }
+  }, []);
+
+  // Open the Stripe Billing Portal (manage / cancel / invoices).
+  const openBillingPortal = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const res = await fetch('/api/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id }),
+      });
+      const { url, error } = await res.json();
+      if (url) window.location.href = url;
+      else alert(error || 'No billing account found.');
+    } catch {
+      alert('Could not open the billing portal.');
+    }
+  };
 
   // PIN modal: 'create' the first time a user turns lock ON, 'change' when they
   // tap the rotate-PIN button later. Closed when null.
@@ -168,6 +219,18 @@ export default function Settings() {
     const w = dashboardWidgets.find(x => x.id === id);
     return w ? w.visible : true;
   };
+
+  // Deep-link support: when arriving via /settings#dashboard-widgets (the
+  // "Customize dashboard" shortcut), scroll the matching section into view once
+  // the lazy-loaded page has rendered.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    const t = setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    return () => clearTimeout(t);
+  }, []);
 
   const [primaryColor, setPrimaryColor] = useState(() => safeHex(state.themeColors?.primary, DEFAULT_PRIMARY));
   const [captureColor, setCaptureColor] = useState(() => safeHex(state.themeColors?.secondary, DEFAULT_CAPTURE));
@@ -432,7 +495,7 @@ export default function Settings() {
                   disabled={bioBusy}
                   className={`flex items-center justify-center gap-2 min-w-20 px-4 py-2.5 border-4 border-black rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 shrink-0 disabled:opacity-40 ${bioEnrolled ? 'bg-action-capture text-capture-contrast' : 'bg-input text-text-main'}`}
                 >
-                  {bioBusy ? '...' : bioEnrolled ? 'On' : 'Off'}
+                  {bioBusy ? '…' : bioEnrolled ? 'On' : 'Off'}
                 </button>
               </div>
               {bioError && (
@@ -463,8 +526,83 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Pro tier — three-tier pricing; dev toggle below until billing is wired */}
+        <div id="pro" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+          <div className="flex items-center gap-2 mb-4">
+            <Lock size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
+            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Pocket CFO Pro</p>
+          </div>
+          {!isPro ? (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3">
+                Unlocks FIRE, Income Tracker, and Debt Payoff
+              </p>
+
+              {/* Annual — the hero */}
+              <button type="button" onClick={() => startCheckout('annual')}
+                className="w-full text-left bg-action-primary border-4 border-black rounded-2xl p-4 flex items-center justify-between shadow-brutal mb-3 hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+                <div>
+                  <div className="text-lg font-black text-black tabular-nums">{PRICING.annual.price}<span className="text-sm font-bold">/yr</span></div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-black/70">{PRICING.annual.sub}</div>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest bg-black text-action-primary px-3 py-1 rounded-full">Best value</span>
+              </button>
+
+              {/* Monthly + Lifetime — quieter */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <button type="button" onClick={() => startCheckout('monthly')}
+                  className="text-left bg-input border-2 border-black rounded-2xl p-4 hover:border-black hover:bg-surface transition-colors">
+                  <div className="text-[1rem] font-black text-text-main tabular-nums">{PRICING.monthly.price}<span className="text-xs font-bold">/mo</span></div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{PRICING.monthly.sub}</div>
+                </button>
+                <button type="button" onClick={() => startCheckout('lifetime')}
+                  className="text-left bg-input border-2 border-black rounded-2xl p-4 hover:border-black hover:bg-surface transition-colors">
+                  <div className="text-[1rem] font-black text-text-main tabular-nums">{PRICING.lifetime.price}<span className="text-xs font-bold"> once</span></div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{PRICING.lifetime.sub}</div>
+                </button>
+              </div>
+
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted/60">No bank login · Cancel anytime</p>
+            </>
+          ) : (
+            <>
+              <div className="bg-action-capture/10 border-4 border-action-capture rounded-2xl p-4 mb-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-action-capture border-4 border-black flex items-center justify-center shrink-0">
+                  <Check size={18} strokeWidth={3} className="text-black" />
+                </div>
+                <div>
+                  <p className="text-sm font-black uppercase tracking-tight text-text-main">Pro is active</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">All tools, themes, and unlimited vaults unlocked</p>
+                </div>
+              </div>
+              <button type="button" onClick={openBillingPortal}
+                className="w-full h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
+                Manage billing
+              </button>
+            </>
+          )}
+
+          {/* Dev toggle — keep until billing drives Pro status (see lib/pro.ts) */}
+          <div className="flex items-center justify-between gap-4 mt-4 pt-3 border-t-2 border-border/40">
+            <div className="min-w-0">
+              <p className="text-sm font-black uppercase tracking-widest text-text-main">{isPro ? 'Pro unlocked' : 'Free plan'}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-0.5">Dev toggle · wire to billing before launch</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isPro ? 'true' : 'false'}
+              title={isPro ? 'Switch to Free' : 'Unlock Pro'}
+              onClick={() => setProUnlocked(!isPro)}
+              className={`shrink-0 w-14 h-8 rounded-full border-4 border-black transition-colors relative ${isPro ? 'bg-action-capture' : 'bg-input'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white border-2 border-black rounded-full transition-all ${isPro ? 'left-6.5' : 'left-0.5'}`} />
+            </button>
+          </div>
+        </div>
+
         {/* Dashboard Widgets */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div id="dashboard-widgets" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <SlidersHorizontal size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Dashboard Widgets</p>
@@ -533,17 +671,21 @@ export default function Settings() {
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
                 <FileDown size={14} /> XLSX
               </button>
-              <button type="button" onClick={() => runExport(m => m.exportReportPDF(snapshot()))}
-                className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
-                <FileDown size={14} /> PDF
-              </button>
+              <ProAction feature="export_pdf">
+                <button type="button" onClick={() => runExport(m => m.exportReportPDF(snapshot()))}
+                  className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
+                  <FileDown size={14} /> PDF
+                </button>
+              </ProAction>
             </div>
 
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60 mt-2">Import</p>
-            <button type="button" onClick={() => setImportOpen(true)}
-              className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
-              <FileUp size={16} /> IMPORT STATEMENT (CSV / XLSX)
-            </button>
+            <ProAction feature="import">
+              <button type="button" onClick={() => setImportOpen(true)}
+                className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                <FileUp size={16} /> IMPORT STATEMENT (CSV / XLSX)
+              </button>
+            </ProAction>
 
             <details className="border-2 border-border rounded-2xl px-3 py-2">
               <summary className="text-[10px] font-black uppercase tracking-widest text-text-muted cursor-pointer">JSON Backup (Legacy)</summary>
@@ -580,7 +722,7 @@ export default function Settings() {
             ) : (
               <button type="button" onClick={armWipe} disabled={wiping}
                 className="w-full h-12 border-4 border-action-bleed rounded-full bg-action-bleed/10 text-action-bleed font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-action-bleed/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                <Trash2 size={16} /> {wiping ? 'WIPING...' : 'WIPE SYSTEM'}
+                <Trash2 size={16} /> {wiping ? 'WIPING…' : 'WIPE SYSTEM'}
               </button>
             )}
           </div>
@@ -644,22 +786,30 @@ export default function Settings() {
                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
                   {COLOR_THEMES.map(t => {
                     const isActive = primaryColor === t.primary && captureColor === t.capture;
+                    const locked = !isPro && !FREE_THEME_IDS.has(t.id);
                     return (
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => { setPrimaryColor(t.primary); setCaptureColor(t.capture); setThemeColors(t.primary, t.capture); }}
-                        className={`swatch-${t.id} flex flex-col items-center gap-1.5 p-3 rounded-xl border-4 transition-all ${isActive ? 'border-black shadow-brutal-sm' : 'border-transparent hover:border-border'}`}
+                        onClick={() => {
+                          if (locked) { window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'theme' } })); return; }
+                          setPrimaryColor(t.primary); setCaptureColor(t.capture); setThemeColors(t.primary, t.capture);
+                        }}
+                        className={`relative swatch-${t.id} flex flex-col items-center gap-1.5 p-3 rounded-xl border-4 transition-all ${isActive ? 'border-black shadow-brutal-sm' : 'border-transparent hover:border-border'}`}
                       >
-                        <div className="flex gap-1">
+                        <div className={`flex gap-1 ${locked ? 'opacity-40' : ''}`}>
                           <div className="swatch-dot-primary w-5 h-5 rounded-full border-2 border-black/30" />
                           <div className="swatch-dot-capture w-5 h-5 rounded-full border-2 border-black/30" />
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-wide text-text-muted leading-tight text-center">{t.name}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-wide leading-tight text-center ${locked ? 'text-text-muted/50' : 'text-text-muted'}`}>{t.name}</span>
+                        {locked && (
+                          <div className="absolute top-1 right-1 text-text-muted"><Lock size={10} strokeWidth={3} /></div>
+                        )}
                       </button>
                     );
                   })}
                 </div>
+                {isPro ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2 block">Primary Color</label>
@@ -698,6 +848,16 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'theme_studio' } }))}
+                    className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl border-4 border-dashed border-border text-text-muted hover:border-black hover:text-text-main transition-colors"
+                  >
+                    <Lock size={14} strokeWidth={3} />
+                    <span className="text-[11px] font-black uppercase tracking-widest">Custom Theme Studio · Pro</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           )}

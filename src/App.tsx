@@ -12,35 +12,36 @@ import { AuthGate } from './components/AuthGate';
 import { ScreenLock } from './components/ScreenLock';
 import { FeatureTour, useFeatureTour } from './components/FeatureTour';
 import { PaydayBanner } from './components/PaydayBanner';
+import { ProUpsellPopover } from './components/ProUpsellPopover';
 import { runPaydayCheck } from './core/lifecycle';
 
 // Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const TacticalSplitter = lazy(() =>
-  import('./pages/TacticalSplitter').then(module => ({ default: module.TacticalSplitter }))
+const BillSplitter = lazy(() =>
+  import('./pages/BillSplitter').then(module => ({ default: module.BillSplitter }))
 );
 const TrueCost = lazy(() =>
   import('./pages/TrueCost').then(module => ({ default: module.TrueCost }))
 );
-const DebtDestroyer = lazy(() =>
-  import('./pages/DebtDestroyer').then(module => ({ default: module.DebtDestroyer }))
+const DebtPayoff = lazy(() =>
+  import('./pages/DebtPayoff').then(module => ({ default: module.DebtPayoff }))
 );
-const TacticalCommand = lazy(() =>
-  import('./pages/TacticalCommand').then(module => ({ default: module.TacticalCommand }))
+const SafetyNet = lazy(() =>
+  import('./pages/SafetyNet').then(module => ({ default: module.SafetyNet }))
 );
 const Config = lazy(() => import('./pages/Config'));
 const Settings = lazy(() => import('./pages/Settings'));
-const Recon = lazy(() => import('./pages/Recon'));
+const DailyLog = lazy(() => import('./pages/DailyLog'));
 const Vaults = lazy(() => import('./pages/Vaults'));
-const ActiveSubs = lazy(() => import('./pages/ActiveSubs'));
-const CompoundGrowth = lazy(() =>
-  import('./pages/CompoundGrowth').then(module => ({ default: module.CompoundGrowth }))
+const Subscriptions = lazy(() => import('./pages/Subscriptions'));
+const WealthGrowth = lazy(() =>
+  import('./pages/WealthGrowth').then(module => ({ default: module.WealthGrowth }))
 );
 const Fire = lazy(() => import('./pages/Fire'));
 const IncomeTracker = lazy(() => import('./pages/IncomeTracker'));
-const Transactions = lazy(() => import('./pages/Transactions'));
-const Breakdown = lazy(() =>
-  import('./pages/Audit').then(module => ({ default: module.Audit }))
+const Ledger = lazy(() => import('./pages/Ledger'));
+const AuditLog = lazy(() =>
+  import('./pages/AuditLog').then(module => ({ default: module.AuditLog }))
 );
 
 // Components
@@ -221,6 +222,8 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
+    // Match the browser chrome (status bar / address bar) to the app background.
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0F0F0F' : '#F2F1EE');
   }, [theme]);
 
   useEffect(() => {
@@ -339,6 +342,7 @@ function App() {
       <Router>
         <ScrollToTop />
         <PaydayBanner />
+        <ProUpsellPopover />
         <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">
           <div className="md:w-64 shrink-0 z-50">
             <Suspense fallback={<NavigationFallback />}>
@@ -350,19 +354,19 @@ function App() {
             <div className="max-w-4xl mx-auto">
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />
-                <Route path="/audit"           element={withPageWrapper(<Breakdown />)} />
-                <Route path="/split"           element={withPageWrapper(<TacticalSplitter />)} />
+                <Route path="/audit"           element={withPageWrapper(<AuditLog />)} />
+                <Route path="/split"           element={withPageWrapper(<BillSplitter />)} />
                 <Route path="/true-cost"       element={withPageWrapper(<TrueCost />)} />
-                <Route path="/debt-destroyer"  element={withPageWrapper(<DebtDestroyer />)} />
-                <Route path="/tactical-command" element={withPageWrapper(<TacticalCommand />)} />
-                <Route path="/recon"           element={withPageWrapper(<Recon />)} />
+                <Route path="/debt-destroyer"  element={withPageWrapper(<DebtPayoff />)} />
+                <Route path="/tactical-command" element={withPageWrapper(<SafetyNet />)} />
+                <Route path="/recon"           element={withPageWrapper(<DailyLog />)} />
                 <Route path="/vaults"          element={withPageWrapper(<Vaults />)} />
-                <Route path="/subscriptions"   element={withPageWrapper(<ActiveSubs />)} />
-                <Route path="/compound-growth" element={withPageWrapper(<CompoundGrowth />)} />
+                <Route path="/subscriptions"   element={withPageWrapper(<Subscriptions />)} />
+                <Route path="/compound-growth" element={withPageWrapper(<WealthGrowth />)} />
                 <Route path="/fire"            element={withPageWrapper(<Fire />)} />
                 <Route path="/income"          element={withPageWrapper(<IncomeTracker />)} />
-                <Route path="/transactions"    element={withPageWrapper(<Transactions />)} />
-                <Route path="/breakdown"      element={withPageWrapper(<Breakdown />)} />
+                <Route path="/transactions"    element={withPageWrapper(<Ledger />)} />
+                <Route path="/breakdown"      element={withPageWrapper(<AuditLog />)} />
                 <Route path="/config"          element={withPageWrapper(<Config />)} />
                 <Route path="/settings"        element={withPageWrapper(<Settings />)} />
                 <Route path="*"                element={<Navigate to="/" replace />} />

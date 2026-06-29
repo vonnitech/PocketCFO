@@ -6,6 +6,7 @@ import { SplitTransaction, CustomSplitPreset } from '../types/split';
 import { calculateTacticalSplit, UNIVERSAL_FLIP_RATE } from '../core/math';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
+import { ProAction } from '../components/ProAction';
 
 // Mini-calculator for the per-person fields: type "12+8+5" and it sums. Supports
 // + - * / and decimals, evaluated safely with no eval() (the app's CSP blocks it).
@@ -38,7 +39,7 @@ function evalAmount(expr: string): number {
   return isNaN(result) ? 0 : result;
 }
 
-export const TacticalSplitter: React.FC = () => {
+export const BillSplitter: React.FC = () => {
   const {
     squad,
     addSplitTransaction, safeSpendLimit,
@@ -624,13 +625,15 @@ export const TacticalSplitter: React.FC = () => {
               </div>
             ) : (
               activeMembers.size > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsSavingPreset(true)}
-                  className="text-[10px] font-bold uppercase border-b-2 border-black text-text-main hover:text-capture-readable transition-colors"
-                >
-                  SAVE THIS GROUP
-                </button>
+                <ProAction feature="split_preset">
+                  <button
+                    type="button"
+                    onClick={() => setIsSavingPreset(true)}
+                    className="text-[10px] font-bold uppercase border-b-2 border-black text-text-main hover:text-capture-readable transition-colors"
+                  >
+                    SAVE THIS GROUP
+                  </button>
+                </ProAction>
               )
             )}
           </div>

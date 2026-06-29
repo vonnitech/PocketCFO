@@ -84,7 +84,7 @@ export default function Strategy() {
                 <Clock size={18} className="text-action-primary" />
               </div>
               <div className="text-right min-w-0 flex-1">
-                <h3 className="font-black text-lg italic uppercase tracking-tighter text-text-main underline decoration-action-bleed truncate">{debt.name}</h3>
+                <h3 className="font-black text-lg italic uppercase tracking-tighter text-text-main underline decoration-action-bleed truncate pr-1.5">{debt.name}</h3>
                 <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted tabular-nums">
                   {mask(debt.balance)} @ {debt.interestRate}%
                 </p>

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { Transaction } from '../types';
 import { CSVImport } from '../components/CSVImport';
+import { ProAction } from '../components/ProAction';
 import { WealthVsLifestyleChart } from '../components/WealthVsLifestyleChart';
 import { currencyDef, getActiveCurrency } from '../lib/currency';
 
@@ -353,7 +354,7 @@ const PivotTable: React.FC = () => {
   );
 };
 
-export const Audit: React.FC = () => {
+export const AuditLog: React.FC = () => {
   const transactions = useStore(s => s.transactions);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const [shouldLoadChart, setShouldLoadChart] = useState(false);
@@ -509,13 +510,15 @@ export const Audit: React.FC = () => {
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Spending breakdown</p>
         </div>
         <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setCsvOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-input border-2 border-border rounded-full text-[10px] font-black uppercase tracking-widest text-text-muted hover:border-black hover:text-text-main transition-all"
-        >
-          <Upload size={12} strokeWidth={2.5} /> Import CSV
-        </button>
+        <ProAction feature="import">
+          <button
+            type="button"
+            onClick={() => setCsvOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-input border-2 border-border rounded-full text-[10px] font-black uppercase tracking-widest text-text-muted hover:border-black hover:text-text-main transition-all"
+          >
+            <Upload size={12} strokeWidth={2.5} /> Import CSV
+          </button>
+        </ProAction>
         <div className="flex gap-1 p-1 bg-input border-2 border-border rounded-full w-fit">
           {(['week', 'month', 'all'] as Period[]).map(p => (
             <button

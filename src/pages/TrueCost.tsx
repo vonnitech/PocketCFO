@@ -189,6 +189,7 @@ export const TrueCost: React.FC = () => {
             <span className={registerFix}>{currencySymbol()}</span>
             <input
               id="tc-price"
+              autoComplete="off"
               inputMode="decimal"
               placeholder="0"
               min="0"
@@ -207,6 +208,7 @@ export const TrueCost: React.FC = () => {
             <div className={registerBox}>
               <input
                 id="tc-apr"
+                autoComplete="off"
                 inputMode="decimal"
                 placeholder="0"
                 min="0"
@@ -224,6 +226,7 @@ export const TrueCost: React.FC = () => {
             <div className={registerBox}>
               <input
                 id="tc-term"
+                autoComplete="off"
                 inputMode="numeric"
                 placeholder="0"
                 min="1"
@@ -244,6 +247,7 @@ export const TrueCost: React.FC = () => {
             <span className={registerFix}>{currencySymbol()}</span>
             <input
               id="tc-wage"
+              autoComplete="off"
               inputMode="decimal"
               placeholder="0"
               min="0"

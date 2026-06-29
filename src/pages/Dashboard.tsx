@@ -1,6 +1,6 @@
 ﻿import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Wallet, Shield, TrendingUp, X, Zap, Search, ChevronRight, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Wallet, Shield, TrendingUp, X, Zap, Search, ChevronRight, ArrowUpRight, ArrowDownLeft, SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -353,7 +353,7 @@ export default function Dashboard() {
           'Long stretch · trust the system';
 
         return (
-          <div className={`border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] ${days === 0 ? 'bg-action-capture' : 'bg-black'}`}>
+          <div className={`border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] ${days === 0 ? 'bg-action-capture' : 'bg-black'} ${!widgetVisible('safe-spend') ? 'md:col-span-3' : ''}`}>
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${days === 0 ? 'text-black/60' : 'text-white/60'}`}>
@@ -391,14 +391,26 @@ export default function Dashboard() {
       {/* Bill Queue */}
       {widgetVisible('alert') && nextPayday && billQueue && billQueue.length > 0 && (() => {
         const today = new Date();
-        const todayDay = today.getDate();
-        const daysInThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-        // For a given dueDay, work out days remaining within THIS cycle.
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        // Days until a bill's dueDay, anchored to the CURRENT PAY CYCLE rather than
+        // the calendar month. The cycle runs (nextPayday − 1 month) .. nextPayday, so
+        // when payday is late in the month a bill due "the 1st" is next month's 1st
+        // (upcoming), not this month's 1st (which would read as wrongly overdue).
         // Negative = overdue, 0 = due today, positive = upcoming.
         const daysUntil = (dueDay?: number): number | null => {
           if (!dueDay || dueDay < 1 || dueDay > 31) return null;
-          const effective = Math.min(dueDay, daysInThisMonth);
-          return effective - todayDay;
+          const [ny, nm, nd] = nextPayday.split('-').map(Number); // nm is 1-based
+          const cycleStart = new Date(ny, nm - 2, nd);            // one month before next payday
+          const yr = cycleStart.getFullYear();
+          // JS Date handles month overflow (monthIdx 12 → next January), so this is
+          // safe to call with cycleStart.getMonth() + 1.
+          const placeInMonth = (monthIdx: number) => {
+            const dim = new Date(yr, monthIdx + 1, 0).getDate();
+            return new Date(yr, monthIdx, Math.min(dueDay, dim), 0, 0, 0, 0);
+          };
+          let due = placeInMonth(cycleStart.getMonth());
+          if (due < cycleStart) due = placeInMonth(cycleStart.getMonth() + 1); // roll into next month
+          return Math.round((due.getTime() - startOfToday.getTime()) / 86_400_000);
         };
         const sortedBills = [...billQueue].sort((a, b) => {
           const da = daysUntil(a.dueDay);
@@ -730,6 +742,14 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Long dashboard? Jump straight to the widget toggles to trim the scroll. */}
+      <Link
+        to="/settings#dashboard-widgets"
+        className="flex items-center justify-center gap-1.5 py-3 text-[11px] font-bold uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+      >
+        <SlidersHorizontal size={12} strokeWidth={2.5} /> Customize dashboard
+      </Link>
+
     </motion.div>
 
       {/* Log Spend Bottom Sheet */}
@@ -754,7 +774,7 @@ export default function Dashboard() {
             >
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-black italic tracking-tighter uppercase text-text-main">Add Income</h2>
-                <button type="button" title="Close" onClick={() => setIsIncomeMode(false)} className="text-text-muted hover:text-text-main transition-colors">
+                <button type="button" title="Close" aria-label="Close" onClick={() => setIsIncomeMode(false)} className="text-text-muted hover:text-text-main transition-colors">
                   <X size={24} />
                 </button>
               </div>

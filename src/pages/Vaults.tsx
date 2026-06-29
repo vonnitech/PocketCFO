@@ -1,16 +1,49 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldCheck, Plus, Edit2, Target, Trash2, RotateCcw,
-  AlertTriangle, Check, X, Trophy, ArrowLeftRight, TrendingUp, ChevronDown,
+  AlertTriangle, Check, X, Trophy, ArrowLeftRight, TrendingUp, ChevronDown, Lock,
+  ArrowUp, ArrowDown, Eye, EyeOff, SlidersHorizontal,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import type { VaultAssetClass } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
+import { useIsPro } from '../lib/pro';
+import { userKey } from '../lib/userScopedStorage';
 import { calculateVaultProgress, calculateCurrentMonthDeposits } from '../core/math';
 import { FundVaultSheet } from '../components/FundVaultSheet';
 import { VaultTransferSheet } from '../components/VaultTransferSheet';
+
+// Free tier: up to 3 vaults total (any type). Existing over-cap vaults are
+// grandfathered (never deleted); only the create action is gated.
+const FREE_VAULT_CAP = 3;
+
+// Per-user Vaults section preferences (order / hidden / collapsed), saved to
+// user-scoped localStorage so no DB migration is needed.
+type SectionPrefs = { order: VaultAssetClass[]; hidden: VaultAssetClass[]; collapsed: VaultAssetClass[] };
+const DEFAULT_SECTION_ORDER: VaultAssetClass[] = ['INVESTMENT', 'SINKING_FUND', 'CASH_RESERVE'];
+const SECTION_PREFS_KEY = 'vault-section-prefs';
+
+function loadSectionPrefs(): SectionPrefs {
+  const fallback: SectionPrefs = { order: [...DEFAULT_SECTION_ORDER], hidden: [], collapsed: [] };
+  try {
+    const raw = localStorage.getItem(userKey(SECTION_PREFS_KEY));
+    if (!raw) return fallback;
+    const p = JSON.parse(raw) as Partial<SectionPrefs>;
+    const valid = (arr: unknown): VaultAssetClass[] =>
+      (Array.isArray(arr) ? arr : []).filter((id): id is VaultAssetClass => DEFAULT_SECTION_ORDER.includes(id as VaultAssetClass));
+    const order = valid(p.order);
+    return {
+      order: [...order, ...DEFAULT_SECTION_ORDER.filter(id => !order.includes(id))],
+      hidden: valid(p.hidden),
+      collapsed: valid(p.collapsed),
+    };
+  } catch {
+    return fallback;
+  }
+}
 
 const CLASS_OPTIONS: { id: VaultAssetClass; label: string; desc: string; icon: React.ElementType }[] = [
   { id: 'INVESTMENT',   label: 'Investment',   desc: 'Brokerage, IRA, index funds · counts toward your FIRE number', icon: TrendingUp },
@@ -84,6 +117,28 @@ export default function Vaults() {
     permanentlyDeleteVault,
     addVault,
   } = useStore();
+  const isPro = useIsPro();
+  const vaultCapReached = !isPro && vaults.length >= FREE_VAULT_CAP;
+
+  // Section customization (order / hidden / collapsed), persisted per user.
+  const [sectionPrefs, setSectionPrefs] = useState<SectionPrefs>(loadSectionPrefs);
+  const [showCustomize, setShowCustomize] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(userKey(SECTION_PREFS_KEY), JSON.stringify(sectionPrefs)); } catch { /* ignore */ }
+  }, [sectionPrefs]);
+  const toggleCollapsed = (id: VaultAssetClass) =>
+    setSectionPrefs(p => ({ ...p, collapsed: p.collapsed.includes(id) ? p.collapsed.filter(x => x !== id) : [...p.collapsed, id] }));
+  const toggleHidden = (id: VaultAssetClass) =>
+    setSectionPrefs(p => ({ ...p, hidden: p.hidden.includes(id) ? p.hidden.filter(x => x !== id) : [...p.hidden, id] }));
+  const moveSection = (id: VaultAssetClass, dir: -1 | 1) =>
+    setSectionPrefs(p => {
+      const i = p.order.indexOf(id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= p.order.length) return p;
+      const order = [...p.order];
+      [order[i], order[j]] = [order[j], order[i]];
+      return { ...p, order };
+    });
 
   // Inline create form
   const [showForm,   setShowForm]   = useState(false);
@@ -103,6 +158,14 @@ export default function Vaults() {
   // Delete
   const [deletingVaultId,   setDeletingVaultId]   = useState<string | null>(null);
   const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null);
+
+  // Restore is gated: a free user at the cap can't restore back over 3 active vaults.
+  const [showRestoreLimitModal, setShowRestoreLimitModal] = useState(false);
+  const handleRestore = (id: string) => {
+    if (!isPro && vaults.length >= FREE_VAULT_CAP) { setShowRestoreLimitModal(true); return; }
+    restoreVault(id);
+  };
+  const handleCloseRestoreModal = () => setShowRestoreLimitModal(false);
 
   // Transfer sheet
   const [transferVault, setTransferVault] = useState<{ id: string; name: string; current: number } | null>(null);
@@ -162,79 +225,82 @@ export default function Vaults() {
     <div className="space-y-6 pb-32 md:pb-6">
 
       {/* Header */}
-      <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Vaults</h1>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Savings goals &amp; asset management</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Vaults</h1>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Savings goals &amp; asset management</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCustomize(v => !v)}
+          className={`shrink-0 mt-1 flex items-center gap-1.5 h-9 px-3 border-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomize ? 'bg-action-primary border-black text-black' : 'bg-surface border-border text-text-muted hover:border-black hover:text-text-main'}`}
+        >
+          <SlidersHorizontal size={12} strokeWidth={3} /> Customize
+        </button>
       </div>
 
-      {/* Top summary: Total Vaulted + Monthly Goal Pacing */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Total Vaulted */}
-        <div className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Total Vaulted</p>
-          <p className="text-2xl font-black italic tabular-nums text-text-main leading-none">
-            {formatCurrency(totalVaulted, privacyMode)}
-          </p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">Across all vaults</p>
-        </div>
-
-        {/* Monthly Savings Goal + Progress */}
-        <div className="bg-black border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--color-action-primary)]">
-          <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-1">Monthly Goal</p>
-          <p className="text-2xl font-black italic tabular-nums text-action-primary leading-none">
-            {formatCurrency(monthlySavingsGoal, privacyMode)}
-          </p>
-          {monthlySavingsGoal > 0 ? (
-            <div className="mt-3">
-              <div className="w-full h-2 bg-white/10 border border-white/10 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${goalPct}%` }}
-                  className="h-full bg-action-primary"
-                />
+      {/* Customize sections: reorder + show/hide the three vault categories */}
+      {showCustomize && (
+        <div className="bg-surface border-4 border-border rounded-3xl p-4 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-2">
+          <p className="label-xs mb-1">Customize Sections · reorder and show/hide</p>
+          {sectionPrefs.order.map((id, i) => {
+            const g = GROUPS.find(x => x.id === id);
+            if (!g) return null;
+            const hidden = sectionPrefs.hidden.includes(id);
+            return (
+              <div key={id} className="flex items-center gap-2 bg-input border-2 border-border rounded-2xl p-2.5">
+                <div className={`w-7 h-7 ${g.iconBg} border-2 border-black rounded-lg flex items-center justify-center shrink-0 ${hidden ? 'opacity-40' : ''}`}>
+                  <g.icon size={13} strokeWidth={2.5} className={g.iconText} />
+                </div>
+                <span className={`flex-1 text-[11px] font-black uppercase tracking-widest ${hidden ? 'text-text-muted/50' : 'text-text-main'}`}>{g.label}</span>
+                <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveSection(id, -1)} className="w-8 h-8 flex items-center justify-center rounded-lg border-2 border-black bg-surface disabled:opacity-30 hover:bg-input transition-colors">
+                  <ArrowUp size={13} strokeWidth={3} />
+                </button>
+                <button type="button" aria-label="Move down" disabled={i === sectionPrefs.order.length - 1} onClick={() => moveSection(id, 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border-2 border-black bg-surface disabled:opacity-30 hover:bg-input transition-colors">
+                  <ArrowDown size={13} strokeWidth={3} />
+                </button>
+                <button type="button" aria-label={hidden ? 'Show section' : 'Hide section'} onClick={() => toggleHidden(id)} className="w-8 h-8 flex items-center justify-center rounded-lg border-2 border-black bg-surface hover:bg-input transition-colors">
+                  {hidden ? <EyeOff size={13} strokeWidth={3} className="text-text-muted" /> : <Eye size={13} strokeWidth={3} />}
+                </button>
               </div>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-white/40 mt-1.5">
-                {goalPct >= 100 ? 'Goal complete!' : `${goalPct.toFixed(0)}% deposited this month`}
-              </p>
-            </div>
-          ) : (
-            <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 mt-2">Set in config</p>
-          )}
-        </div>
-      </div>
-
-      {/* Category breakdown strip */}
-      {vaults.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Invested',  value: investmentTotal, dot: 'bg-action-primary', note: 'FIRE input' },
-            { label: 'Sinking',   value: sinkingTotal,    dot: 'bg-action-capture', note: null },
-            { label: 'Reserve',   value: cashTotal,       dot: 'bg-border',         note: null },
-          ].map(stat => (
-            <div key={stat.label} className="bg-surface border-4 border-border rounded-2xl p-3 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className={`w-2 h-2 rounded-full ${stat.dot} border border-black/20 shrink-0`} />
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">{stat.label}</p>
-              </div>
-              <p className="text-base font-black italic tabular-nums text-text-main">{formatCurrency(stat.value, privacyMode)}</p>
-              {stat.note && <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-0.5">{stat.note}</p>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Available to Vault — staging area right above vault cards */}
-      <div className="bg-black border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-capture)]">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-1">Available to Vault</p>
-        <p className="text-5xl font-black italic tracking-tighter text-action-primary tabular-nums leading-none">
-          {formatCurrency(liquidAssets, privacyMode)}
-        </p>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-2">
-          {monthlySavingsGoal > 0 && remainingToGoal > 0
-            ? `${formatCurrency(remainingToGoal, privacyMode)} more to reach your monthly goal`
-            : 'Distribute across your vaults below'
-          }
-        </p>
+      {/* Stats: Total Vaulted (accent hero) / Monthly Goal / Available to Vault.
+          Mobile: Total full-width, Goal + Available half-width below. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {/* Total Vaulted — accent hero */}
+        <div className="col-span-2 sm:col-span-1 bg-action-primary border-4 border-black rounded-2xl p-4 shadow-brutal">
+          <p className="text-[10px] font-black uppercase tracking-widest text-black/60 mb-1">Total Vaulted</p>
+          <p className="text-3xl sm:text-2xl font-black italic tabular-nums text-black leading-none">
+            {formatCurrency(totalVaulted, privacyMode)}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-black/50 mt-1">Across all vaults</p>
+        </div>
+
+        {/* Monthly Goal */}
+        <div className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Monthly Goal</p>
+          <p className="text-xl font-black italic tabular-nums text-text-main leading-none">
+            {formatCurrency(monthlySavingsGoal, privacyMode)}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">
+            {monthlySavingsGoal > 0 ? (goalPct >= 100 ? 'Goal complete' : `${goalPct.toFixed(0)}% done`) : 'Set in config'}
+          </p>
+        </div>
+
+        {/* Available to Vault */}
+        <div className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Available to Vault</p>
+          <p className="text-xl font-black italic tabular-nums text-capture-readable leading-none">
+            {formatCurrency(liquidAssets, privacyMode)}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">
+            {monthlySavingsGoal > 0 && remainingToGoal > 0 ? `${formatCurrency(remainingToGoal, privacyMode)} to hit goal` : 'Ready to distribute'}
+          </p>
+        </div>
       </div>
 
       {/* Empty state — no vaults at all */}
@@ -256,13 +322,17 @@ export default function Vaults() {
           const progress   = calculateVaultProgress(vault.current, vault.target);
           const isComplete = progress >= 100;
           return (
-            <div key={vault.id} className={`bg-surface border-4 rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)] ${isComplete ? group.borderActive : 'border-border'}`}>
-              {/* Header row */}
-              <div className="flex items-center gap-2.5 mb-3">
+            <div key={vault.id} className={`relative group bg-surface border-4 rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)] ${isComplete ? group.borderActive : 'border-border'}`}>
+              {/* Delete — revealed on card hover so it never steals width from the name */}
+              <button type="button" aria-label="Delete vault" onClick={() => setDeletingVaultId(vault.id)} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-lg bg-surface/70 opacity-0 group-hover:opacity-100 hover:text-action-bleed transition-all">
+                <Trash2 size={13} strokeWidth={2.5} />
+              </button>
+              {/* Header: icon beside the name; name gets the full remaining width */}
+              <div className="flex items-start gap-2.5 mb-3">
                 <div className={`w-9 h-9 border-[3px] border-black rounded-xl flex items-center justify-center shrink-0 ${group.iconBg}`}>
                   {isComplete ? <Trophy size={16} strokeWidth={3} className="text-black" /> : <group.icon size={16} strokeWidth={3} className={group.iconText} />}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-7">
                   {editingNameId === vault.id ? (
                     <div className="flex items-center gap-1">
                       <input autoFocus title="Vault Name"
@@ -275,9 +345,9 @@ export default function Vaults() {
                       <button type="button" aria-label="Cancel" onClick={() => setEditingNameId(null)} className="shrink-0 w-7 h-7 flex items-center justify-center bg-surface border-2 border-black rounded-lg"><X size={12} strokeWidth={3} /></button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-base font-black italic uppercase tracking-tighter text-text-main truncate leading-none">{vault.name}</h3>
-                      <button type="button" aria-label="Rename vault" onClick={() => { setEditingNameId(vault.id); setEditingNameValue(vault.name); }} className="shrink-0 opacity-30 hover:opacity-100 transition-opacity">
+                    <div className="flex items-start gap-1.5">
+                      <h3 className="flex-1 min-w-0 text-[1rem] font-black italic uppercase tracking-tighter text-text-main line-clamp-2 leading-tight pr-1.5">{vault.name}</h3>
+                      <button type="button" aria-label="Rename vault" onClick={() => { setEditingNameId(vault.id); setEditingNameValue(vault.name); }} className="shrink-0 mt-0.5 opacity-30 hover:opacity-100 transition-opacity">
                         <Edit2 size={11} strokeWidth={2.5} />
                       </button>
                     </div>
@@ -296,21 +366,19 @@ export default function Vaults() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`text-xs font-black tabular-nums ${isComplete ? 'text-capture-readable' : 'text-text-muted'}`}>{Math.min(100, progress).toFixed(0)}%</span>
-                  <button type="button" aria-label="Delete vault" onClick={() => setDeletingVaultId(vault.id)} className="w-7 h-7 flex items-center justify-center rounded-lg opacity-0 hover:opacity-100 hover:text-action-bleed transition-all">
-                    <Trash2 size={13} strokeWidth={2.5} />
-                  </button>
-                </div>
               </div>
               {/* Progress bar */}
               <div className="mb-3">
                 <div className="w-full h-2 bg-input border-2 border-black rounded-full overflow-hidden">
                   <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, progress)}%` }} className={`h-full ${group.barColor}`} />
                 </div>
-                <div className="flex justify-between mt-1">
+                <div className="flex justify-between items-baseline mt-1">
                   <span className="text-[9px] font-bold text-text-muted tabular-nums">{formatCurrency(vault.current, privacyMode)}</span>
-                  {!isComplete && <span className="text-[9px] font-bold text-text-muted/50 tabular-nums">of {formatCurrency(vault.target, privacyMode)}</span>}
+                  {!isComplete && (
+                    <span className="text-[9px] font-bold text-text-muted/50 tabular-nums">
+                      <span className="font-black text-text-muted">{Math.min(100, progress).toFixed(0)}%</span> · of {formatCurrency(vault.target, privacyMode)}
+                    </span>
+                  )}
                   {isComplete && <span className="text-[9px] font-black text-capture-readable uppercase tracking-widest">Goal Achieved</span>}
                 </div>
               </div>
@@ -320,7 +388,7 @@ export default function Vaults() {
                   className="flex-1 h-9 border-[3px] border-black rounded-xl bg-action-capture text-capture-contrast font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all">
                   Fund
                 </button>
-                <button type="button" title="Move funds" onClick={() => setTransferVault({ id: vault.id, name: vault.name, current: vault.current })}
+                <button type="button" title="Move funds" aria-label="Move funds" onClick={() => setTransferVault({ id: vault.id, name: vault.name, current: vault.current })}
                   className="w-9 h-9 flex items-center justify-center border-[3px] border-black rounded-xl bg-surface shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all opacity-50 hover:opacity-100">
                   <ArrowLeftRight size={13} strokeWidth={2.5} />
                 </button>
@@ -332,20 +400,22 @@ export default function Vaults() {
         const renderGroup = (group: typeof GROUPS[0]) => {
           const grouped    = vaults.filter(v => (v.asset_class ?? 'SINKING_FUND') === group.id);
           const groupTotal = grouped.reduce((s, v) => s + v.current, 0);
+          const collapsed  = sectionPrefs.collapsed.includes(group.id);
           return (
             <div key={group.id} className="space-y-3">
-              {/* Section header */}
-              <div className="flex items-center gap-2.5">
+              {/* Section header — click to collapse/expand */}
+              <button type="button" onClick={() => toggleCollapsed(group.id)} className="w-full flex items-center gap-2.5 text-left">
                 <div className={`w-8 h-8 ${group.iconBg} border-[3px] border-black rounded-xl flex items-center justify-center shrink-0`}>
                   <group.icon size={14} strokeWidth={2.5} className={group.iconText} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[12px] font-black uppercase tracking-widest text-text-main leading-none">{group.label}</p>
                   {grouped.length > 0 && <p className="text-[9px] font-bold text-text-muted tabular-nums mt-0.5">{formatCurrency(groupTotal, privacyMode)}</p>}
                 </div>
-              </div>
-              {grouped.length > 0 ? (
-                <div className={`grid gap-3 ${grouped.length > 1 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                <ChevronDown size={16} strokeWidth={3} className={`ml-auto shrink-0 text-text-muted transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+              </button>
+              {!collapsed && (grouped.length > 0 ? (
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
                   {grouped.map(v => renderVaultCard(v, group))}
                 </div>
               ) : (
@@ -358,22 +428,17 @@ export default function Vaults() {
                     <Plus size={12} strokeWidth={3} /> Add
                   </button>
                 </div>
-              )}
+              ))}
             </div>
           );
         };
 
-        return (
-          <>
-            {/* Investments + Sinking Funds side by side on desktop */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {renderGroup(GROUPS[0])}
-              {renderGroup(GROUPS[1])}
-            </div>
-            {/* Cash Reserves full width */}
-            {renderGroup(GROUPS[2])}
-          </>
-        );
+        // Render in the user's chosen order, skipping hidden categories.
+        const orderedVisible = sectionPrefs.order
+          .map(id => GROUPS.find(g => g.id === id))
+          .filter((g): g is typeof GROUPS[0] => !!g && !sectionPrefs.hidden.includes(g.id));
+
+        return <>{orderedVisible.map(g => renderGroup(g))}</>;
       })()}
 
       {/* Trash */}
@@ -387,25 +452,25 @@ export default function Vaults() {
           </div>
           <div className="space-y-3">
             {safeDeleted.map(vault => (
-              <div key={vault.id} className="flex items-center gap-3 bg-input border-2 border-border rounded-2xl p-4">
+              <div key={vault.id} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-input border-2 border-border rounded-2xl p-4">
                 <div className="flex-1 min-w-0">
-                  <p className="font-black italic uppercase tracking-tighter text-text-muted line-through truncate">{vault.name}</p>
+                  <p className="font-black italic uppercase tracking-tighter text-text-muted line-through line-clamp-2 pr-1.5">{vault.name}</p>
                   <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
                     {formatCurrency(vault.current, privacyMode)} stored · Target {formatCurrency(vault.target, privacyMode)}
                   </p>
                 </div>
-                <div className="flex gap-2 shrink-0">
+                <div className="flex gap-2 w-full sm:w-auto shrink-0">
                   <button
                     type="button"
-                    onClick={() => restoreVault(vault.id)}
-                    className="flex items-center gap-1.5 h-11 px-3 border-[3px] border-black rounded-full bg-action-capture text-capture-contrast font-black uppercase text-[10px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                    onClick={() => handleRestore(vault.id)}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-11 px-3 border-[3px] border-black rounded-full bg-action-capture text-capture-contrast font-black uppercase text-[10px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
                   >
                     <RotateCcw size={12} strokeWidth={3} /> Restore
                   </button>
                   <button
                     type="button"
                     onClick={() => setPermanentDeleteId(vault.id)}
-                    className="flex items-center gap-1.5 h-11 px-3 border-[3px] border-black rounded-full bg-surface text-action-bleed font-black uppercase text-[10px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-11 px-3 border-[3px] border-black rounded-full bg-surface text-action-bleed font-black uppercase text-[10px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
                   >
                     <Trash2 size={12} strokeWidth={3} /> Delete Forever
                   </button>
@@ -420,7 +485,10 @@ export default function Vaults() {
       <div id="vault-create-form" className="bg-surface border-4 border-border rounded-3xl overflow-hidden shadow-[6px_6px_0px_0px_var(--shadow-color)]">
         <button
           type="button"
-          onClick={() => setShowForm(v => !v)}
+          onClick={() => {
+            if (vaultCapReached) { window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'vault_cap' } })); return; }
+            setShowForm(v => !v);
+          }}
           className="w-full flex items-center justify-between px-5 py-4 hover:bg-input transition-colors"
         >
           <div className="flex items-center gap-3">
@@ -428,10 +496,17 @@ export default function Vaults() {
               <Plus size={15} strokeWidth={3} className="text-action-primary" />
             </div>
             <span className="text-[11px] font-black uppercase tracking-widest text-text-main">Create New Vault</span>
+            {vaultCapReached && (
+              <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Pro for more</span>
+            )}
           </div>
-          <motion.div animate={{ rotate: showForm ? 180 : 0 }} transition={{ duration: 0.2 }}>
-            <ChevronDown size={16} strokeWidth={2.5} className="text-text-muted" />
-          </motion.div>
+          {vaultCapReached ? (
+            <Lock size={15} strokeWidth={3} className="text-text-muted shrink-0" />
+          ) : (
+            <motion.div animate={{ rotate: showForm ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <ChevronDown size={16} strokeWidth={2.5} className="text-text-muted" />
+            </motion.div>
+          )}
         </button>
 
         <AnimatePresence initial={false}>
@@ -552,6 +627,25 @@ export default function Vaults() {
             <div className="flex gap-3">
               <button type="button" onClick={() => setDeletingVaultId(null)} className="flex-1 h-12 border-4 border-border rounded-full bg-surface text-text-main font-black text-sm uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">Cancel</button>
               <button type="button" onClick={() => { deleteVault(deletingVaultId); setDeletingVaultId(null); }} className="flex-1 h-12 border-4 border-action-bleed rounded-full bg-action-bleed text-white font-black text-sm uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">Move to Trash</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Restore blocked: free user already at the active-vault cap ──────────── */}
+      {showRestoreLimitModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-surface border-4 border-border rounded-3xl p-7 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-sm w-full">
+            <div className="w-12 h-12 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center mb-4 mx-auto">
+              <Lock size={22} strokeWidth={3} className="text-black" />
+            </div>
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Vault Limit Reached</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-5">
+              Free keeps {FREE_VAULT_CAP} active vaults. Restore this one with Pro, or trash an active vault first to make room.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={handleCloseRestoreModal} className="flex-1 h-12 border-4 border-border rounded-full bg-surface text-text-main font-black text-sm uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">Got it</button>
+              <Link to="/settings#pro" onClick={handleCloseRestoreModal} className="flex-1 h-12 flex items-center justify-center border-4 border-black rounded-full bg-action-primary text-black font-black text-sm uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">Get Pro</Link>
             </div>
           </div>
         </div>

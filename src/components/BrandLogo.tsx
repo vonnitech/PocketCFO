@@ -7,7 +7,7 @@ export function BrandLogo() {
       {/* Brand mark — the coin badge, fixed square so it never warps */}
       <img
         src="/icon.svg"
-        alt="PocketCFO"
+        alt="Pocket CFO"
         width={40}
         height={40}
         className="w-10 h-10 shrink-0 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
@@ -18,7 +18,7 @@ export function BrandLogo() {
           dark: variant won't, since it keys off OS prefers-color-scheme here). */}
       <div className="text-xl font-black tracking-tighter leading-none whitespace-nowrap">
         <span className="text-text-main">Pocket</span>
-        <span className="text-yellow-400">CFO</span>
+        <span className="text-yellow-400">&nbsp;CFO</span>
       </div>
     </div>
   );

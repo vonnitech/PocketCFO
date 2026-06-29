@@ -32,6 +32,7 @@
 }
 
 :root {
+  color-scheme: light;
   --bg-primary: #F2F1EE;
   --bg-secondary: #FAFAF9;
   --bg-input: #E5E3DE;
@@ -47,6 +48,8 @@
 }
 
 .dark {
+  /* So native controls (scrollbars, number spinners, etc.) follow the theme. */
+  color-scheme: dark;
   --bg-primary: #0F0F0F;
   --bg-secondary: #1A1A1A;
   --bg-input: #242424;
@@ -58,9 +61,20 @@
 }
 
 @layer base {
+  /* Honor reduced-motion: near-instant animations/transitions for users who ask. */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   body {
     @apply bg-base text-text-main font-sans antialiased transition-colors duration-300;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   h1 {
@@ -80,6 +94,18 @@
   input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
+  }
+
+  /* Kill the browser's autofill background tint (blue/yellow). Inputs sit
+     transparent over a colored box, so we delay the autofill paint indefinitely
+     and force the theme text/caret color instead of the browser's. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--text-primary);
+    caret-color: var(--text-primary);
+    transition: background-color 9999s ease-in-out 0s;
   }
 }
 
@@ -180,4 +206,13 @@
     linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
   background-size: 20px 20px;
   pointer-events: none;
+}
+
+/* Keyboard focus ring. Unlayered so it beats Tailwind's `outline-none` utilities;
+   uses outline (not box-shadow) so it never clashes with the brutalist offset
+   shadows, and only shows for keyboard users via :focus-visible. */
+:focus-visible {
+  outline: 3px solid var(--color-action-capture);
+  outline-offset: 2px;
+  border-radius: 2px;
 }

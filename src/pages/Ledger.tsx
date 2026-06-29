@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { CSVImport } from '../components/CSVImport';
+import { ProAction } from '../components/ProAction';
 import type { Transaction } from '../types';
 
 const CATEGORY_META: Record<string, { label: string; bg: string; text: string }> = {
@@ -53,7 +54,7 @@ function groupByDate(txs: ReturnType<typeof useStore.getState>['transactions']) 
   return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
 }
 
-export default function Transactions() {
+export default function Ledger() {
   const transactions          = useStore(s => s.transactions);
   const privacyMode           = useStore(s => s.privacyMode);
   const allTransactionsLoaded = useStore(s => s.allTransactionsLoaded);
@@ -131,14 +132,16 @@ export default function Transactions() {
           >
             {editMode ? <><X size={13} strokeWidth={3} /> Done</> : <><Trash2 size={13} strokeWidth={2.5} /> Edit</>}
           </button>
-          <button
-            type="button"
-            onClick={() => setImportOpen(true)}
-            className="flex items-center gap-2 h-10 px-4 bg-surface border-2 border-border rounded-2xl font-black text-[10px] uppercase tracking-widest text-text-muted hover:border-black hover:text-text-main transition-all shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
-          >
-            <Upload size={13} strokeWidth={2.5} />
-            Import
-          </button>
+          <ProAction feature="import">
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-2 h-10 px-4 bg-surface border-2 border-border rounded-2xl font-black text-[10px] uppercase tracking-widest text-text-muted hover:border-black hover:text-text-main transition-all shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+            >
+              <Upload size={13} strokeWidth={2.5} />
+              Import
+            </button>
+          </ProAction>
         </div>
       </div>
 
@@ -151,7 +154,7 @@ export default function Transactions() {
         <Search size={14} strokeWidth={2.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
         <input
           type="text"
-          placeholder="Search merchant..."
+          placeholder="Search merchant…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="w-full bg-input border-4 border-black rounded-2xl pl-10 pr-10 py-3.5 font-bold text-sm text-text-main placeholder:text-text-muted/50 outline-none focus:border-action-capture transition-colors uppercase tracking-wide"

@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { userKey } from '../../lib/userScopedStorage';
 import { currencySymbol } from '../../lib/currency';
+import { PreviewChip } from '../PreviewChip';
+import { ProAction } from '../ProAction';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const R = 0.07 / 12;
@@ -457,6 +459,7 @@ export function FireCalculator() {
               </div>
             </div>
           )}
+          <div className="mt-2"><PreviewChip /></div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 mt-1">
           {fireConfig && (
@@ -745,14 +748,16 @@ export function FireCalculator() {
 
         {/* Lock In Strategy */}
         {isDirty ? (
-          <button
-            type="button"
-            onClick={handleLockIn}
-            className="w-full h-12 flex items-center justify-center gap-2 border-4 border-black rounded-2xl bg-black text-capture-readable font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
-          >
-            <Lock size={14} strokeWidth={3} />
-            {fireConfig ? 'Update Locked Strategy' : 'Lock In Strategy'}
-          </button>
+          <ProAction feature="fire_lock">
+            <button
+              type="button"
+              onClick={handleLockIn}
+              className="w-full h-12 flex items-center justify-center gap-2 border-4 border-black rounded-2xl bg-black text-capture-readable font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            >
+              <Lock size={14} strokeWidth={3} />
+              {fireConfig ? 'Update Locked Strategy' : 'Lock In Strategy'}
+            </button>
+          </ProAction>
         ) : (
           <div className="w-full h-12 flex items-center justify-center gap-2 border-4 border-action-capture/40 rounded-2xl bg-action-capture/10 text-capture-readable font-black uppercase tracking-widest text-[11px]">
             <Lock size={14} strokeWidth={3} />

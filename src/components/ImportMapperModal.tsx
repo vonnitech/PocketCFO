@@ -156,7 +156,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-black border-2 border-black rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
                   <FileSpreadsheet size={11} /> Import Statement
                 </div>
-                <button type="button" onClick={onClose} title="Close" className="w-8 h-8 border-2 border-black rounded-lg flex items-center justify-center hover:bg-surface">
+                <button type="button" onClick={onClose} title="Close" aria-label="Close" className="w-8 h-8 border-2 border-black rounded-lg flex items-center justify-center hover:bg-surface">
                   <X size={14} strokeWidth={3} />
                 </button>
               </div>
@@ -178,7 +178,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                   >
                     <Upload size={36} className="mx-auto mb-3 text-text-muted" strokeWidth={2} />
                     <p className="text-sm font-black uppercase tracking-widest text-text-main mb-1">
-                      {parsing ? 'Parsing...' : 'Drop CSV or Excel here'}
+                      {parsing ? 'Parsing…' : 'Drop CSV or Excel here'}
                     </p>
                     <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
                       .csv · .xlsx · .xls supported

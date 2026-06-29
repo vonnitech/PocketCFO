@@ -25,3 +25,16 @@ export function logSecurityEvent(event: SecurityEvent): void {
   //   Sentry.addBreadcrumb({ category: 'security', level: 'warning', message: event.type, data: payload });
   //   posthog.capture(`security:${event.type}`, payload);
 }
+
+// Product/funnel events. Same sink as security events; swap the body when analytics
+// is wired. `feature` is the gated tool key (e.g. 'fire', 'income', 'debt').
+export type ProductEvent =
+  | { type: 'paywall_viewed';      feature: string }
+  | { type: 'paywall_cta_clicked'; feature: string };
+
+export function logProductEvent(event: ProductEvent): void {
+  const payload = { ...event, userId: userIdRef, ts: new Date().toISOString() };
+  // eslint-disable-next-line no-console
+  console.warn('[product]', payload);
+  // TODO when PostHog is wired: posthog.capture(`product:${event.type}`, payload);
+}

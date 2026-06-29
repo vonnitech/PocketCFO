@@ -43,7 +43,7 @@ function getTierLock(): TierLock | null {
   } catch { return null; }
 }
 
-export default function Recon() {
+export default function DailyLog() {
   // Full-store subscription is intentional here: calculateTrueSafeSpend(state)
   // below needs the complete AppState, so a narrowed selector would not help.
   const state = useStore();

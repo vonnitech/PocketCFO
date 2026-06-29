@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { TrendingUp, AlertOctagon, RotateCcw } from 'lucide-react';
 import { currencySymbol } from '../lib/currency';
 
-export const CompoundGrowth: React.FC = () => {
+export const WealthGrowth: React.FC = () => {
   const [principal, setPrincipal] = useState('');
   const [monthly, setMonthly] = useState('');
   const [annualReturn, setAnnualReturn] = useState('');
