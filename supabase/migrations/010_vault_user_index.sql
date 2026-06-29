@@ -1,0 +1,11 @@
+-- =============================================================================
+-- 010_vault_user_index.sql  —  Add the missing index on vaults.user_id
+-- Run in: Supabase Dashboard → SQL Editor. Safe to re-run.
+--
+-- Surfaced by a Supabase Postgres best-practices review: every other user-scoped
+-- table (transactions, recon_history, debts, subscriptions) indexes user_id, but
+-- vaults did not. Every vault query and the vaults RLS policy filter on user_id,
+-- so without this index Postgres does a full table scan per query (and slow
+-- ON DELETE CASCADE from auth.users). Matches schema-foreign-key-indexes.
+-- =============================================================================
+create index if not exists idx_vaults_user on public.vaults (user_id);
