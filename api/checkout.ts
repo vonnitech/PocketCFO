@@ -1,14 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import Stripe from 'stripe';
 
-// Creates a Stripe Checkout Session for a Pro plan and returns its URL.
-// Env (set in Vercel): STRIPE_SECRET_KEY, STRIPE_PRICE_MONTHLY/ANNUAL/LIFETIME.
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '');
-
-const PRICE_IDS: Record<string, string | undefined> = {
-  monthly:  process.env.STRIPE_PRICE_MONTHLY,
-  annual:   process.env.STRIPE_PRICE_ANNUAL,
-  lifetime: process.env.STRIPE_PRICE_LIFETIME,
+// Creates a LemonSqueezy Checkout for a Pro plan and returns its hosted URL.
+// Env (set in Vercel): LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID,
+// LEMONSQUEEZY_VARIANT_MONTHLY/ANNUAL/LIFETIME.
+const VARIANT_IDS: Record<string, string | undefined> = {
+  monthly:  process.env.LEMONSQUEEZY_VARIANT_MONTHLY,
+  annual:   process.env.LEMONSQUEEZY_VARIANT_ANNUAL,
+  lifetime: process.env.LEMONSQUEEZY_VARIANT_LIFETIME,
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -16,26 +14,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { plan, userId, email } = (req.body ?? {}) as { plan?: string; userId?: string; email?: string };
-    const price = plan ? PRICE_IDS[plan] : undefined;
-    if (!price) return res.status(400).json({ error: 'Unknown or unconfigured plan' });
+    const variantId = plan ? VARIANT_IDS[plan] : undefined;
+    const storeId = process.env.LEMONSQUEEZY_STORE_ID;
+    const apiKey = process.env.LEMONSQUEEZY_API_KEY;
+    if (!variantId || !storeId || !apiKey) {
+      return res.status(400).json({ error: 'Unknown or unconfigured plan' });
+    }
 
     const origin = (req.headers.origin as string) ?? `https://${req.headers.host}`;
-    // Lifetime is a one-time price (mode: payment); monthly/annual recur (mode: subscription).
-    const mode: Stripe.Checkout.SessionCreateParams.Mode = plan === 'lifetime' ? 'payment' : 'subscription';
 
-    const session = await stripe.checkout.sessions.create({
-      mode,
-      line_items: [{ price, quantity: 1 }],
-      success_url: `${origin}/settings?pro=success`,
-      cancel_url: `${origin}/settings#pro`,
-      client_reference_id: userId,
-      customer_email: email,
-      metadata: { userId: userId ?? '', plan },
-      // Stamp the same metadata on the subscription so renewal/cancel webhooks know the user.
-      ...(mode === 'subscription' ? { subscription_data: { metadata: { userId: userId ?? '', plan } } } : {}),
+    const resp = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.api+json',
+        'Content-Type': 'application/vnd.api+json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        data: {
+          type: 'checkouts',
+          attributes: {
+            checkout_data: {
+              // email pre-fills the form; custom is echoed back in every webhook's
+              // meta.custom_data so we know which profile to entitle. plan also
+              // disambiguates a lifetime order from a subscription's first order.
+              ...(email ? { email } : {}),
+              custom: { user_id: userId ?? '', plan: plan ?? '' },
+            },
+            product_options: {
+              redirect_url: `${origin}/settings?pro=success`,
+            },
+          },
+          relationships: {
+            store:   { data: { type: 'stores',   id: String(storeId) } },
+            variant: { data: { type: 'variants', id: String(variantId) } },
+          },
+        },
+      }),
     });
 
-    return res.status(200).json({ url: session.url });
+    const json = await resp.json() as { data?: { attributes?: { url?: string } } };
+    const url = json?.data?.attributes?.url;
+    if (!resp.ok || !url) {
+      console.error('[checkout] lemonsqueezy error', resp.status, json);
+      return res.status(502).json({ error: 'Checkout failed' });
+    }
+
+    return res.status(200).json({ url });
   } catch (e) {
     console.error('[checkout]', e);
     return res.status(500).json({ error: 'Checkout failed' });

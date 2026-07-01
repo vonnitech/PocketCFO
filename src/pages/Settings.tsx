@@ -120,8 +120,8 @@ export default function Settings() {
   const { theme, setTheme, privacyMode, togglePrivacyMode, dashboardWidgets, updateDashboardWidgets, lockEnabled, pinHash, setState, setThemeColors } = state;
   const isPro = useIsPro();
 
-  // Kick off Stripe Checkout for a plan (the /api/checkout function builds the
-  // hosted session; we just redirect to it).
+  // Kick off LemonSqueezy Checkout for a plan (the /api/checkout function builds
+  // the hosted checkout; we just redirect to it).
   const startCheckout = async (plan: 'monthly' | 'annual' | 'lifetime') => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -138,8 +138,8 @@ export default function Settings() {
     }
   };
 
-  // After returning from Stripe (success_url = /settings?pro=success), re-read the
-  // entitlement so the unlock reflects immediately once the webhook has run.
+  // After returning from LemonSqueezy (redirect_url = /settings?pro=success),
+  // re-read the entitlement so the unlock reflects once the webhook has run.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('pro') === 'success') {
       refreshProStatus();
@@ -147,7 +147,7 @@ export default function Settings() {
     }
   }, []);
 
-  // Open the Stripe Billing Portal (manage / cancel / invoices).
+  // Open the LemonSqueezy Customer Portal (manage / cancel / receipts).
   const openBillingPortal = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();

@@ -5,7 +5,7 @@ import { supabase } from '../core/supabase';
 //
 // Two sources, OR'd together:
 //   1. Real entitlement — profiles.pro_plan / pro_expires_at, written by the
-//      Stripe webhook (see api/stripe-webhook.ts). Fetched once and cached.
+//      LemonSqueezy webhook (see api/lemonsqueezy-webhook.ts). Fetched once and cached.
 //   2. Local dev toggle — the Settings "Pro Access" switch, for testing both
 //      states before billing is live. Remove the toggle once billing ships.
 const KEY = 'pocket-cfo-pro';
@@ -70,7 +70,7 @@ async function loadEntitlement(): Promise<void> {
   entListeners.forEach(l => l());
 }
 
-// Force a re-fetch (e.g. after returning from Stripe Checkout).
+// Force a re-fetch (e.g. after returning from LemonSqueezy Checkout).
 export function refreshProStatus(): void {
   entitlement = { isPro: false, loaded: false };
   inFlight = loadEntitlement();
