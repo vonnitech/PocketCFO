@@ -184,6 +184,13 @@ export const calculateVaultProgress = (current: number, target: number): number 
   return Math.min(100, (current / target) * 100);
 };
 
+// Cash that can actually be moved into a vault: liquid assets minus what's
+// already earmarked for upcoming bills. Single source of truth so the Vaults
+// "Available to Vault" card, the Fund sheet, and the funding guard all agree.
+export const calculateAvailableToVault = (liquidAssets: number, upcomingBills: number): number => {
+  return Math.max(0, liquidAssets - (upcomingBills || 0));
+};
+
 export const calculateSalaryDelta = (current: number, target: number): number => {
   return Math.max(0, target - current);
 };

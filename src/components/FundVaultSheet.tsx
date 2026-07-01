@@ -3,6 +3,7 @@ import { Wallet, ShieldCheck } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
+import { calculateAvailableToVault } from '../core/math';
 import { BottomSheet } from './BottomSheet';
 
 interface Props {
@@ -18,7 +19,7 @@ export function FundVaultSheet({ vaultId, vaultName, onClose }: Props) {
   const privacyMode     = useStore(s => s.privacyMode);
 
   // Only the cash NOT earmarked for bills is truly available to redirect
-  const available = Math.max(0, liquidAssets - (upcomingBills || 0));
+  const available = calculateAvailableToVault(liquidAssets, upcomingBills);
 
   const [amount, setAmount] = useState('');
 

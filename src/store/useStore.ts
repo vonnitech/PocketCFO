@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
-import { calculateTrueSafeSpend, calculateRawSafeSpend, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
+import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
 import { supabase } from '../core/supabase';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
 import { setActiveCurrency } from '../lib/currency';
@@ -1485,8 +1485,9 @@ export const useStore = create<StoreState>()(
     },
 
     addFundsToVault: async (vaultId, amount) => {
-      const { userId, vaults, liquidAssets } = get() as StoreState;
-      if (amount <= 0 || amount > liquidAssets) return;
+      const { userId, vaults, liquidAssets, upcomingBills } = get() as StoreState;
+      // Cap at cash not already earmarked for bills, matching the Fund sheet.
+      if (amount <= 0 || amount > calculateAvailableToVault(liquidAssets, upcomingBills)) return;
       const vault = vaults.find(v => v.id === vaultId);
       if (!vault) return;
 

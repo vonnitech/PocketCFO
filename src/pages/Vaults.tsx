@@ -12,7 +12,7 @@ import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { useIsPro } from '../lib/pro';
 import { userKey } from '../lib/userScopedStorage';
-import { calculateVaultProgress, calculateCurrentMonthDeposits } from '../core/math';
+import { calculateVaultProgress, calculateCurrentMonthDeposits, calculateAvailableToVault } from '../core/math';
 import { FundVaultSheet } from '../components/FundVaultSheet';
 import { VaultTransferSheet } from '../components/VaultTransferSheet';
 
@@ -108,6 +108,7 @@ export default function Vaults() {
     updateState,
     privacyMode,
     liquidAssets,
+    upcomingBills,
     monthlySavingsGoal,
     transactions,
     nextPayday,
@@ -210,6 +211,7 @@ export default function Vaults() {
   const sinkingTotal          = vaults.filter(v => v.asset_class === 'SINKING_FUND').reduce((s, v) => s + v.current, 0);
   const cashTotal             = vaults.filter(v => v.asset_class === 'CASH_RESERVE').reduce((s, v) => s + v.current, 0);
   const totalVaulted          = investmentTotal + sinkingTotal + cashTotal;
+  const availableToVault      = calculateAvailableToVault(liquidAssets, upcomingBills);
   const vaultBeingDeleted     = vaults.find(v => v.id === deletingVaultId);
   const vaultBeingPermDeleted = safeDeleted.find(v => v.id === permanentDeleteId);
 
@@ -295,7 +297,7 @@ export default function Vaults() {
         <div className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Available to Vault</p>
           <p className="text-xl font-black italic tabular-nums text-capture-readable leading-none">
-            {formatCurrency(liquidAssets, privacyMode)}
+            {formatCurrency(availableToVault, privacyMode)}
           </p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">
             {monthlySavingsGoal > 0 && remainingToGoal > 0 ? `${formatCurrency(remainingToGoal, privacyMode)} to hit goal` : 'Ready to distribute'}
@@ -375,9 +377,7 @@ export default function Vaults() {
                 <div className="flex justify-between items-baseline mt-1">
                   <span className="text-[9px] font-bold text-text-muted tabular-nums">{formatCurrency(vault.current, privacyMode)}</span>
                   {!isComplete && (
-                    <span className="text-[9px] font-bold text-text-muted/50 tabular-nums">
-                      <span className="font-black text-text-muted">{Math.min(100, progress).toFixed(0)}%</span> · of {formatCurrency(vault.target, privacyMode)}
-                    </span>
+                    <span className="text-[9px] font-black text-text-muted tabular-nums">{Math.min(100, progress).toFixed(0)}%</span>
                   )}
                   {isComplete && <span className="text-[9px] font-black text-capture-readable uppercase tracking-widest">Goal Achieved</span>}
                 </div>
@@ -519,61 +519,71 @@ export default function Vaults() {
               transition={{ duration: 0.22, ease: 'easeInOut' }}
               className="overflow-hidden"
             >
-              <div className="px-5 pb-5 pt-1 space-y-4 border-t-2 border-border">
+              <div className="px-5 pb-5 pt-4 space-y-5 border-t-2 border-border">
 
-                {/* Type picker */}
+                {/* Type picker — 3-up card selector (one row on desktop) */}
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2 mt-3">Vault Type</p>
-                  <div className="flex flex-col gap-2">
-                    {CLASS_OPTIONS.map(opt => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setFormClass(opt.id)}
-                        className={`flex items-center gap-3 p-3 rounded-2xl border-4 transition-all text-left w-full ${
-                          formClass === opt.id ? 'bg-black border-black' : 'bg-input border-border hover:border-black'
-                        }`}
-                      >
-                        <div className={`w-9 h-9 border-2 border-black rounded-xl flex items-center justify-center shrink-0 ${formClass === opt.id ? 'bg-action-primary' : 'bg-surface'}`}>
-                          <opt.icon size={16} strokeWidth={2.5} className="text-black" />
-                        </div>
-                        <div>
-                          <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${formClass === opt.id ? 'text-action-primary' : 'text-text-main'}`}>{opt.label}</p>
-                          <p className={`text-[10px] font-bold mt-1 leading-snug ${formClass === opt.id ? 'text-white/50' : 'text-text-muted'}`}>{opt.desc}</p>
-                        </div>
-                      </button>
-                    ))}
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Vault Type</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {CLASS_OPTIONS.map(opt => {
+                      const selected = formClass === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setFormClass(opt.id)}
+                          className={`relative flex items-center sm:flex-col sm:items-start gap-3 sm:gap-2.5 p-3 rounded-2xl border-[3px] text-left transition-all ${
+                            selected
+                              ? 'bg-black border-black shadow-[3px_3px_0px_0px_var(--color-action-primary)]'
+                              : 'bg-input border-border hover:border-black'
+                          }`}
+                        >
+                          <div className={`w-9 h-9 border-2 border-black rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-action-primary' : 'bg-surface'}`}>
+                            <opt.icon size={16} strokeWidth={2.5} className="text-black" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${selected ? 'text-action-primary' : 'text-text-main'}`}>{opt.label}</p>
+                            <p className={`text-[9px] font-bold mt-1 leading-snug ${selected ? 'text-white/50' : 'text-text-muted'}`}>{opt.desc}</p>
+                          </div>
+                          {selected && (
+                            <span className="absolute top-2 right-2 w-4 h-4 bg-action-primary border-2 border-black rounded-full hidden sm:flex items-center justify-center">
+                              <Check size={9} strokeWidth={4} className="text-black" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Name */}
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Vault Name</p>
-                  <input
-                    title="Vault Name"
-                    placeholder="e.g. EMERGENCY FUND"
-                    className="w-full bg-input border-4 border-black rounded-2xl p-4 font-black uppercase text-sm text-text-main outline-none focus:border-action-capture transition-colors"
-                    value={formName}
-                    onChange={e => setFormName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && submitForm()}
-                  />
-                </div>
-
-                {/* Target */}
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Savings Target</p>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted text-lg pointer-events-none select-none">{currencySymbol()}</span>
+                {/* Name + Target — paired on desktop to keep the form compact */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Vault Name</p>
                     <input
-                      type="number"
-                      min="0"
-                      title="Target Amount"
-                      placeholder="0"
-                      className="w-full bg-input border-4 border-black rounded-2xl pl-9 pr-4 py-4 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums"
-                      value={formTarget}
-                      onChange={e => setFormTarget(e.target.value)}
+                      title="Vault Name"
+                      placeholder="e.g. EMERGENCY FUND"
+                      className="w-full h-16 bg-input border-4 border-black rounded-2xl px-4 font-black uppercase text-sm text-text-main outline-none focus:border-action-capture transition-colors"
+                      value={formName}
+                      onChange={e => setFormName(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && submitForm()}
                     />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Savings Target</p>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted text-lg pointer-events-none select-none">{currencySymbol()}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        title="Target Amount"
+                        placeholder="0"
+                        className="w-full h-16 bg-input border-4 border-black rounded-2xl pl-9 pr-4 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums"
+                        value={formTarget}
+                        onChange={e => setFormTarget(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && submitForm()}
+                      />
+                    </div>
                   </div>
                 </div>
 
