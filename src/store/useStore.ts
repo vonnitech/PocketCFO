@@ -9,6 +9,7 @@ import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVaul
 import { supabase } from '../core/supabase';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
 import { setActiveCurrency } from '../lib/currency';
+import { loadSnapshot } from '../db/storage';
 import { SpendTierId } from '../core/math';
 
 // Prevents concurrent processPayday calls from double-crediting income when
@@ -101,6 +102,12 @@ export interface AppState {
   // Auth
   userId: string | null;
   dataLoaded: boolean;
+  // dataLoaded only means "there is something to render" — it goes true for the
+  // IndexedDB snapshot too. dataFresh means Supabase has confirmed this state in
+  // THIS session. Anything that writes money must gate on dataFresh, never on
+  // dataLoaded: acting on a stale snapshot can duplicate a payday credit.
+  // Never persisted to the snapshot.
+  dataFresh: boolean;
   allTransactionsLoaded: boolean;
 
   isConfigured: boolean;
@@ -208,6 +215,7 @@ export const deriveBillQueue = (
 export const INITIAL_STATE: AppState = {
   userId: null,
   dataLoaded: false,
+  dataFresh: false,
   allTransactionsLoaded: false,
 
   isConfigured: false,
@@ -291,6 +299,7 @@ interface StoreActions {
   updateState: (fn: (prev: AppState) => AppState) => void;
 
   // Data sync
+  hydrateFromCache: (userId: string) => Promise<boolean>; // true = painted from the local snapshot
   fetchUserData: (userId: string) => Promise<void>;
   fetchMoreTransactions: () => Promise<number>; // returns count fetched, 0 = end of history
 
@@ -355,6 +364,40 @@ export const useStore = create<StoreState>()(
 
     // ── Sync ─────────────────────────────────────────────────────────────────
 
+    // Paints the last known-good state from IndexedDB so a cold start doesn't
+    // sit on the sync fallback waiting for seven round trips. Runs alongside
+    // fetchUserData, never instead of it — whichever lands first wins, and the
+    // network response always overwrites the cache.
+    hydrateFromCache: async (userId) => {
+      if ((get() as StoreState).dataLoaded) return false;
+
+      const snapshot = await loadSnapshot(userId);
+      if (!snapshot) return false;
+
+      let applied = false;
+      set((state: any) => {
+        // Re-check inside the setter: the IndexedDB read is async, so the live
+        // fetch may have landed while we were waiting. Never overwrite fresh
+        // data with the snapshot.
+        if (state.dataLoaded) return state;
+
+        const nextState = { ...state, ...snapshot, userId, dataLoaded: true };
+
+        // Derived fields are recomputed rather than trusted from the snapshot,
+        // exactly as fetchUserData does — a cached copy is the one thing that
+        // could drift from its inputs.
+        nextState.billQueue           = deriveBillQueue(nextState.recurringBills, nextState.paidBillKeys);
+        nextState.primaryVaultBalance = calculatePrimaryVaultBalance(nextState.vaults);
+        nextState.safeSpendLimit      = calculateTrueSafeSpend(nextState);
+
+        applied = true;
+        return nextState;
+      });
+
+      if (applied) setActiveCurrency(String(snapshot.currency ?? 'USD'));
+      return applied;
+    },
+
     fetchUserData: async (userId) => {
       // Initial transaction load is limited to the last 60 days. That's enough for
       // the safe-spend engine (which only looks at the current pay cycle) without
@@ -371,6 +414,21 @@ export const useStore = create<StoreState>()(
         supabase.from('subscriptions').select('*').eq('user_id', userId),
         supabase.from('recon_history').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(90),
       ]);
+
+      // A transport failure (offline, DNS, CORS) does NOT reject — postgrest
+      // resolves with status 0 and null data, which further down is
+      // indistinguishable from "this user genuinely has no rows". Merging that
+      // would wipe a cache-hydrated store back to blank and, because
+      // hasCompletedOnboarding would read false, drop an established user into
+      // the onboarding flow. Treat any unreachable query as a failed load and
+      // keep whatever is already on screen; the next load retries.
+      const responses: { status: number }[] = [profileRes, txRes, vaultRes, deletedVaultRes, debtRes, subRes, reconRes];
+      if (responses.some(r => r.status === 0)) {
+        // dataLoaded (not dataFresh) — enough to render the cached state, not
+        // enough to let the payday lifecycle act on it.
+        set((state: any) => ({ ...state, userId, dataLoaded: true }));
+        return;
+      }
 
       const profile = profileRes.data as Record<string, unknown> | null;
 
@@ -429,6 +487,8 @@ export const useStore = create<StoreState>()(
         const merged: Partial<AppState> = {
           userId,
           dataLoaded: true,
+          // Server-confirmed: unlocks the payday lifecycle (see dataFresh above).
+          dataFresh: true,
           // Initial load only pulled the last 60 days. The Ledger pagination will
           // unlock older history as the user scrolls. If we got 0 rows there's nothing
           // older to fetch either — flag complete to skip pointless network calls.

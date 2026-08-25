@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { requireUser } from './_auth';
 
 // Creates a LemonSqueezy Checkout for a Pro plan and returns its hosted URL.
 // Env (set in Vercel): LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID,
@@ -13,7 +14,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { plan, userId, email } = (req.body ?? {}) as { plan?: string; userId?: string; email?: string };
+    // user_id is echoed back by every webhook and decides which profile gets
+    // entitled, so it comes from the verified token. Left body-supplied, anyone
+    // could tag a checkout with someone else's id and overwrite their billing
+    // link. Only the plan is caller's choice.
+    const caller = await requireUser(req);
+    if (!caller) return res.status(401).json({ error: 'Not signed in' });
+
+    const { plan } = (req.body ?? {}) as { plan?: string };
     const variantId = plan ? VARIANT_IDS[plan] : undefined;
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const apiKey = process.env.LEMONSQUEEZY_API_KEY;
@@ -38,8 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               // email pre-fills the form; custom is echoed back in every webhook's
               // meta.custom_data so we know which profile to entitle. plan also
               // disambiguates a lifetime order from a subscription's first order.
-              ...(email ? { email } : {}),
-              custom: { user_id: userId ?? '', plan: plan ?? '' },
+              ...(caller.email ? { email: caller.email } : {}),
+              custom: { user_id: caller.id, plan: plan ?? '' },
             },
             product_options: {
               redirect_url: `${origin}/settings?pro=success`,

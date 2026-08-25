@@ -42,10 +42,17 @@ const ACTIVE_STATUSES = new Set(['active', 'on_trial', 'cancelled', 'past_due'])
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // Fail closed. With no secret the HMAC below would still be computed, against
+  // an empty key, and anyone able to derive that could forge entitlements.
+  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error('[webhook] LEMONSQUEEZY_WEBHOOK_SECRET is not set; refusing to verify');
+    return res.status(500).send('webhook not configured');
+  }
+
   let raw: Buffer;
   try {
     raw = await readRawBody(req);
-    const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET ?? '';
     const digest = crypto.createHmac('sha256', secret).update(raw).digest('hex');
     const a = Buffer.from(digest, 'utf8');
     const b = Buffer.from((req.headers['x-signature'] as string) ?? '', 'utf8');

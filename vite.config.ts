@@ -32,6 +32,39 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png}'],
+        // The report/import machinery — xlsx + papaparse (export-*), jspdf, and
+        // jspdf's html2canvas / DOMPurify / ESM-sibling deps — is ~408KB gzipped,
+        // 57% of what this precache would otherwise ship. Every one of those
+        // chunks is reachable ONLY through the dynamic import()s in Settings and
+        // ImportMapperModal, so precaching them hands the full download to every
+        // user on install for a feature most never open, and re-ships whichever
+        // ones rehash on each deploy. They are cached at runtime on first real
+        // use instead (see runtimeCaching below).
+        //
+        // Verify after changing chunking: the build log's "precache N entries
+        // (X KiB)" line should stay near ~1.0MB, not jump back to ~2.4MB.
+        globIgnores: [
+          'assets/export-*.js',
+          'assets/jspdf*.js',
+          'assets/html2canvas*.js',
+          'assets/index.es-*.js',
+          'assets/purify*.js',
+        ],
+        runtimeCaching: [
+          {
+            // Same set as globIgnores. Filenames are content-hashed, so a cache
+            // hit can never be stale — CacheFirst is safe and means the download
+            // happens exactly once per user, not once per session.
+            urlPattern: /\/assets\/(export|jspdf|html2canvas|index\.es|purify)[^/]*\.js$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'pocketcfo-report-chunks',
+              // Bounded so superseded hashes from past deploys can't accumulate.
+              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },

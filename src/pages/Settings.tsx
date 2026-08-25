@@ -19,8 +19,9 @@ import {
 } from '../lib/webauthn';
 import { logSecurityEvent } from '../core/telemetry';
 import { clearUserLocalData } from '../lib/userScopedStorage';
+import { clearSnapshot, cancelQueuedSnapshotSave } from '../db/storage';
 import { CURRENCIES } from '../lib/currency';
-import { useIsPro, setProUnlocked, refreshProStatus } from '../lib/pro';
+import { useIsPro, refreshProStatus } from '../lib/pro';
 import { PRICING } from '../lib/pricing';
 import { ProAction } from '../components/ProAction';
 
@@ -124,11 +125,16 @@ export default function Settings() {
   // the hosted checkout; we just redirect to it).
   const startCheckout = async (plan: 'monthly' | 'annual' | 'lifetime') => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // The function reads the buyer from this token, so it is the whole
+      // request identity; the body only carries the plan.
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, userId: user?.id, email: user?.email }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ plan }),
       });
       const { url, error } = await res.json();
       if (url) window.location.href = url;
@@ -150,11 +156,13 @@ export default function Settings() {
   // Open the LemonSqueezy Customer Portal (manage / cancel / receipts).
   const openBillingPortal = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/portal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
       });
       const { url, error } = await res.json();
       if (url) window.location.href = url;
@@ -260,6 +268,21 @@ export default function Settings() {
       alert('Export failed. Please try again.');
     }
   };
+  // The modal and its parser (xlsx/papaparse) are no longer precached by the
+  // service worker, so fetch them before rendering. Letting lazy() do it means a
+  // failed load throws during render and trips the app-level ErrorBoundary;
+  // resolving it here turns the offline case into the same readable message the
+  // export buttons give. Once loaded, the lazy() below hits a warm module cache.
+  const openImport = async () => {
+    try {
+      await import('../components/ImportMapperModal');
+      setImportOpen(true);
+    } catch (err) {
+      console.error('[PocketCFO] import module failed to load', err);
+      alert('Import needs a connection the first time you use it. Please try again online.');
+    }
+  };
+
   const handleImport = (payload: ImportPayload) => {
     state.massImportTransactions(payload.transactions);
 
@@ -342,6 +365,10 @@ export default function Settings() {
     // Clear browser-local tool state too (FIRE inputs, recon locks, bill-queue
     // cache, tour flag) so the wipe is a true reset — not just the cloud rows.
     clearUserLocalData(userId);
+    // Same for the offline snapshot — a wipe that leaves the old numbers in
+    // IndexedDB would hand them straight back on the next cold start.
+    cancelQueuedSnapshotSave();
+    await clearSnapshot(userId);
     setState({ ...INITIAL_STATE, userId, dataLoaded: true });
     setWiping(false);
   };
@@ -526,7 +553,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Pro tier — three-tier pricing; dev toggle below until billing is wired */}
+        {/* Pro tier — three-tier pricing, state driven by the LemonSqueezy webhook */}
         <div id="pro" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <Lock size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
@@ -581,24 +608,6 @@ export default function Settings() {
               </button>
             </>
           )}
-
-          {/* Dev toggle — keep until billing drives Pro status (see lib/pro.ts) */}
-          <div className="flex items-center justify-between gap-4 mt-4 pt-3 border-t-2 border-border/40">
-            <div className="min-w-0">
-              <p className="text-sm font-black uppercase tracking-widest text-text-main">{isPro ? 'Pro unlocked' : 'Free plan'}</p>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-0.5">Dev toggle · wire to billing before launch</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isPro ? 'true' : 'false'}
-              title={isPro ? 'Switch to Free' : 'Unlock Pro'}
-              onClick={() => setProUnlocked(!isPro)}
-              className={`shrink-0 w-14 h-8 rounded-full border-4 border-black transition-colors relative ${isPro ? 'bg-action-capture' : 'bg-input'}`}
-            >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white border-2 border-black rounded-full transition-all ${isPro ? 'left-6.5' : 'left-0.5'}`} />
-            </button>
-          </div>
         </div>
 
         {/* Dashboard Widgets */}
@@ -681,7 +690,7 @@ export default function Settings() {
 
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60 mt-2">Import</p>
             <ProAction feature="import">
-              <button type="button" onClick={() => setImportOpen(true)}
+              <button type="button" onClick={openImport}
                 className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
                 <FileUp size={16} /> IMPORT STATEMENT (CSV / XLSX)
               </button>

@@ -5,6 +5,7 @@ import { AnimatePresence } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useStore, INITIAL_STATE } from './store/useStore';
 import { initDB } from './db';
+import { queueSnapshotSave, cancelQueuedSnapshotSave, clearSnapshot } from './db/storage';
 import { supabase, isSupabaseConfigured } from './core/supabase';
 import { setTelemetryUser } from './core/telemetry';
 import { useIdleLock } from './hooks/useIdleLock';
@@ -132,7 +133,9 @@ function withPageWrapper(element: React.ReactNode) {
 
 function App() {
   const dataLoaded            = useStore(s => s.dataLoaded);
+  const dataFresh             = useStore(s => s.dataFresh);
   const fetchUserData         = useStore(s => s.fetchUserData);
+  const hydrateFromCache      = useStore(s => s.hydrateFromCache);
   const theme                 = useStore(s => s.theme);
   const themeColors           = useStore(s => s.themeColors);
   const hasCompletedOnboarding = useStore(s => s.hasCompletedOnboarding);
@@ -177,10 +180,13 @@ function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
-  // Also run after initial data load (mount fires before Supabase data arrives)
+  // Also run once Supabase confirms the data (mount fires before it arrives).
+  // Keyed on dataFresh, not dataLoaded: a cache hydrate flips dataLoaded early
+  // and runPaydayCheck ignores non-fresh state, so watching dataLoaded here
+  // would consume the only trigger and skip the check for the whole session.
   useEffect(() => {
-    if (dataLoaded) runPaydayCheck(useStore.getState() as any);
-  }, [dataLoaded]);
+    if (dataFresh) runPaydayCheck(useStore.getState() as any);
+  }, [dataFresh]);
 
   // Establish session on mount and subscribe to auth changes
   useEffect(() => {
@@ -198,6 +204,12 @@ function App() {
       // Wiping on INITIAL_SESSION was causing hasCompletedOnboarding to reset,
       // hiding the LOG SPEND button on every page load.
       if (event === 'SIGNED_OUT') {
+        // Drop the local snapshot too, otherwise signing out would leave this
+        // user's finances readable on the device. Cancel first so a debounced
+        // save can't land after the delete and resurrect it.
+        const signedOutUserId = useStore.getState().userId;
+        cancelQueuedSnapshotSave();
+        if (signedOutUserId) void clearSnapshot(signedOutUserId);
         useStore.getState().setState({ ...INITIAL_STATE });
         setRecoveryMode(false);
       }
@@ -212,12 +224,21 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Populate store from Supabase whenever the authenticated user changes
+  // Populate store whenever the authenticated user changes.
+  // Stale-while-revalidate: the IndexedDB snapshot paints immediately while the
+  // Supabase fetch runs in parallel and overwrites it. The two are deliberately
+  // NOT awaited in sequence — a slow disk read must never delay the network.
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchUserData(session.user.id);
-    }
-  }, [session?.user?.id, fetchUserData]);
+    const uid = session?.user?.id;
+    if (!uid) return;
+    void hydrateFromCache(uid);
+    fetchUserData(uid);
+  }, [session?.user?.id, fetchUserData, hydrateFromCache]);
+
+  // Keep the snapshot current. Local mutations already write through to
+  // Supabase optimistically, so caching them here means an offline relaunch
+  // shows the spend the user just logged.
+  useEffect(() => useStore.subscribe(state => queueSnapshotSave(state)), []);
 
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');

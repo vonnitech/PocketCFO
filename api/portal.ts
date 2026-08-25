@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { requireUser } from './_auth';
 
 // Returns a signed LemonSqueezy Customer Portal URL so a customer can manage /
 // cancel / update their subscription and view receipts.
@@ -13,13 +14,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { userId } = (req.body ?? {}) as { userId?: string };
-    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    // The portal exposes receipts, billing address and cancellation, so the
+    // account is taken from the caller's verified token, not the request body.
+    const caller = await requireUser(req);
+    if (!caller) return res.status(401).json({ error: 'Not signed in' });
 
     const { data } = await supabase
       .from('profiles')
       .select('ls_customer_id')
-      .eq('id', userId)
+      .eq('id', caller.id)
       .maybeSingle() as { data: { ls_customer_id?: string | null } | null };
 
     const customerId = data?.ls_customer_id;
