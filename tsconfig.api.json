@@ -1,0 +1,29 @@
+{
+  // The serverless functions under api/ could not simply be added to
+  // tsconfig.json's `include`: that config is built for the browser bundle and
+  // pins `"types": ["vite/client"]`, which excludes Node's globals entirely, so
+  // every `process.env` in api/ would fail to resolve. These files run on Node,
+  // not in a browser, so they get their own config instead.
+  //
+  // Checked by `npm run lint` alongside the client. Before this existed, nothing
+  // under api/ was typechecked at all, including the billing webhook, checkout,
+  // and account deletion.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "include": ["api"]
+}

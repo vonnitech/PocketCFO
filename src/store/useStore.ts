@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
-import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
+import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
 import { supabase } from '../core/supabase';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
 import { setActiveCurrency } from '../lib/currency';
@@ -479,8 +479,8 @@ export const useStore = create<StoreState>()(
       const [profileRes, txRes, vaultRes, deletedVaultRes, debtRes, subRes, reconRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('transactions').select('*').eq('user_id', userId).gte('date', cutoffIso).order('date', { ascending: false }),
-        supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', false),
-        supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', true),
+        supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', false).order('name'),
+        supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', true).order('name'),
         supabase.from('debts').select('*').eq('user_id', userId),
         supabase.from('subscriptions').select('*').eq('user_id', userId),
         supabase.from('recon_history').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(90),
@@ -822,7 +822,7 @@ export const useStore = create<StoreState>()(
       const todayKey    = toLocalDateKey(new Date());
       const alreadySwept = lastSweepDate === todayKey;
       const doSweep     = sweepAmount > 0 && !alreadySwept && currentVaults.length > 0;
-      const firstVault  = currentVaults[0];
+      const firstVault  = pickAutoDepositVault(currentVaults);
       const finalLiquid = doSweep ? capital - sweepAmount : capital;
 
       // Claim the sweep date immediately before any awaits. A concurrent call to
@@ -960,7 +960,7 @@ export const useStore = create<StoreState>()(
       const now         = new Date().toISOString();
       const mainTxId    = crypto.randomUUID();
       const penaltyTxId = isOverspend && penalty > 0 ? crypto.randomUUID() : null;
-      const firstVault  = vaults[0] ?? null;
+      const firstVault  = pickAutoDepositVault(vaults);
 
       const inserts: Record<string, unknown>[] = [{
         id:          mainTxId,
@@ -1220,8 +1220,8 @@ export const useStore = create<StoreState>()(
       const tx = transactions.find(t => t.id === id);
       if (!tx) return;
 
-      // Cash flow reversal: incomes added cash, everything else removed it.
-      const isIncome = tx.category === 'INCOME' || tx.category === 'VAULT_WITHDRAWAL';
+      // Cash flow reversal: inflows added cash, everything else removed it.
+      const isIncome = isCashInflow(tx.category);
       const liquidDelta = isIncome ? -tx.amount : tx.amount;
 
       // If it's a bill payment, un-pay that bill (strip its key) so it reappears unpaid.

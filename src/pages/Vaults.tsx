@@ -12,7 +12,7 @@ import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { useIsPro } from '../lib/pro';
 import { userKey } from '../lib/userScopedStorage';
-import { calculateVaultProgress, calculateCurrentMonthDeposits, calculateAvailableToVault } from '../core/math';
+import { calculateVaultProgress, calculateCurrentMonthDeposits, calculateAvailableToVault, calculateVaultOvershoot } from '../core/math';
 import { FundVaultSheet } from '../components/FundVaultSheet';
 import { VaultTransferSheet } from '../components/VaultTransferSheet';
 
@@ -169,7 +169,7 @@ export default function Vaults() {
   const handleCloseRestoreModal = () => setShowRestoreLimitModal(false);
 
   // Transfer sheet
-  const [transferVault, setTransferVault] = useState<{ id: string; name: string; current: number } | null>(null);
+  const [transferVault, setTransferVault] = useState<{ id: string; name: string; current: number; prefill?: number } | null>(null);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -323,6 +323,10 @@ export default function Vaults() {
         const renderVaultCard = (vault: typeof vaults[0], group: typeof GROUPS[0]) => {
           const progress   = calculateVaultProgress(vault.current, vault.target);
           const isComplete = progress >= 100;
+          // Progress is clamped to 100 for the bar, so anything above target is
+          // invisible unless it is read separately. Surfacing it matters: money
+          // sitting above a met goal is money that could be working elsewhere.
+          const overshoot  = calculateVaultOvershoot(vault.current, vault.target);
           return (
             <div key={vault.id} className={`relative group bg-surface border-4 rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)] ${isComplete ? group.borderActive : 'border-border'}`}>
               {/* Delete — revealed on card hover so it never steals width from the name */}
@@ -379,7 +383,13 @@ export default function Vaults() {
                   {!isComplete && (
                     <span className="text-[9px] font-black text-text-muted tabular-nums">{Math.min(100, progress).toFixed(0)}%</span>
                   )}
-                  {isComplete && <span className="text-[9px] font-black text-capture-readable uppercase tracking-widest">Goal Achieved</span>}
+                  {isComplete && (
+                    <span className="text-[9px] font-black text-capture-readable uppercase tracking-widest tabular-nums">
+                      {overshoot > 0
+                        ? `${formatCurrency(overshoot, privacyMode)} over target`
+                        : 'Goal Achieved'}
+                    </span>
+                  )}
                 </div>
               </div>
               {/* Actions */}
@@ -388,9 +398,23 @@ export default function Vaults() {
                   className="flex-1 h-9 border-[3px] border-black rounded-xl bg-action-capture text-capture-contrast font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all">
                   Fund
                 </button>
-                <button type="button" title="Move funds" aria-label="Move funds" onClick={() => setTransferVault({ id: vault.id, name: vault.name, current: vault.current })}
-                  className="w-9 h-9 flex items-center justify-center border-[3px] border-black rounded-xl bg-surface shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all opacity-50 hover:opacity-100">
+                <button
+                  type="button"
+                  title={overshoot > 0 ? 'Move the amount above target' : 'Move funds'}
+                  aria-label={overshoot > 0 ? 'Move surplus above target' : 'Move funds'}
+                  onClick={() => setTransferVault({
+                    id: vault.id,
+                    name: vault.name,
+                    current: vault.current,
+                    prefill: overshoot > 0 ? overshoot : undefined,
+                  })}
+                  className={`h-9 flex items-center justify-center gap-1.5 border-[3px] border-black rounded-xl bg-surface shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all ${
+                    overshoot > 0
+                      ? 'flex-1 px-3 font-black uppercase text-[11px] tracking-widest'
+                      : 'w-9 opacity-50 hover:opacity-100'
+                  }`}>
                   <ArrowLeftRight size={13} strokeWidth={2.5} />
+                  {overshoot > 0 && <span>Move Surplus</span>}
                 </button>
               </div>
             </div>

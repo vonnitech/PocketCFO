@@ -9,6 +9,10 @@ interface SourceVault {
   id: string;
   name: string;
   current: number;
+  // Optional opening amount. Used when a vault is over its target so the sheet
+  // opens with the surplus already filled in: the user should not have to work
+  // out current-minus-target by hand to move money that has finished its job.
+  prefill?: number;
 }
 
 interface Props {
@@ -28,7 +32,8 @@ export function VaultTransferSheet({ vault, onClose }: Props) {
 
   useEffect(() => {
     if (vault) {
-      setAmount('');
+      // Still fully editable; this is a starting point, not a constraint.
+      setAmount(vault.prefill && vault.prefill > 0 ? String(vault.prefill) : '');
       setDestination('LIQUID');
     }
   }, [vault]);

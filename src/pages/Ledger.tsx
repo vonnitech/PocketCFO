@@ -6,7 +6,7 @@ import { formatCurrency } from '../lib/utils';
 import { CSVImport } from '../components/CSVImport';
 import { ProAction } from '../components/ProAction';
 import type { Transaction } from '../types';
-import { toLocalDateKey } from '../core/math';
+import { toLocalDateKey, isCashInflow } from '../core/math';
 
 const CATEGORY_META: Record<string, { label: string; bg: string; text: string }> = {
   FOOD:             { label: 'Food',       bg: 'bg-input',                text: 'text-text-muted' },
@@ -333,13 +333,13 @@ export default function Ledger() {
                       {pendingDelete.merchant}
                     </p>
                     <p className="text-lg font-black italic tabular-nums text-text-main mt-1">
-                      {(pendingDelete.category === 'INCOME' || pendingDelete.category === 'VAULT_WITHDRAWAL') ? '+' : '-'}{formatCurrency(pendingDelete.amount, false)}
+                      {isCashInflow(pendingDelete.category) ? '+' : '-'}{formatCurrency(pendingDelete.amount, false)}
                     </p>
                   </div>
 
                   <div className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-relaxed space-y-1.5">
                     <p>
-                      Removing this record will <span className="text-text-main">{(pendingDelete.category === 'INCOME' || pendingDelete.category === 'VAULT_WITHDRAWAL') ? 'subtract' : 'add back'} {formatCurrency(pendingDelete.amount, false)}</span> {(pendingDelete.category === 'INCOME' || pendingDelete.category === 'VAULT_WITHDRAWAL') ? 'from' : 'to'} your cash balance.
+                      Removing this record will <span className="text-text-main">{isCashInflow(pendingDelete.category) ? 'subtract' : 'add back'} {formatCurrency(pendingDelete.amount, false)}</span> {isCashInflow(pendingDelete.category) ? 'from' : 'to'} your cash balance.
                     </p>
                     {(pendingDelete.category === 'VAULT_DEPOSIT' || pendingDelete.category === 'DEBT_PAYMENT') && (
                       <p className="text-action-bleed">

@@ -17,7 +17,7 @@ import { useStore } from "../store/useStore";
 import { useShallow } from "zustand/react/shallow";
 import { formatCurrency } from "../lib/utils";
 import { currencySymbol } from "../lib/currency";
-import { toLocalDateKey, calculateDaysUntilPayday } from "../core/math";
+import { toLocalDateKey, calculateDaysUntilPayday, isCashInflow } from "../core/math";
 import { OnboardingModal } from "../components/Onboarding";
 import { BottomSheet } from "../components/BottomSheet";
 import { TransactionForm } from "../components/TransactionForm";
@@ -1183,7 +1183,10 @@ export default function Dashboard() {
             </div>
             <div className="divide-y-2 divide-border/40">
               {recentTxs.map((tx) => {
-                const isIncome = tx.category === "INCOME";
+                // A vault withdrawal raises the cash balance just as income does,
+                // so it takes the inflow arrow, the "+" sign and the inflow colour.
+                // Testing for "INCOME" alone showed withdrawals as money leaving.
+                const isIncome = isCashInflow(tx.category);
                 const isDebt = tx.category === "DEBT_PAYMENT";
                 return (
                   <div

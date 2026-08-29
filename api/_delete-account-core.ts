@@ -55,11 +55,28 @@ export async function deleteAccountForToken(env: Env, accessToken: string): Prom
     return { ok: false, status: 401, error: 'Not signed in' };
   }
 
-  const { data: profile } = await supabase
+  // The error is checked, not discarded. If this lookup fails we cannot tell
+  // whether the account has an active subscription, and proceeding would delete
+  // the account while leaving LemonSqueezy billing it. The user would then have
+  // no account left to cancel from. Failing here is recoverable (they retry);
+  // deleting on a failed read is not.
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('ls_subscription_id')
     .eq('id', userId)
-    .maybeSingle() as { data: { ls_subscription_id?: string | null } | null };
+    .maybeSingle() as {
+      data: { ls_subscription_id?: string | null } | null;
+      error: { message?: string } | null;
+    };
+
+  if (profileError) {
+    console.error('[delete-account] billing lookup failed', profileError);
+    return {
+      ok: false,
+      status: 502,
+      error: 'Could not verify billing status. Please try again.',
+    };
+  }
 
   const subscriptionId = profile?.ls_subscription_id;
   if (subscriptionId) {

@@ -37,6 +37,17 @@ export const calculateRemainingDaysInMonth = (): number => {
 
 // Excluded from "daily drain" — these are not discretionary spend.
 // Bills, debt minimums and vault transfers are pre-reserved and tracked separately.
+// Categories that move money INTO spendable cash. A vault withdrawal is not
+// income (it is the user's own money coming back), but it does raise the cash
+// balance, so every cash-flow view has to sign it the same way as income.
+// Ledger already special-cased this pair inline; the dashboard activity feed
+// tested for 'INCOME' alone and so rendered withdrawals as if cash had left.
+// Shared here so a fourth surface cannot quietly disagree with the other three.
+export const CASH_INFLOW_CATEGORIES = new Set(['INCOME', 'VAULT_WITHDRAWAL']);
+
+export const isCashInflow = (category: string | undefined | null): boolean =>
+  !!category && CASH_INFLOW_CATEGORIES.has(category);
+
 const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
 export const calculateDaysUntilPayday = (nextPayday: string): number => {
@@ -184,6 +195,26 @@ export const calculateNewWealthTarget = (currentGoal: number, subCost: number): 
 export const calculateVaultProgress = (current: number, target: number): number => {
   if (target <= 0) return 0;
   return Math.min(100, (current / target) * 100);
+};
+
+// Amount a vault holds above its target. Progress is deliberately clamped to 100
+// for the bar, which means overshoot is invisible unless it is read separately.
+export const calculateVaultOvershoot = (current: number, target: number): number =>
+  target > 0 ? Math.max(0, current - target) : 0;
+
+// Where automatic deposits land: the surplus sweep in setHorizon and the
+// overspend penalty in logSpend. Both previously took vaults[0], which had two
+// problems. The query had no ORDER BY, so "first" was whatever Postgres happened
+// to return and could shift between sessions; and completion was never checked,
+// so money kept flowing into a goal already met while unfinished vaults got
+// nothing. A vault with no target set (target <= 0) is never "complete" and stays
+// eligible. Falls back to the first vault when every goal is met, since leaving
+// the money liquid would defeat the point of intercepting it.
+export const pickAutoDepositVault = <T extends { current: number; target: number }>(
+  vaults: T[],
+): T | null => {
+  if (vaults.length === 0) return null;
+  return vaults.find(v => v.target <= 0 || v.current < v.target) ?? vaults[0];
 };
 
 // Cash that can actually be moved into a vault: liquid assets minus what's
