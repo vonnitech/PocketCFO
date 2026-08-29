@@ -5,11 +5,12 @@
 
 import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
-import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
+import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
 import { supabase } from '../core/supabase';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
 import { setActiveCurrency } from '../lib/currency';
 import { loadSnapshot } from '../db/storage';
+import { defaultDashboardWidgets } from '../core/widgets';
 import { SpendTierId } from '../core/math';
 
 // Prevents concurrent processPayday calls from double-crediting income when
@@ -32,6 +33,7 @@ export interface Subscription {
   amount: number;
   usage: 'Active' | 'Low Use' | 'Idle';
   billingCycle: 'Monthly' | 'Yearly';
+  nextBillingDate?: string;
 }
 
 export type VaultAssetClass = 'INVESTMENT' | 'SINKING_FUND' | 'CASH_RESERVE';
@@ -156,6 +158,7 @@ export interface AppState {
 
   // Horizon Math fields
   nextPayday: string;
+  paydayAnchorDay: number;
   upcomingBills: number;
   hardDailyCap: number;
   lastSweepDate: string;
@@ -212,6 +215,74 @@ export const deriveBillQueue = (
   return (recurringBills || []).filter(b => !b.paused && !paid.has(billKey(b)));
 };
 
+const dateKey = (value?: string): string => (value || '').slice(0, 10);
+
+const billQueueTotal = (queue: BillQueueItem[]): number =>
+  (queue || []).reduce((sum, bill) => sum + (Number(bill.amount) || 0), 0);
+
+const recurringBillTotal = (bills: BillQueueItem[]): number =>
+  (bills || []).filter(b => !b.paused).reduce((sum, bill) => sum + (Number(bill.amount) || 0), 0);
+
+export const isSubscriptionDueBeforePayday = (sub: Subscription, nextPayday: string): boolean => {
+  const due = dateKey(sub.nextBillingDate);
+  const payday = dateKey(nextPayday);
+  return Boolean(due && payday && due < payday);
+};
+
+export const isSubscriptionDueToday = (sub: Subscription): boolean =>
+  dateKey(sub.nextBillingDate) === toLocalDateKey(new Date());
+
+export const dueSubscriptionsBeforePayday = (
+  subscriptions: Subscription[],
+  nextPayday: string,
+): Subscription[] =>
+  (subscriptions || []).filter(sub => isSubscriptionDueBeforePayday(sub, nextPayday));
+
+export const calculateReservedObligations = (
+  queue: BillQueueItem[],
+  subscriptions: Subscription[],
+  nextPayday: string,
+): number =>
+  billQueueTotal(queue) + dueSubscriptionsBeforePayday(subscriptions, nextPayday)
+    .reduce((sum, sub) => sum + (Number(sub.amount) || 0), 0);
+
+const advanceSubscriptionBillingDate = (
+  currentDate: string | undefined,
+  cycle: Subscription['billingCycle'],
+): string => {
+  const baseKey = dateKey(currentDate) || toLocalDateKey(new Date());
+  const [year, month, day] = baseKey.split('-').map(Number);
+  if (!year || !month || !day) return toLocalDateKey(new Date());
+
+  const monthsToAdd = cycle === 'Yearly' ? 12 : 1;
+  const targetMonthIndex = month - 1 + monthsToAdd;
+  const daysInTargetMonth = new Date(year, targetMonthIndex + 1, 0).getDate();
+  const next = new Date(year, targetMonthIndex, Math.min(day, daysInTargetMonth));
+  return toLocalDateKey(next);
+};
+
+const dateDay = (value: string): number => {
+  const day = Number(dateKey(value).split('-')[2]);
+  return day >= 1 && day <= 31 ? day : 0;
+};
+
+const clampDayForMonth = (year: number, monthIndex: number, intendedDay: number): Date => {
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  return new Date(year, monthIndex, Math.min(Math.max(1, intendedDay), daysInMonth));
+};
+
+export const advanceMonthlyDateByAnchor = (currentDate: string, intendedDay: number): string => {
+  const [year, month, day] = dateKey(currentDate).split('-').map(Number);
+  if (!year || !month || !day) return '';
+  const anchorDay = intendedDay >= 1 && intendedDay <= 31 ? intendedDay : day;
+  return toLocalDateKey(clampDayForMonth(year, month, anchorDay));
+};
+
+const isMissingPaydayAnchorColumn = (error: unknown): boolean => {
+  const err = error as { code?: string; message?: string } | null;
+  return err?.code === '42703' && /payday_anchor_day/i.test(err.message || '');
+};
+
 export const INITIAL_STATE: AppState = {
   userId: null,
   dataLoaded: false,
@@ -239,11 +310,7 @@ export const INITIAL_STATE: AppState = {
     lifetimeCapture: 0,
   },
   extraCashPool: 0,
-  dashboardWidgets: [
-    { id: 'safe-spend', visible: true },
-    { id: 'vault-status', visible: true },
-    { id: 'alert', visible: true },
-  ],
+  dashboardWidgets: defaultDashboardWidgets(),
   impulses: [],
   reconHistory: [],
   rolloverPool: 0,
@@ -269,6 +336,7 @@ export const INITIAL_STATE: AppState = {
   primaryVaultBalance: 0,
 
   nextPayday: '',
+  paydayAnchorDay: 0,
   upcomingBills: 0,
   hardDailyCap: 0,
   lastSweepDate: '',
@@ -325,9 +393,10 @@ interface StoreActions {
   updateDebt: (id: string, updates: Partial<Omit<Debt, 'id'>>) => void;
   removeDebt: (id: string) => void;
   makeDebtPayment: (debtId: string, extraAmount: number) => void;
-  addSubscription: (name: string, amount: number) => Promise<void>;
+  addSubscription: (name: string, amount: number, nextBillingDate: string) => Promise<void>;
   setSubscriptionUsage: (id: string, usage: Subscription['usage']) => Promise<void>;
   cancelSubscription: (id: string) => Promise<void>;
+  paySubscription: (id: string) => Promise<void>;
   updateBaseline: (income: number, savingsGoal: number) => void;
   saveFireConfig: (config: NonNullable<AppState['fireConfig']>) => Promise<void>;
   clearFireConfig: () => Promise<void>;
@@ -350,6 +419,7 @@ interface StoreActions {
     impulseSpend: number;
     taxAmount: number;
     surplus: number;
+    catchUpCategory?: string;
     tierId: SpendTierId;
     tierMultiplier: number;
     tierLimit: number;
@@ -387,6 +457,7 @@ export const useStore = create<StoreState>()(
         // exactly as fetchUserData does — a cached copy is the one thing that
         // could drift from its inputs.
         nextState.billQueue           = deriveBillQueue(nextState.recurringBills, nextState.paidBillKeys);
+        nextState.upcomingBills       = calculateReservedObligations(nextState.billQueue, nextState.subscriptions, nextState.nextPayday);
         nextState.primaryVaultBalance = calculatePrimaryVaultBalance(nextState.vaults);
         nextState.safeSpendLimit      = calculateTrueSafeSpend(nextState);
 
@@ -467,6 +538,7 @@ export const useStore = create<StoreState>()(
         amount:       Number(s.amount ?? 0),
         usage:        (s.usage as 'Active' | 'Low Use' | 'Idle') ?? 'Active',
         billingCycle: (s.billing_cycle as 'Monthly' | 'Yearly') ?? 'Monthly',
+        nextBillingDate: s.next_billing_date ? String(s.next_billing_date).slice(0, 10) : undefined,
       }));
 
       const reconHistory: ReconEntry[] = ((reconRes.data ?? []) as Record<string, unknown>[]).map(r => ({
@@ -514,6 +586,7 @@ export const useStore = create<StoreState>()(
             fixedBills:            Number(profile.fixed_bills ?? 0),
             monthlySavingsGoal:    Number(profile.monthly_savings_goal ?? 0),
             nextPayday:            String(profile.next_payday ?? ''),
+            paydayAnchorDay:       Number(profile.payday_anchor_day ?? dateDay(String(profile.next_payday ?? ''))),
             upcomingBills:         Number(profile.upcoming_bills ?? 0),
             hardDailyCap:          Number(profile.hard_daily_cap ?? 0),
             lastSweepDate:         String(profile.last_sweep_date ?? ''),
@@ -564,12 +637,12 @@ export const useStore = create<StoreState>()(
         // no localStorage, no reconciliation, no resurrected paid bills.
         nextState.billQueue = deriveBillQueue(nextState.recurringBills, nextState.paidBillKeys);
 
-        // Keep upcomingBills in lockstep with the derived queue total so safe-spend math
-        // can't drift. Persist only if Supabase's stored value disagrees.
-        const queueTotal = nextState.billQueue.reduce((s: number, b: BillQueueItem) => s + b.amount, 0);
-        if (queueTotal !== nextState.upcomingBills) {
-          nextState.upcomingBills = queueTotal;
-          pushProfileUpdate(userId, { upcoming_bills: queueTotal }).catch(() => {});
+        // Keep upcomingBills in lockstep with derived bill + subscription obligations
+        // so safe-spend math can't drift. Persist only if Supabase's stored value disagrees.
+        const obligationTotal = calculateReservedObligations(nextState.billQueue, nextState.subscriptions, nextState.nextPayday);
+        if (obligationTotal !== nextState.upcomingBills) {
+          nextState.upcomingBills = obligationTotal;
+          pushProfileUpdate(userId, { upcoming_bills: obligationTotal }).catch(() => {});
         }
 
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
@@ -699,19 +772,23 @@ export const useStore = create<StoreState>()(
     setHorizon: async (capital, nextPayday, _upcomingBills, newHardDailyCap, newBillQueue) => {
       const {
         userId, hardDailyCap, recurringBills, vaults: currentVaults, lastSweepDate,
-        nextPayday: currentNextPayday, paidBillKeys: currentPaidKeys, upcomingBills: currentUpcomingBills,
+        nextPayday: currentNextPayday, paydayAnchorDay: currentPaydayAnchorDay,
+        paidBillKeys: currentPaidKeys, subscriptions,
       } = get() as StoreState;
       if (!userId) return;
 
       const capToUse      = newHardDailyCap !== undefined ? newHardDailyCap : (hardDailyCap ?? 0);
       const recurringToUse: BillQueueItem[] = newBillQueue !== undefined ? newBillQueue : (recurringBills || []);
       // Paused bills are snoozed: they don't count toward fixed bills or reserved cash.
-      const billsTotal    = recurringToUse.filter(b => !b.paused).reduce((s, b) => s + b.amount, 0);
+      const billsTotal    = recurringBillTotal(recurringToUse);
 
       // Normalize to YYYY-MM-DD so a stored timestamp ("2026-06-30T00:00:00Z") and a
       // date-input value ("2026-06-30") don't read as a changed payday.
       const dayOnly  = (s: string) => (s || '').slice(0, 10);
       const isNewCycle = dayOnly(nextPayday) !== dayOnly(currentNextPayday);
+      const paydayAnchorDay = isNewCycle
+        ? dateDay(nextPayday)
+        : (currentPaydayAnchorDay || dateDay(nextPayday));
 
       // Paid state is the single source of truth. A new pay cycle clears it (every
       // bill is due again); otherwise keep it, pruning keys for bills no longer in
@@ -722,14 +799,13 @@ export const useStore = create<StoreState>()(
         : (currentPaidKeys || []).filter(k => recurringToUse.some(b => billKey(b) === k));
       const freshQueue = deriveBillQueue(recurringToUse, nextPaidKeys);
 
-      const effectiveUpcomingBills = newBillQueue !== undefined
-        ? freshQueue.reduce((s, b) => s + b.amount, 0)
-        : currentUpcomingBills;
+      const effectiveUpcomingBills = calculateReservedObligations(freshQueue, subscriptions, nextPayday);
 
       const calcState = {
         ...(get() as StoreState),
         liquidAssets: capital,
         nextPayday,
+        paydayAnchorDay,
         upcomingBills: effectiveUpcomingBills,
         fixedBills: billsTotal,
         fixedBurn: billsTotal,
@@ -760,6 +836,7 @@ export const useStore = create<StoreState>()(
           ...state,
           liquidAssets:          finalLiquid,
           nextPayday,
+          paydayAnchorDay,
           upcomingBills:         effectiveUpcomingBills,
           fixedBills:            billsTotal,
           fixedBurn:             billsTotal,
@@ -773,11 +850,11 @@ export const useStore = create<StoreState>()(
         return { ...baseNext, safeSpendLimit: calculateTrueSafeSpend(baseNext) };
       });
 
-      // Core profile upsert
-      const { error: profileError } = await (supabase.from('profiles') as any).upsert({
+      const profilePayload: Record<string, unknown> = {
         id:                      userId,
         liquid_assets:           finalLiquid,
         next_payday:             nextPayday || null,
+        payday_anchor_day:        paydayAnchorDay || null,
         upcoming_bills:          effectiveUpcomingBills,
         fixed_bills:             billsTotal,
         fixed_burn:              billsTotal,
@@ -787,7 +864,14 @@ export const useStore = create<StoreState>()(
         last_sweep_date:         doSweep ? todayKey : (lastSweepDate || null),
         recurring_bills:         recurringToUse,
         paid_bill_keys:          nextPaidKeys,
-      }, { onConflict: 'id' });
+      };
+
+      // Core profile upsert
+      let { error: profileError } = await (supabase.from('profiles') as any).upsert(profilePayload, { onConflict: 'id' });
+      if (isMissingPaydayAnchorColumn(profileError)) {
+        delete profilePayload.payday_anchor_day;
+        ({ error: profileError } = await (supabase.from('profiles') as any).upsert(profilePayload, { onConflict: 'id' }));
+      }
       if (profileError) {
         console.error('[setHorizon] profile upsert failed:', profileError);
         return;
@@ -1157,7 +1241,7 @@ export const useStore = create<StoreState>()(
         if (unpays && nextQueue) {
           nextState.paidBillKeys  = nextPaidKeys;
           nextState.billQueue     = nextQueue;
-          nextState.upcomingBills = nextQueue.reduce((s: number, b: BillQueueItem) => s + b.amount, 0);
+          nextState.upcomingBills = calculateReservedObligations(nextQueue, state.subscriptions, state.nextPayday);
         }
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
@@ -1364,7 +1448,7 @@ export const useStore = create<StoreState>()(
     // Each action persists to the Supabase `subscriptions` table so adds/edits
     // survive a refresh — the page previously only mutated local state.
 
-    addSubscription: async (name, amount) => {
+    addSubscription: async (name, amount, nextBillingDate) => {
       const { userId } = get() as StoreState;
       if (!userId) return;
 
@@ -1374,26 +1458,29 @@ export const useStore = create<StoreState>()(
         amount,
         usage: 'Active',
         billingCycle: 'Monthly',
+        nextBillingDate: dateKey(nextBillingDate),
       };
       const { error } = await (supabase.from('subscriptions') as any).insert({
-        id:            newSub.id,
-        user_id:       userId,
-        name:          newSub.name,
-        amount:        newSub.amount,
-        usage:         newSub.usage,
-        billing_cycle: newSub.billingCycle,
+        id:                newSub.id,
+        user_id:           userId,
+        name:              newSub.name,
+        amount:            newSub.amount,
+        usage:             newSub.usage,
+        billing_cycle:     newSub.billingCycle,
+        next_billing_date: newSub.nextBillingDate || null,
       });
       if (error) { console.error('[addSubscription] insert failed:', error); return; }
 
       set((state: any) => {
+        const nextSubscriptions = [...state.subscriptions, newSub];
         const nextState = {
           ...state,
-          subscriptions: [...state.subscriptions, newSub],
-          fixedBills: state.fixedBills + amount,
+          subscriptions: nextSubscriptions,
+          upcomingBills: calculateReservedObligations(state.billQueue, nextSubscriptions, state.nextPayday),
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
-      pushProfileUpdate(userId, { fixed_bills: (get() as StoreState).fixedBills }).catch(() => {});
+      pushProfileUpdate(userId, { upcoming_bills: (get() as StoreState).upcomingBills }).catch(() => {});
     },
 
     setSubscriptionUsage: async (id, usage) => {
@@ -1428,10 +1515,14 @@ export const useStore = create<StoreState>()(
 
       set((state: any) => {
         const newExp = (state.stats?.experience || 0) + 50;
+        const nextSubscriptions = state.subscriptions.filter((s: Subscription) => s.id !== id);
+        const nextFixedBills = recurringBillTotal(state.recurringBills);
         const nextState = {
           ...state,
-          subscriptions: state.subscriptions.filter((s: Subscription) => s.id !== id),
-          fixedBills: Math.max(0, state.fixedBills - sub.amount),
+          subscriptions: nextSubscriptions,
+          upcomingBills: calculateReservedObligations(state.billQueue, nextSubscriptions, state.nextPayday),
+          fixedBills: nextFixedBills,
+          fixedBurn: nextFixedBills,
           monthlySavingsGoal: state.monthlySavingsGoal + sub.amount,
           stats: {
             ...state.stats,
@@ -1448,11 +1539,74 @@ export const useStore = create<StoreState>()(
         const s = get() as StoreState;
         pushProfileUpdate(userId, {
           fixed_bills:                 s.fixedBills,
+          fixed_burn:                  s.fixedBurn,
+          upcoming_bills:              s.upcomingBills,
           monthly_savings_goal:        s.monthlySavingsGoal,
           stat_subscriptions_cancelled: s.stats.subscriptionsCancelled,
           stat_lifetime_capture:        s.stats.lifetimeCapture,
         }).catch(() => {});
       }
+    },
+
+    paySubscription: async (id) => {
+      const { userId, subscriptions } = get() as StoreState;
+      const sub = subscriptions.find(s => s.id === id);
+      if (!sub || !sub.nextBillingDate) return;
+
+      const txId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const nextBillingDate = advanceSubscriptionBillingDate(sub.nextBillingDate, sub.billingCycle);
+      const paymentTx: Transaction = {
+        id: txId,
+        merchant: `SUBSCRIPTION: ${sub.name}`,
+        amount: sub.amount,
+        category: 'SUBSCRIPTION_PAYMENT',
+        date: now,
+        isFlip: false,
+        flipAmount: 0,
+      };
+
+      set((state: any) => {
+        const nextSubscriptions = state.subscriptions.map((s: Subscription) =>
+          s.id === id ? { ...s, nextBillingDate } : s
+        );
+        const nextState = {
+          ...state,
+          subscriptions: nextSubscriptions,
+          upcomingBills: calculateReservedObligations(state.billQueue, nextSubscriptions, state.nextPayday),
+          liquidAssets: state.liquidAssets - sub.amount,
+          transactions: [paymentTx, ...state.transactions],
+        };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
+
+      if (!userId) return;
+      const s = get() as StoreState;
+      await Promise.all([
+        (supabase.from('subscriptions') as any)
+          .update({ next_billing_date: nextBillingDate })
+          .eq('id', id),
+        (supabase.from('profiles') as any)
+          .update({
+            liquid_assets: s.liquidAssets,
+            upcoming_bills: s.upcomingBills,
+          })
+          .eq('id', userId),
+        (supabase.from('transactions') as any).insert({
+          id: txId,
+          user_id: userId,
+          merchant: `SUBSCRIPTION: ${sub.name}`,
+          amount: sub.amount,
+          category: 'SUBSCRIPTION_PAYMENT',
+          is_flip: false,
+          flip_amount: 0,
+          date: now,
+        }),
+      ]).then(results => {
+        results.forEach((result: any) => {
+          if (result?.error) console.error('[paySubscription] sync failed:', result.error);
+        });
+      }).catch(err => console.error('[paySubscription] threw:', err));
     },
 
     updateBaseline: async (income, savingsGoal) => {
@@ -1694,35 +1848,63 @@ export const useStore = create<StoreState>()(
       }
     },
 
-    submitReconEntry: ({ rawSpend, action, impulseId, impulseSpend, taxAmount, surplus, tierId, tierMultiplier, tierLimit }) => {
+    submitReconEntry: ({ rawSpend, action, impulseId, impulseSpend, taxAmount, surplus, catchUpCategory, tierId, tierMultiplier, tierLimit }) => {
       const { userId, vaults, liquidAssets } = get() as StoreState;
 
       const todayKey  = toLocalDateKey(new Date());
       const timestamp = new Date().toISOString();
       const entryId   = crypto.randomUUID();
+      const recordedDailyDrain = calculateDailyDrain(
+        (get() as StoreState).transactions.filter(tx => toLocalDateKey(tx.date) === todayKey),
+      );
+      const catchUpSpend = Math.max(0, rawSpend - recordedDailyDrain);
+      const firstVault = vaults[0] ?? null;
+      const effectiveAction: 'roll' | 'stash' = action === 'stash' && !firstVault ? 'roll' : action;
+      const effectiveTaxAmount = firstVault ? taxAmount : 0;
 
-      const stashAmount     = action === 'stash' && surplus > 0 ? surplus : 0;
-      const creditedToVault = stashAmount + taxAmount;
-      const firstVault      = vaults[0] ?? null;
+      const stashAmount     = effectiveAction === 'stash' && surplus > 0 ? surplus : 0;
+      const creditedToVault = stashAmount + effectiveTaxAmount;
 
       const newEntry: ReconEntry = {
-        id: entryId, date: todayKey, rawSpend, impulseSpend, taxAmount, surplus,
-        action, impulseId: impulseId || undefined, tier: tierId, tierMultiplier, tierLimit,
+        id: entryId, date: todayKey, rawSpend, impulseSpend, taxAmount: effectiveTaxAmount, surplus,
+        action: effectiveAction, impulseId: impulseId || undefined, tier: tierId, tierMultiplier, tierLimit,
       };
 
       const txInserts: Record<string, unknown>[] = [];
       const newTxs: Transaction[] = [];
 
-      if (taxAmount > 0) {
+      if (catchUpSpend > 0.005) {
+        const catchUpId = crypto.randomUUID();
+        txInserts.push({
+          id: catchUpId,
+          merchant: 'DAILY REVIEW ADJUSTMENT',
+          amount: catchUpSpend,
+          category: catchUpCategory || 'OTHER',
+          is_flip: false,
+          flip_amount: 0,
+          date: timestamp,
+        });
+        newTxs.push({
+          id: catchUpId,
+          merchant: 'DAILY REVIEW ADJUSTMENT',
+          amount: catchUpSpend,
+          category: catchUpCategory || 'OTHER',
+          date: timestamp,
+          isFlip: false,
+          flipAmount: 0,
+        });
+      }
+
+      if (effectiveTaxAmount > 0) {
         const taxId = crypto.randomUUID();
         const capId = crypto.randomUUID();
         txInserts.push(
-          { id: taxId, merchant: 'RECON IMPULSE TAX', amount: 0, category: 'PENALTY', is_flip: true, flip_amount: taxAmount, date: timestamp },
-          { id: capId, merchant: 'RECON CAPTURE', amount: taxAmount, category: 'SAVINGS', is_flip: true, flip_amount: 0, date: timestamp },
+          { id: taxId, merchant: 'RECON IMPULSE TAX', amount: 0, category: 'PENALTY', is_flip: true, flip_amount: effectiveTaxAmount, date: timestamp },
+          { id: capId, merchant: 'RECON CAPTURE', amount: effectiveTaxAmount, category: 'SAVINGS', is_flip: true, flip_amount: 0, date: timestamp },
         );
         newTxs.push(
-          { id: taxId, merchant: 'RECON IMPULSE TAX', amount: 0, category: 'PENALTY', date: timestamp, isFlip: true, flipAmount: taxAmount },
-          { id: capId, merchant: 'RECON CAPTURE', amount: taxAmount, category: 'SAVINGS', date: timestamp, isFlip: true, flipAmount: 0 },
+          { id: taxId, merchant: 'RECON IMPULSE TAX', amount: 0, category: 'PENALTY', date: timestamp, isFlip: true, flipAmount: effectiveTaxAmount },
+          { id: capId, merchant: 'RECON CAPTURE', amount: effectiveTaxAmount, category: 'SAVINGS', date: timestamp, isFlip: true, flipAmount: 0 },
         );
       }
 
@@ -1736,19 +1918,20 @@ export const useStore = create<StoreState>()(
       set((state: any) => {
         const nextVaults = state.vaults.map((v: Vault, i: number) => {
           if (i !== 0) return v;
-          if (action === 'roll' && taxAmount > 0) return { ...v, current: v.current + taxAmount };
-          if (action === 'stash' && creditedToVault > 0) return { ...v, current: v.current + creditedToVault };
+          if (effectiveAction === 'roll' && effectiveTaxAmount > 0) return { ...v, current: v.current + effectiveTaxAmount };
+          if (effectiveAction === 'stash' && creditedToVault > 0) return { ...v, current: v.current + creditedToVault };
           return v;
         });
-        const newExp   = (state.stats?.experience || 0) + (action === 'roll' && surplus > 0 ? 10 : 0);
+        const newExp   = (state.stats?.experience || 0) + (effectiveAction === 'roll' && surplus > 0 ? 10 : 0);
+        const nextLiquidAssets = state.liquidAssets - catchUpSpend - creditedToVault;
         const nextState = {
           ...state,
-          liquidAssets:        state.liquidAssets - creditedToVault,
+          liquidAssets:        nextLiquidAssets,
           primaryVaultBalance: calculatePrimaryVaultBalance(nextVaults),
           vaults:              nextVaults,
           transactions:        [...newTxs, ...state.transactions],
           reconHistory:        [...state.reconHistory, newEntry],
-          stats: { ...state.stats, experience: newExp, level: Math.floor(newExp / 1000) + 1, lifetimeCapture: (state.stats?.lifetimeCapture || 0) + taxAmount },
+          stats: { ...state.stats, experience: newExp, level: Math.floor(newExp / 1000) + 1, lifetimeCapture: (state.stats?.lifetimeCapture || 0) + effectiveTaxAmount },
         };
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
@@ -1759,16 +1942,16 @@ export const useStore = create<StoreState>()(
           pushTransactions(txInserts.map(t => ({ ...t, user_id: userId }))).catch(() => {});
         }
         if (creditedToVault > 0 && firstVault) {
-          const newBalance = action === 'roll'
-            ? firstVault.current + taxAmount
+          const newBalance = effectiveAction === 'roll'
+            ? firstVault.current + effectiveTaxAmount
             : firstVault.current + creditedToVault;
           pushVaultUpdate(firstVault.id, { current: newBalance }).catch(() => {});
         }
-        pushProfileUpdate(userId, { liquid_assets: liquidAssets - creditedToVault }).catch(() => {});
+        pushProfileUpdate(userId, { liquid_assets: liquidAssets - catchUpSpend - creditedToVault }).catch(() => {});
         pushReconEntry(userId, {
           id: entryId, date: todayKey,
-          raw_spend: rawSpend, impulse_spend: impulseSpend, tax_amount: taxAmount,
-          surplus, action, impulse_id: impulseId || null,
+          raw_spend: rawSpend, impulse_spend: impulseSpend, tax_amount: effectiveTaxAmount,
+          surplus, action: effectiveAction, impulse_id: impulseId || null,
           tier: tierId, tier_multiplier: tierMultiplier, tier_limit: tierLimit,
         }).catch(() => {});
       }
@@ -1778,63 +1961,100 @@ export const useStore = create<StoreState>()(
       if (_paydayProcessing) return;
       _paydayProcessing = true;
       try {
-        const { userId, liquidAssets, monthlyTakeHome, nextPayday, isConfigured } = get() as StoreState;
+        const { userId, liquidAssets, monthlyTakeHome, nextPayday, paydayAnchorDay, isConfigured } = get() as StoreState;
         if (!isConfigured || !nextPayday || monthlyTakeHome <= 0) return;
 
         const today = new Date();
         const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         if (todayKey < nextPayday) return;
 
-        const txId = crypto.randomUUID();
-        const now  = new Date().toISOString();
+        const anchorDay = paydayAnchorDay || dateDay(nextPayday);
+        let cursorPayday = dateKey(nextPayday);
+        const paydayTransactions: Transaction[] = [];
+        const paydayInserts: Record<string, unknown>[] = [];
 
-        // Advance by 1 calendar month (JS handles month overflow automatically)
-        const [py, pm, pd] = nextPayday.split('-').map(Number);
-        const nextDate = new Date(py, pm, pd); // pm is 1-based here, so this = month+1 (0-based)
-        const newNextPayday = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+        // Catch up every missed pay cycle in one run. The cap prevents a corrupted
+        // next_payday from creating an infinite loop while still covering decades.
+        for (let i = 0; i < 240 && cursorPayday && cursorPayday <= todayKey; i++) {
+          const txId = crypto.randomUUID();
+          const paidAt = `${cursorPayday}T12:00:00.000`;
+          paydayTransactions.push({
+            id:        txId,
+            merchant:  'PAYDAY',
+            amount:    monthlyTakeHome,
+            category:  'INCOME',
+            date:      paidAt,
+            isFlip:    false,
+            flipAmount: 0,
+          });
+          paydayInserts.push({
+            id:          txId,
+            user_id:     userId,
+            merchant:    'PAYDAY',
+            amount:      monthlyTakeHome,
+            category:    'INCOME',
+            is_flip:     false,
+            flip_amount: 0,
+            date:        paidAt,
+          });
+          cursorPayday = advanceMonthlyDateByAnchor(cursorPayday, anchorDay);
+        }
+
+        if (cursorPayday <= todayKey) {
+          console.error('[processPayday] catch-up exceeded 240 cycles; refusing to continue');
+          return;
+        }
+
+        const newNextPayday = cursorPayday;
+        const catchUpAmount = monthlyTakeHome * paydayTransactions.length;
+        if (paydayTransactions.length === 0) return;
 
         // New cycle → all bills are due again: clear paid state, re-derive the full queue.
-        const { recurringBills } = get() as StoreState;
+        const { recurringBills, subscriptions } = get() as StoreState;
         const freshQueue = deriveBillQueue(recurringBills, []);
+        const freshUpcoming = calculateReservedObligations(freshQueue, subscriptions, newNextPayday);
 
         if (userId) {
-          await Promise.all([
-            (supabase.from('profiles') as any).update({
-              liquid_assets: liquidAssets + monthlyTakeHome,
-              next_payday:   newNextPayday,
-              paid_bill_keys: [],
-            }).eq('id', userId),
-            (supabase.from('transactions') as any).insert({
-              id:          txId,
-              user_id:     userId,
-              merchant:    'PAYDAY',
-              amount:      monthlyTakeHome,
-              category:    'INCOME',
-              is_flip:     false,
-              flip_amount: 0,
-              date:        now,
-            }),
-          ]);
+          const profileUpdate: Record<string, unknown> = {
+            liquid_assets: liquidAssets + catchUpAmount,
+            next_payday: newNextPayday,
+            payday_anchor_day: anchorDay,
+            upcoming_bills: freshUpcoming,
+            paid_bill_keys: [],
+          };
+          const updateProfile = async (): Promise<boolean> => {
+            let { error } = await (supabase.from('profiles') as any).update(profileUpdate).eq('id', userId);
+            if (isMissingPaydayAnchorColumn(error)) {
+              delete profileUpdate.payday_anchor_day;
+              ({ error } = await (supabase.from('profiles') as any).update(profileUpdate).eq('id', userId));
+            }
+            if (error) {
+              console.error('[processPayday] profile update failed:', error);
+              return false;
+            }
+            return true;
+          };
+          const profileOk = await updateProfile();
+          if (!profileOk) return;
+          const { error: txError } = await (supabase.from('transactions') as any).insert(paydayInserts);
+          if (txError) {
+            console.error('[processPayday] transaction insert failed:', txError);
+            return;
+          }
         }
 
         set((state: any) => {
           const nextState = {
             ...state,
-            liquidAssets: state.liquidAssets + state.monthlyTakeHome,
+            liquidAssets: state.liquidAssets + catchUpAmount,
             nextPayday:   newNextPayday,
+            paydayAnchorDay: anchorDay,
+            upcomingBills: freshUpcoming,
             paidBillKeys: [],
             billQueue:    freshQueue,
-            transactions: [{
-              id:        txId,
-              merchant:  'PAYDAY',
-              amount:    state.monthlyTakeHome,
-              category:  'INCOME',
-              date:      now,
-              isFlip:    false,
-              flipAmount: 0,
-            }, ...state.transactions],
+            transactions: [...paydayTransactions.reverse(), ...state.transactions],
           };
-          return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState), paydayBanner: { amount: state.monthlyTakeHome } };
+          return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState), paydayBanner: { amount: catchUpAmount } };
         });
       } finally {
         _paydayProcessing = false;
@@ -1877,7 +2097,7 @@ export const useStore = create<StoreState>()(
     // ── Bill Queue (local) ────────────────────────────────────────────────────
 
     payBillFromQueue: (id) => {
-      const { userId, billQueue, recurringBills, paidBillKeys } = get() as StoreState;
+      const { userId, billQueue, recurringBills, paidBillKeys, subscriptions, nextPayday } = get() as StoreState;
       const bill = (billQueue || []).find(b => b.id === id);
       if (!bill) return;
       const key = billKey(bill);
@@ -1900,7 +2120,7 @@ export const useStore = create<StoreState>()(
       // Mark the bill paid (source of truth) and re-derive the queue from it.
       const nextPaidKeys = [...(paidBillKeys || []), key];
       const nextQueue = deriveBillQueue(recurringBills, nextPaidKeys);
-      const nextUpcoming = nextQueue.reduce((s, b) => s + b.amount, 0);
+      const nextUpcoming = calculateReservedObligations(nextQueue, subscriptions, nextPayday);
 
       set((state: any) => {
         const nextState = {

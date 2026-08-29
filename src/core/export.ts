@@ -49,7 +49,7 @@ const TRANSFER_CATEGORIES = new Set(['VAULT_DEPOSIT', 'VAULT_TRANSFER', 'SAVINGS
 function txType(category: string): 'Income' | 'Transfer' | 'Bill' | 'Spend' {
   if (INCOME_CATEGORIES.has(category))   return 'Income';
   if (TRANSFER_CATEGORIES.has(category)) return 'Transfer';
-  if (category === 'BILL_PAYMENT' || category === 'DEBT_PAYMENT') return 'Bill';
+  if (category === 'BILL_PAYMENT' || category === 'SUBSCRIPTION_PAYMENT' || category === 'DEBT_PAYMENT') return 'Bill';
   return 'Spend';
 }
 

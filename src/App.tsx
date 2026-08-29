@@ -60,6 +60,18 @@ function ScrollToTop() {
   return null;
 }
 
+function OnboardingRouteGuard({ hasCompletedOnboarding }: { hasCompletedOnboarding: boolean }) {
+  const { pathname } = useLocation();
+  if (!hasCompletedOnboarding && pathname !== '/') return <Navigate to="/" replace />;
+  return null;
+}
+
+function LoggedOutRouteGuard() {
+  const { pathname } = useLocation();
+  if (pathname !== '/') return <Navigate to="/" replace />;
+  return null;
+}
+
 function RouteFallback() {
   return (
     <div className="min-h-[320px] flex items-center justify-center">
@@ -344,13 +356,37 @@ function App() {
   if (!session || recoveryMode) {
     return (
       <ErrorBoundary>
-        <AuthGate recoveryMode={recoveryMode} onRecoveryDone={() => setRecoveryMode(false)} />
+        <Router>
+          <LoggedOutRouteGuard />
+          <AuthGate recoveryMode={recoveryMode} onRecoveryDone={() => setRecoveryMode(false)} />
+        </Router>
       </ErrorBoundary>
     );
   }
 
   // Session established but Supabase data not yet loaded
   if (!dataLoaded) return <SyncFallback />;
+
+  if (!hasCompletedOnboarding) {
+    return (
+      <ErrorBoundary>
+        <ScreenLock />
+        <Router>
+          <ScrollToTop />
+          <div className="h-screen bg-base dot-bg text-text-main font-sans overflow-y-auto overflow-x-hidden relative">
+            <main id="main-scroll" className="min-h-screen p-4 pt-4 md:p-8 relative">
+              <div className="max-w-4xl mx-auto">
+                <Routes>
+                  <Route path="/" element={withPageWrapper(<Dashboard />)} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
+            </main>
+          </div>
+        </Router>
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -362,6 +398,7 @@ function App() {
       </AnimatePresence>
       <Router>
         <ScrollToTop />
+        <OnboardingRouteGuard hasCompletedOnboarding={hasCompletedOnboarding} />
         <PaydayBanner />
         <ProUpsellPopover />
         <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">

@@ -23,6 +23,29 @@ type Step = 'RAW_SPEND' | 'HABIT_CHECK' | 'SELECT_HABIT' | 'SUMMARY';
 const TIER_LOCK_BASE = 'pocket-cfo-tier-lock-v1';
 const BREAK_COUNT_BASE = 'pocket-cfo-tier-breaks-v1';
 
+const CATEGORIES = [
+  { key: 'FOOD', label: 'Food' },
+  { key: 'TRANSPORT', label: 'Transport' },
+  { key: 'FUN', label: 'Fun' },
+  { key: 'SHOPPING', label: 'Shopping' },
+  { key: 'HEALTH', label: 'Health' },
+  { key: 'HOME', label: 'Home' },
+  { key: 'WORK', label: 'Work' },
+  { key: 'OTHER', label: 'Other' },
+];
+
+const SPEND_LOG_EXCLUDED_CATEGORIES = new Set([
+  'SAVINGS',
+  'VAULT_DEPOSIT',
+  'DEBT_PAYMENT',
+  'BILL_PAYMENT',
+  'SUBSCRIPTION_PAYMENT',
+  'INCOME',
+  'VAULT_TRANSFER',
+  'VAULT_WITHDRAWAL',
+  'PENALTY',
+]);
+
 interface TierLock { tierId: SpendTierId; lockedUntil: string; }
 
 function getBreakCount(): number {
@@ -47,7 +70,7 @@ export default function DailyLog() {
   // Full-store subscription is intentional here: calculateTrueSafeSpend(state)
   // below needs the complete AppState, so a narrowed selector would not help.
   const state = useStore();
-  const { privacyMode, impulses, reconHistory, setState, nextPayday, submitReconEntry } = state;
+  const { privacyMode, impulses, reconHistory, setState, nextPayday, submitReconEntry, vaults } = state;
 
   const [step, setStep] = useState<Step>('RAW_SPEND');
   const [rawSpend, setRawSpend] = useState('');
@@ -62,6 +85,7 @@ export default function DailyLog() {
   const selectedTierId: SpendTierId = tierLock?.tierId ?? _selectedTierId;
   const [showConfession, setShowConfession] = useState(false);
   const [breakCount, setBreakCount] = useState(() => getBreakCount());
+  const [catchUpCategory, setCatchUpCategory] = useState('');
 
   const daysLeft = tierLock
     ? Math.max(0, Math.ceil((new Date(tierLock.lockedUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -87,8 +111,9 @@ export default function DailyLog() {
 
   const submitNewImpulse = () => {
     if (newImpulseName.trim()) {
-      const newImpulse: Impulse = { id: Math.random().toString(36).substr(2, 9), name: newImpulseName.trim(), taxRate: 0.5 };
+      const newImpulse: Impulse = { id: crypto.randomUUID(), name: newImpulseName.trim(), taxRate: 0.5 };
       setState({ impulses: [...impulses, newImpulse] });
+      setSelectedImpulseId(newImpulse.id);
     }
     setIsAddingImpulse(false);
     setNewImpulseName('');
@@ -106,8 +131,21 @@ export default function DailyLog() {
   }, [state.transactions, todayKey]);
 
   const recordedDailyDrain = useMemo(() => calculateDailyDrain(transactionsToday), [transactionsToday]);
+  const spendLoggedToday = useMemo(() => {
+    return transactionsToday
+      .filter(tx => !SPEND_LOG_EXCLUDED_CATEGORIES.has(tx.category))
+      .reduce((acc, tx) => acc + tx.amount, 0);
+  }, [transactionsToday]);
+  const impulseTaxToday = useMemo(() => {
+    return transactionsToday
+      .reduce((acc, tx) => acc + tx.flipAmount, 0);
+  }, [transactionsToday]);
+  const totalCashMovedToday = spendLoggedToday + impulseTaxToday;
   const displayRawSpend = rawSpend === '' ? recordedDailyDrain.toString() : rawSpend;
   const spendAmount = parseFloat(displayRawSpend || '0');
+  const catchUpSpend = Math.max(0, spendAmount - recordedDailyDrain);
+  const hasValidReviewedSpend = Number.isFinite(spendAmount) && spendAmount >= 0;
+  const hasVault = vaults.length > 0;
 
   const taxAmount = useMemo(() => {
     if (!selectedImpulseId || !impulseSpend) return 0;
@@ -118,6 +156,8 @@ export default function DailyLog() {
   const totalDrain = spendAmount + taxAmount;
   const surplus = useMemo(() => calculateDailySurplus(safeSpendLimit, totalDrain), [safeSpendLimit, totalDrain]);
   const dangerProgress = useMemo(() => calculateDangerProgress(totalDrain, tierLimit), [totalDrain, tierLimit]);
+  const needsCatchUpCategory = catchUpSpend > 0.005;
+  const canCloseReview = !needsCatchUpCategory || !!catchUpCategory;
   const effectiveLimit = tierLimit > 0 ? tierLimit : safeSpendLimit;
   const remaining = effectiveLimit - recordedDailyDrain;
   const pulsePercent = effectiveLimit > 0 ? Math.min(100, (recordedDailyDrain / effectiveLimit) * 100) : 0;
@@ -143,6 +183,7 @@ export default function DailyLog() {
     'bg-action-bleed';
 
   const handleAction = (action: 'roll' | 'stash') => {
+    if (action === 'stash' && !hasVault) return;
     submitReconEntry({
       rawSpend:       parseFloat(displayRawSpend),
       action,
@@ -150,6 +191,7 @@ export default function DailyLog() {
       impulseSpend:   parseFloat(impulseSpend || '0'),
       taxAmount,
       surplus,
+      catchUpCategory: needsCatchUpCategory ? catchUpCategory : undefined,
       tierId:         selectedTierId,
       tierMultiplier: activeTier.multiplier,
       tierLimit,
@@ -163,7 +205,7 @@ export default function DailyLog() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily Log</h1>
+          <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily Review</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Review complete · {todayLabel}</p>
         </div>
 
@@ -182,10 +224,22 @@ export default function DailyLog() {
                 <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(effectiveLimit, privacyMode)}</p>
               </div>
               <div className="flex-1 text-right">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Logged Today</p>
-                <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(recordedDailyDrain, privacyMode)}</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Spend Logged Today</p>
+                <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(spendLoggedToday, privacyMode)}</p>
               </div>
             </div>
+            {impulseTaxToday > 0 && (
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="bg-input border-2 border-border rounded-2xl px-3 py-2">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-action-bleed">Impulse Tax</p>
+                  <p className="text-sm font-black tabular-nums text-action-bleed">{formatCurrency(impulseTaxToday, privacyMode)}</p>
+                </div>
+                <div className="bg-input border-2 border-border rounded-2xl px-3 py-2 text-right">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Total Cash Moved</p>
+                  <p className="text-sm font-black tabular-nums text-text-main">{formatCurrency(totalCashMovedToday, privacyMode)}</p>
+                </div>
+              </div>
+            )}
             <div className="h-3 bg-input border-2 border-border rounded-full overflow-hidden mb-1.5">
               <motion.div
                 className={`h-full rounded-full ${pulseColor}`}
@@ -195,7 +249,7 @@ export default function DailyLog() {
               />
             </div>
             <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-              <span className="text-text-muted">{formatCurrency(recordedDailyDrain, privacyMode)} logged</span>
+              <span className="text-text-muted">{formatCurrency(spendLoggedToday, privacyMode)} spend logged</span>
               <span className={remaining < 0 ? 'text-action-bleed font-black' : 'text-capture-readable font-black'}>
                 {remaining < 0 ? `${formatCurrency(Math.abs(remaining), privacyMode)} over` : `${formatCurrency(remaining, privacyMode)} remaining`}
               </span>
@@ -225,13 +279,19 @@ export default function DailyLog() {
                 <span className="text-text-main">{formatCurrency(todayEntry.tierLimit, privacyMode)}</span>
               </div>
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest border-b-2 border-border pb-2">
-                <span className="text-text-muted">Total Spent</span>
+                <span className="text-text-muted">Reviewed Spend</span>
                 <span className="text-text-main">{formatCurrency(todayEntry.rawSpend, privacyMode)}</span>
               </div>
               {todayEntry.taxAmount > 0 && (
                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest border-b-2 border-border pb-2">
                   <span className="text-text-muted">Impulse Tax</span>
                   <span className="text-action-bleed">{formatCurrency(todayEntry.taxAmount, privacyMode)}</span>
+                </div>
+              )}
+              {todayEntry.taxAmount > 0 && (
+                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest border-b-2 border-border pb-2">
+                  <span className="text-text-muted">Total Cash Moved Today</span>
+                  <span className="text-text-main">{formatCurrency(todayEntry.rawSpend + todayEntry.taxAmount, privacyMode)}</span>
                 </div>
               )}
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
@@ -277,7 +337,7 @@ export default function DailyLog() {
   return (
     <div className="space-y-5 max-w-xl mx-auto">
       <div>
-        <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily Log</h1>
+        <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily Review</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">{todayLabel}</p>
       </div>
 
@@ -290,14 +350,14 @@ export default function DailyLog() {
               {pulseStatus}
             </span>
           </div>
-          <div className="flex items-end gap-4 mb-3">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Daily Limit</p>
-              <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(safeSpendLimit, privacyMode)}</p>
-            </div>
-            <div className="flex-1 text-right">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Logged Today</p>
-              <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(recordedDailyDrain, privacyMode)}</p>
+            <div className="flex items-end gap-4 mb-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Daily Limit</p>
+                <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(safeSpendLimit, privacyMode)}</p>
+              </div>
+              <div className="flex-1 text-right">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Spend Logged Today</p>
+              <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(spendLoggedToday, privacyMode)}</p>
             </div>
           </div>
           <div className="h-3 bg-input border-2 border-border rounded-full overflow-hidden mb-1.5">
@@ -309,7 +369,7 @@ export default function DailyLog() {
             />
           </div>
           <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-            <span className="text-text-muted">{formatCurrency(recordedDailyDrain, privacyMode)} logged</span>
+            <span className="text-text-muted">{formatCurrency(spendLoggedToday, privacyMode)} spend logged</span>
             <span className={remaining < 0 ? 'text-action-bleed font-black' : 'text-capture-readable font-black'}>
               {remaining < 0 ? `${formatCurrency(Math.abs(remaining), privacyMode)} over` : `${formatCurrency(remaining, privacyMode)} remaining`}
             </span>
@@ -410,7 +470,7 @@ export default function DailyLog() {
             {/* Spend Input + Danger Meter */}
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
               <div className="inline-flex px-3 py-1 bg-black border-2 border-black rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
-                TODAY'S SPENDING
+                REVIEW TODAY'S SPENDING
               </div>
 
               <div className="relative">
@@ -419,7 +479,7 @@ export default function DailyLog() {
                   autoFocus
                   type="number"
                   min="0"
-                  title="Total Spent Today"
+                  title="Reviewed Total Spent Today"
                   className="w-full bg-input border-4 border-black rounded-2xl p-5 pl-12 text-3xl font-black italic outline-none text-center focus:border-action-primary focus:bg-surface transition-colors text-text-main"
                   placeholder="0.00"
                   value={displayRawSpend}
@@ -430,6 +490,11 @@ export default function DailyLog() {
               {rawSpend === '' && recordedDailyDrain > 0 && (
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center -mt-1">
                   Pre-filled from today's logged transactions · edit if needed
+                </p>
+              )}
+              {catchUpSpend > 0.005 && (
+                <p className="text-[10px] font-bold uppercase tracking-widest text-capture-readable text-center -mt-1">
+                  Adds {formatCurrency(catchUpSpend, privacyMode)} as a catch-up transaction
                 </p>
               )}
 
@@ -460,7 +525,7 @@ export default function DailyLog() {
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.97 }}
-                disabled={!displayRawSpend || displayRawSpend === '0'}
+                disabled={!hasValidReviewedSpend}
                 onClick={() => setStep('HABIT_CHECK')}
                 className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40"
               >
@@ -623,7 +688,7 @@ export default function DailyLog() {
                   <span className="font-black text-text-main">{formatCurrency(safeSpendLimit, privacyMode)}</span>
                 </div>
                 <div className="flex justify-between items-center border-b-2 border-border pb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Total Spent</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Reviewed Spend</span>
                   <span className="font-black text-text-main">-{formatCurrency(spendAmount, privacyMode)}</span>
                 </div>
                 {taxAmount > 0 && (
@@ -632,14 +697,55 @@ export default function DailyLog() {
                     <span className="font-black text-action-bleed">-{formatCurrency(taxAmount, privacyMode)}</span>
                   </div>
                 )}
+                {taxAmount > 0 && (
+                  <div className="flex justify-between items-center border-b-2 border-border pb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Total Cash Moved Today</span>
+                    <span className="font-black text-text-main">-{formatCurrency(spendAmount + taxAmount, privacyMode)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-1 gap-2">
                   <span className="text-sm font-black italic uppercase text-text-main shrink-0">Surplus</span>
                   <span className={`text-2xl sm:text-3xl font-black italic tabular-nums text-right ${surplus >= 0 ? 'text-capture-readable' : 'text-action-bleed'}`}>
                     {formatCurrency(Math.abs(surplus), privacyMode)}
-                    <span className="text-base ml-1">{surplus >= 0 ? 'left' : 'over'}</span>
+                    {' '}
+                    <span className="text-base">{surplus >= 0 ? 'left' : 'over'}</span>
                   </span>
                 </div>
               </div>
+
+              {needsCatchUpCategory && (
+                <div className="bg-surface border-4 border-border rounded-3xl p-4 space-y-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-main">
+                      What category was the missing spend?
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">
+                      {formatCurrency(catchUpSpend, privacyMode)} will be added as a catch-up transaction
+                    </p>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
+                    {CATEGORIES.map(cat => (
+                      <button
+                        key={cat.key}
+                        type="button"
+                        onClick={() => setCatchUpCategory(cat.key)}
+                        className={`shrink-0 px-3 py-1.5 border-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                          catchUpCategory === cat.key
+                            ? 'bg-black text-action-primary border-black shadow-[2px_2px_0px_0px_var(--color-action-primary)]'
+                            : 'bg-input border-border text-text-muted hover:border-black hover:text-text-main'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                  {!catchUpCategory && (
+                    <p className="text-[9px] font-black uppercase tracking-widest text-action-bleed">
+                      Category required for missing spend
+                    </p>
+                  )}
+                </div>
+              )}
 
               {surplus > 0 ? (
                 <div className="space-y-3">
@@ -648,8 +754,9 @@ export default function DailyLog() {
                     <motion.button
                       type="button"
                       whileTap={{ scale: 0.97 }}
+                      disabled={!canCloseReview}
                       onClick={() => handleAction('roll')}
-                      className="flex flex-col items-center gap-2 p-5 border-4 border-border rounded-3xl bg-surface text-text-main transition-all shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+                      className="flex flex-col items-center gap-2 p-5 border-4 border-border rounded-3xl bg-surface text-text-main transition-all shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_var(--shadow-color)] disabled:translate-x-0 disabled:translate-y-0"
                     >
                       <ArrowRightLeft size={28} strokeWidth={3} />
                       <span className="font-black uppercase text-[10px]">Roll Over</span>
@@ -658,12 +765,15 @@ export default function DailyLog() {
                     <motion.button
                       type="button"
                       whileTap={{ scale: 0.97 }}
+                      disabled={!canCloseReview || !hasVault}
                       onClick={() => handleAction('stash')}
-                      className="flex flex-col items-center gap-2 p-5 bg-black text-action-primary border-4 border-black rounded-3xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                      className="flex flex-col items-center gap-2 p-5 bg-black text-action-primary border-4 border-black rounded-3xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] disabled:translate-x-0 disabled:translate-y-0"
                     >
                       <ShieldCheck size={28} strokeWidth={3} />
                       <span className="font-black uppercase text-[10px]">Stash It</span>
-                      <span className="text-[11px] font-black text-action-primary/60 uppercase">Move to vault</span>
+                      <span className="text-[11px] font-black text-action-primary/60 uppercase">
+                        {hasVault ? 'Move to vault' : 'Create a vault first'}
+                      </span>
                     </motion.button>
                   </div>
                 </div>
@@ -671,8 +781,9 @@ export default function DailyLog() {
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.97 }}
+                  disabled={!canCloseReview}
                   onClick={() => handleAction('roll')}
-                  className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                  className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] disabled:translate-x-0 disabled:translate-y-0"
                 >
                   Log & Close Day
                 </motion.button>

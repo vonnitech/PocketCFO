@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, UserPlus, LogIn, AlertOctagon, CheckCircle } from 'lucide-react';
+import { Mail, Lock, UserPlus, LogIn, AlertOctagon, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../core/supabase';
 
 type Mode = 'login' | 'signup';
@@ -13,6 +13,7 @@ export function Login({ onAuthenticated }: LoginProps) {
   const [mode, setMode]       = useState<Mode>('login');
   const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const [notice, setNotice]   = useState(''); // e.g. "Check your email to confirm"
@@ -25,6 +26,10 @@ export function Login({ onAuthenticated }: LoginProps) {
   }, [onAuthenticated]);
 
   const clearMessages = () => { setError(''); setNotice(''); };
+
+  useEffect(() => {
+    setPasswordVisible(false);
+  }, [mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,15 +133,27 @@ export function Login({ onAuthenticated }: LoginProps) {
               className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
             />
             <input
-              type="password"
+              type={passwordVisible ? 'text' : 'password'}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               placeholder="PASSWORD"
               required
               minLength={8}
               value={password}
               onChange={e => { setPassword(e.target.value); clearMessages(); }}
-              className={`${inputBase} pl-10`}
+              className={`${inputBase} pl-10 pr-12`}
             />
+            {password && (
+              <button
+                type="button"
+                aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+                title={passwordVisible ? 'Hide password' : 'Show password'}
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => setPasswordVisible(visible => !visible)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl border-2 border-black bg-surface text-text-muted hover:text-text-main hover:bg-action-primary transition-colors flex items-center justify-center"
+              >
+                {passwordVisible ? <EyeOff size={15} strokeWidth={2.7} /> : <Eye size={15} strokeWidth={2.7} />}
+              </button>
+            )}
           </div>
 
           {/* Error / notice */}

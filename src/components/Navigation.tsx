@@ -10,7 +10,7 @@ import { BrandLogo } from './BrandLogo';
 
 const coreTools = [
   { path: '/',              icon: Terminal,    label: 'Dashboard',    shortLabel: 'Home' },
-  { path: '/recon',         icon: Search,      label: 'Daily Log',    shortLabel: 'Log' },
+  { path: '/recon',         icon: Search,      label: 'Daily Review', shortLabel: 'Review' },
   { path: '/vaults',        icon: ShieldCheck, label: 'Vaults',       shortLabel: 'Vaults' },
   { path: '/transactions',  icon: Receipt,     label: 'Ledger',       shortLabel: 'Ledger' },
   { path: '/breakdown',     icon: PieChart,    label: 'Audit Log',    shortLabel: 'Stats' },
@@ -51,7 +51,12 @@ function NavItem({ path, icon: Icon, label, accent, locked }: {
         <>
           <Icon size={16} strokeWidth={isActive ? 3 : 2} className="shrink-0" />
           <span className="text-[11px] font-bold uppercase tracking-wider leading-none">{label}</span>
-          {locked && <Lock size={12} strokeWidth={3} className="ml-auto shrink-0 opacity-50" />}
+          {locked && (
+            <span className="ml-auto inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest opacity-70">
+              <Lock size={10} strokeWidth={3} className="shrink-0" />
+              Preview
+            </span>
+          )}
           {isActive && (
             <div className="absolute -left-5 top-1/2 -translate-y-1/2 w-1.5 h-5 bg-action-capture border-2 border-l-0 border-black rounded-r-full" />
           )}
@@ -102,7 +107,9 @@ function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick, locked }: {
           <Icon size={18} strokeWidth={2.5} className={`shrink-0 ${isActive ? 'text-primary-contrast' : 'text-action-primary'}`} />
           <div className="flex-1 min-w-0">
             <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${isActive ? 'text-primary-contrast' : 'text-text-main'}`}>{label}</p>
-            <p className={`text-[10px] font-bold mt-1 leading-snug ${isActive ? 'text-primary-contrast/60' : 'text-text-muted'}`}>{subtitle}</p>
+            <p className={`text-[10px] font-bold mt-1 leading-snug ${isActive ? 'text-primary-contrast/60' : 'text-text-muted'}`}>
+              {locked ? `Pro preview · ${subtitle}` : subtitle}
+            </p>
           </div>
           {locked && <Lock size={14} strokeWidth={3} className={`shrink-0 ${isActive ? 'text-primary-contrast/70' : 'text-text-muted'}`} />}
         </>

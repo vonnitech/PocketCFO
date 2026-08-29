@@ -9,3 +9,7 @@ coverage/
 
 # Editor settings (personal, not app config)
 .vscode/
+.gstack/
+
+# Supabase CLI scratch dir
+supabase/.temp/

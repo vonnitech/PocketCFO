@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Skull, X, ShieldCheck, Plus, Lock } from 'lucide-react';
+import { CalendarDays, Skull, X, ShieldCheck, Plus, Lock } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { useStore } from '../store/useStore';
+import { isSubscriptionDueBeforePayday, isSubscriptionDueToday, useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Subscription } from '../store/useStore';
 import { useIsPro } from '../lib/pro';
@@ -16,6 +16,7 @@ export default function Subscriptions() {
   const storeState = useStore(
     useShallow(s => ({
       subscriptions: s.subscriptions,
+      nextPayday: s.nextPayday,
       privacyMode: s.privacyMode,
       addSubscription: s.addSubscription,
       setSubscriptionUsage: s.setSubscriptionUsage,
@@ -28,11 +29,25 @@ export default function Subscriptions() {
   const subCapReached = !isPro && state.subscriptions.length >= FREE_SUB_CAP;
 
   const totalBleed = useMemo(() => state.subscriptions.reduce((acc, sub) => acc + sub.amount, 0), [state.subscriptions]);
+  const reservedBeforePayday = useMemo(
+    () => state.subscriptions
+      .filter(sub => isSubscriptionDueBeforePayday(sub, state.nextPayday))
+      .reduce((acc, sub) => acc + sub.amount, 0),
+    [state.subscriptions, state.nextPayday],
+  );
 
   const [subToCancel, setSubToCancel] = useState<Subscription | null>(null);
   const [isAddingSub, setIsAddingSub] = useState(false);
   const [newSubName, setNewSubName] = useState('');
   const [newSubAmount, setNewSubAmount] = useState('');
+  const [newSubBillingDate, setNewSubBillingDate] = useState('');
+
+  const canAddSub = Boolean(
+    newSubName.trim() &&
+    newSubAmount &&
+    parseFloat(newSubAmount) > 0 &&
+    newSubBillingDate,
+  );
 
   const setUsage = (id: string, usage: 'Active' | 'Low Use' | 'Idle') => {
     setSubscriptionUsage(id, usage);
@@ -50,11 +65,19 @@ export default function Subscriptions() {
 
   const submitNewSub = () => {
     const amt = parseFloat(newSubAmount);
-    if (!newSubName.trim() || !amt || amt <= 0) return;
-    addSubscription(newSubName.trim(), amt);
+    if (!canAddSub || !amt || amt <= 0) return;
+    addSubscription(newSubName.trim(), amt, newSubBillingDate);
     setIsAddingSub(false);
     setNewSubName('');
     setNewSubAmount('');
+    setNewSubBillingDate('');
+  };
+
+  const formatBillingDate = (value?: string): string => {
+    const key = (value || '').slice(0, 10);
+    const [year, month, day] = key.split('-').map(Number);
+    if (!year || !month || !day) return 'No date set';
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const usageBadge = (usage: string) => {
@@ -76,7 +99,7 @@ export default function Subscriptions() {
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
           Subscriptions
         </h1>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Monitor & cancel inactive subscriptions</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Bill dates decide when subscriptions reserve cash before payday</p>
       </div>
 
       {/* Total Bleed */}
@@ -87,7 +110,12 @@ export default function Subscriptions() {
         </p>
         {state.subscriptions.length > 0 && (
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1">
-            {state.subscriptions.length} subscription{state.subscriptions.length !== 1 ? 's' : ''} active
+            {state.subscriptions.length} subscription{state.subscriptions.length !== 1 ? 's' : ''} active · tracked separately from Bill Queue
+          </p>
+        )}
+        {state.subscriptions.length > 0 && (
+          <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 mt-1 tabular-nums">
+            {formatCurrency(reservedBeforePayday, privacyMode)} reserved before payday
           </p>
         )}
       </div>
@@ -111,6 +139,10 @@ export default function Subscriptions() {
                   <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
                     {formatCurrency(sub.amount, privacyMode)} / {sub.billingCycle}
                   </p>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted flex items-center gap-1 mt-1">
+                    <CalendarDays size={12} strokeWidth={3} />
+                    Next bill {formatBillingDate(sub.nextBillingDate)}
+                  </p>
                 </div>
                 <span className="text-xl font-black italic tabular-nums text-text-main shrink-0">
                   {formatCurrency(sub.amount, privacyMode)}
@@ -128,6 +160,22 @@ export default function Subscriptions() {
               </div>
 
               {/* Row 2: status toggles */}
+              {sub.nextBillingDate && (
+                <div className={`mb-3 px-3 py-2 border-[3px] rounded-2xl text-[10px] font-black uppercase tracking-widest ${
+                  isSubscriptionDueToday(sub)
+                    ? 'border-action-bleed bg-action-bleed/10 text-action-bleed'
+                    : isSubscriptionDueBeforePayday(sub, state.nextPayday)
+                      ? 'border-action-primary bg-action-primary/20 text-text-main'
+                      : 'border-border bg-input text-text-muted'
+                }`}>
+                  {isSubscriptionDueToday(sub)
+                    ? `${sub.name} due today · mark paid on dashboard`
+                    : isSubscriptionDueBeforePayday(sub, state.nextPayday)
+                      ? 'Reserved before payday'
+                      : 'Not reserved this pay cycle'}
+                </div>
+              )}
+
               <div className="flex gap-2">
                 {(['Active', 'Low Use', 'Idle'] as const).map(status => (
                   <button
@@ -174,20 +222,34 @@ export default function Subscriptions() {
               onKeyDown={e => e.key === 'Enter' && submitNewSub()}
             />
             <div className="flex gap-2">
-              <input
-                type="number"
-                min="0"
-                title="Monthly cost"
-                placeholder="Monthly cost $"
-                className="flex-1 min-w-0 bg-input border-4 border-black rounded-2xl p-3 font-black text-sm text-text-main outline-none focus:border-action-primary transition-colors tabular-nums"
-                value={newSubAmount}
-                onFocus={e => e.target.select()}
-                onChange={e => setNewSubAmount(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && submitNewSub()}
-              />
+              <label className="flex-1 min-w-0">
+                <span className="block text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Monthly cost</span>
+                <input
+                  type="number"
+                  min="0"
+                  title="Monthly cost"
+                  placeholder="0.00"
+                  className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-sm text-text-main outline-none focus:border-action-primary transition-colors tabular-nums"
+                  value={newSubAmount}
+                  onFocus={e => e.target.select()}
+                  onChange={e => setNewSubAmount(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submitNewSub()}
+                />
+              </label>
+              <label className="flex-1 min-w-0">
+                <span className="block text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Next billing date</span>
+                <input
+                  type="date"
+                  title="Next billing date"
+                  className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-sm text-text-main outline-none focus:border-action-primary transition-colors"
+                  value={newSubBillingDate}
+                  onChange={e => setNewSubBillingDate(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submitNewSub()}
+                />
+              </label>
               <button
                 type="button"
-                onClick={() => { setIsAddingSub(false); setNewSubName(''); setNewSubAmount(''); }}
+                onClick={() => { setIsAddingSub(false); setNewSubName(''); setNewSubAmount(''); setNewSubBillingDate(''); }}
                 className="h-12 px-5 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all shrink-0"
               >
                 Cancel
@@ -195,7 +257,7 @@ export default function Subscriptions() {
               <button
                 type="button"
                 onClick={submitNewSub}
-                disabled={!newSubName.trim() || !newSubAmount || parseFloat(newSubAmount) <= 0}
+                disabled={!canAddSub}
                 className="h-12 px-5 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-primary)]"
               >
                 Add

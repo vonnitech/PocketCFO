@@ -9,12 +9,16 @@ import { logProductEvent } from '../core/telemetry';
 // full-screen takeover). Auto-dismisses after 6s or on outside click.
 export function ProUpsellPopover() {
   const [open, setOpen] = useState(false);
+  // Kept so the CTA click can be attributed to the tool that triggered the
+  // paywall, not just recorded as an anonymous click.
+  const [feature, setFeature] = useState('unknown');
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onUpsell = (e: Event) => {
-      const feature = (e as CustomEvent).detail?.feature ?? 'unknown';
-      logProductEvent({ type: 'paywall_viewed', feature });
+      const next = (e as CustomEvent).detail?.feature ?? 'unknown';
+      setFeature(next);
+      logProductEvent({ type: 'paywall_viewed', feature: next });
       setOpen(true);
     };
     window.addEventListener('pro-upsell', onUpsell as EventListener);
@@ -42,12 +46,13 @@ export function ProUpsellPopover() {
             <Lock size={18} strokeWidth={3} className="text-black" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-black uppercase tracking-tight text-text-main">Saving is Pro</p>
+            <p className="text-sm font-black uppercase tracking-tight text-text-main">This preview saves with Pro</p>
             <p className="text-[11px] font-bold text-text-muted leading-snug mt-0.5">
-              Try the math free. Keep the results with Pocket CFO Pro. From {PRICING.monthly.price}/mo · {PRICING.annual.price}/yr · or {PRICING.lifetime.price} once, yours forever.
+              Preview the tool free. Upgrade to keep results and use the full action set. From {PRICING.monthly.price}/mo · {PRICING.annual.price}/yr · or {PRICING.lifetime.price} once.
             </p>
             <div className="flex gap-2 mt-3">
-              <Link to="/settings#pro" onClick={() => setOpen(false)}
+              <Link to="/settings#pro"
+                onClick={() => { logProductEvent({ type: 'paywall_cta_clicked', feature }); setOpen(false); }}
                 className="inline-flex items-center h-9 px-4 bg-black border-2 border-black rounded-xl text-action-primary font-black uppercase text-[11px] tracking-widest">
                 See Pricing
               </Link>

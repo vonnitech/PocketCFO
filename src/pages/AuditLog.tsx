@@ -27,6 +27,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   GENERAL: 'Other', SOCIAL: 'Splits', PENALTY: 'Penalties',
   VAULT_DEPOSIT: 'Vault', DEBT_PAYMENT: 'Debt', INCOME: 'Income', SAVINGS: 'Savings',
   BILL_PAYMENT: 'Bill',
+  SUBSCRIPTION_PAYMENT: 'Subscription',
 };
 
 // ── Pivot Table ──────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ const PIVOT_EXCLUDED = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 // Categories that count as income in the NET TOTAL row
 const PIVOT_INCOME_CATS = new Set(['INCOME']);
 // Pre-committed obligations — shown below a divider, excluded from NET TOTAL
-const PIVOT_ALLOCATED_CATS = new Set(['BILL_PAYMENT', 'DEBT_PAYMENT']);
+const PIVOT_ALLOCATED_CATS = new Set(['BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'DEBT_PAYMENT']);
 
 const NUM_INTERVALS = 6;
 
@@ -378,7 +379,7 @@ export const AuditLog: React.FC = () => {
     const CAPTURED_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT']);
     // Allocated = pre-reserved obligations (debt principal, recurring bills).
     // These get their own panel and stay out of the discretionary spend pie chart.
-    const ALLOCATED_CATEGORIES = new Set(['DEBT_PAYMENT', 'BILL_PAYMENT']);
+    const ALLOCATED_CATEGORIES = new Set(['DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT']);
     const INTERNAL_CATEGORIES  = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
     const grouped = filteredTransactions
@@ -450,7 +451,7 @@ export const AuditLog: React.FC = () => {
     const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     // MoM compares discretionary spend only — bills, debt, vault funding are pre-reserved.
-    const EXCLUDED = new Set(['INCOME', 'SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+    const EXCLUDED = new Set(['INCOME', 'SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
     const spendFor = (start: Date, end: Date) => {
       const cats: Record<string, number> = {};

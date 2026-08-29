@@ -5,8 +5,9 @@ import {
   Trash2, Smartphone, RefreshCw, Zap, Trophy, Shield, Medal,
   User, Check, ChevronDown, FileDown, FileUp, Fingerprint,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
+import { DASHBOARD_WIDGETS } from '../core/widgets';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { supabase } from '../core/supabase';
 import { calculateTrueSafeSpend } from '../core/math';
@@ -17,7 +18,7 @@ import {
   isPlatformAuthenticatorAvailable, hasEnrolledCredential,
   enrollCredential, clearEnrolledCredential,
 } from '../lib/webauthn';
-import { logSecurityEvent } from '../core/telemetry';
+import { logSecurityEvent, logProductEvent } from '../core/telemetry';
 import { clearUserLocalData } from '../lib/userScopedStorage';
 import { clearSnapshot, cancelQueuedSnapshotSave } from '../db/storage';
 import { CURRENCIES } from '../lib/currency';
@@ -110,20 +111,18 @@ const COLOR_THEMES = [
 // color studio are Pro. Change which two accompany 'default' here.
 const FREE_THEME_IDS = new Set(['default', 'pink-sky', 'orange-royal']);
 
-const WIDGET_META = [
-  { id: 'safe-spend',   label: 'Daily Safe Spend', description: 'Your main spending limit hero card' },
-  { id: 'vault-status', label: 'Savings Overview',  description: 'Vaulted & spendable balance pillars' },
-  { id: 'alert',        label: 'Bill Queue',        description: 'Upcoming bills checklist' },
-];
-
 export default function Settings() {
   const state = useStore();
   const { theme, setTheme, privacyMode, togglePrivacyMode, dashboardWidgets, updateDashboardWidgets, lockEnabled, pinHash, setState, setThemeColors } = state;
+  const navigate = useNavigate();
   const isPro = useIsPro();
 
   // Kick off LemonSqueezy Checkout for a plan (the /api/checkout function builds
   // the hosted checkout; we just redirect to it).
   const startCheckout = async (plan: 'monthly' | 'annual' | 'lifetime') => {
+    // Logged before the network call so the funnel captures intent even when
+    // checkout creation fails or the user abandons the LemonSqueezy page.
+    logProductEvent({ type: 'payment_intent', plan });
     try {
       // The function reads the buyer from this token, so it is the whole
       // request identity; the body only carries the plan.
@@ -221,11 +220,22 @@ export default function Settings() {
   const { isInstallable, isInstalled, install } = usePWAInstall();
 
   const toggleWidget = (id: string) => {
-    updateDashboardWidgets(dashboardWidgets.map(w => w.id === id ? { ...w, visible: !w.visible } : w));
+    // A widget the stored array has never seen reads as visible (see isWidgetVisible),
+    // so its first toggle has to ADD it as hidden. Mapping alone would match nothing,
+    // write the array back unchanged, and leave the switch stuck on forever.
+    const exists = dashboardWidgets.some(w => w.id === id);
+    updateDashboardWidgets(
+      exists
+        // `visible: w.visible === false` both flips the flag and normalizes a
+        // malformed value, which a plain `!w.visible` would not.
+        ? dashboardWidgets.map(w => w.id === id ? { ...w, visible: w.visible === false } : w)
+        : [...dashboardWidgets, { id, visible: false }],
+    );
   };
+  // Mirrors Dashboard's widgetVisible: only an explicit `false` counts as hidden.
   const isWidgetVisible = (id: string) => {
     const w = dashboardWidgets.find(x => x.id === id);
-    return w ? w.visible : true;
+    return w?.visible !== false;
   };
 
   // Deep-link support: when arriving via /settings#dashboard-widgets (the
@@ -339,10 +349,18 @@ export default function Settings() {
   const [wiping, setWiping] = useState(false);
   const [wipeArmed, setWipeArmed] = useState(false);
   const wipeTimerRef = useRef<ReturnType<typeof setTimeout>>(0 as unknown as ReturnType<typeof setTimeout>);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteAccountArmed, setDeleteAccountArmed] = useState(false);
+  const deleteAccountTimerRef = useRef<ReturnType<typeof setTimeout>>(0 as unknown as ReturnType<typeof setTimeout>);
 
   const armWipe = () => {
     setWipeArmed(true);
     wipeTimerRef.current = setTimeout(() => setWipeArmed(false), 10000);
+  };
+
+  const armDeleteAccount = () => {
+    setDeleteAccountArmed(true);
+    deleteAccountTimerRef.current = setTimeout(() => setDeleteAccountArmed(false), 10000);
   };
 
   const handleWipe = async () => {
@@ -350,18 +368,26 @@ export default function Settings() {
     setWipeArmed(false);
     const userId = state.userId;
     if (!userId) return;
+    const preservedFirstName = state.firstName;
     setWiping(true);
     await Promise.all([
       (supabase.from('transactions')  as any).delete().eq('user_id', userId),
       (supabase.from('vaults')        as any).delete().eq('user_id', userId),
       (supabase.from('debts')         as any).delete().eq('user_id', userId),
       (supabase.from('subscriptions') as any).delete().eq('user_id', userId),
+      (supabase.from('recon_history') as any).delete().eq('user_id', userId),
     ]);
-    await (supabase.from('profiles') as any).update({
+    const wipeProfilePayload: Record<string, unknown> = {
       liquid_assets: 0, monthly_take_home: 0, fixed_bills: 0,
-      monthly_savings_goal: 0, next_payday: null, upcoming_bills: 0,
+      monthly_savings_goal: 0, next_payday: null, payday_anchor_day: null, upcoming_bills: 0,
       hard_daily_cap: 0, has_completed_onboarding: false, is_configured: false,
-    }).eq('id', userId);
+    };
+    let { error: wipeProfileError } = await (supabase.from('profiles') as any).update(wipeProfilePayload).eq('id', userId);
+    if (wipeProfileError?.code === '42703' && /payday_anchor_day/i.test(wipeProfileError.message || '')) {
+      delete wipeProfilePayload.payday_anchor_day;
+      ({ error: wipeProfileError } = await (supabase.from('profiles') as any).update(wipeProfilePayload).eq('id', userId));
+    }
+    if (wipeProfileError) console.error('[wipe] profile reset failed:', wipeProfileError);
     // Clear browser-local tool state too (FIRE inputs, recon locks, bill-queue
     // cache, tour flag) so the wipe is a true reset — not just the cloud rows.
     clearUserLocalData(userId);
@@ -369,8 +395,59 @@ export default function Settings() {
     // IndexedDB would hand them straight back on the next cold start.
     cancelQueuedSnapshotSave();
     await clearSnapshot(userId);
-    setState({ ...INITIAL_STATE, userId, dataLoaded: true });
+    setState({
+      ...INITIAL_STATE,
+      userId,
+      firstName: preservedFirstName,
+      dataLoaded: true,
+      dataFresh: true,
+      allTransactionsLoaded: true,
+    });
+    navigate('/', { replace: true });
     setWiping(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    clearTimeout(deleteAccountTimerRef.current);
+    setDeleteAccountArmed(false);
+    const userId = state.userId;
+    if (!userId) return;
+
+    setDeletingAccount(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
+      });
+      const raw = await res.text();
+      const body = (() => {
+        try {
+          return raw ? JSON.parse(raw) as { error?: string } : {};
+        } catch {
+          return {};
+        }
+      })();
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error('Account deletion API is not running. Restart the dev server or use the deployed app.');
+        }
+        throw new Error(body.error || 'Could not delete account');
+      }
+
+      clearUserLocalData(userId);
+      cancelQueuedSnapshotSave();
+      await clearSnapshot(userId);
+      await supabase.auth.signOut();
+      setState({ ...INITIAL_STATE });
+    } catch (err) {
+      console.error('[PocketCFO] delete account failed', err);
+      alert((err as Error).message || 'Could not delete account. Please try again.');
+      setDeletingAccount(false);
+    }
   };
 
   const exportData = () => {
@@ -562,7 +639,7 @@ export default function Settings() {
           {!isPro ? (
             <>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3">
-                Unlocks FIRE, Income Tracker, and Debt Payoff
+                FIRE, Income Tracker, and Debt Payoff are free previews. Pro unlocks saving and full actions.
               </p>
 
               {/* Annual — the hero */}
@@ -617,7 +694,7 @@ export default function Settings() {
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Dashboard Widgets</p>
           </div>
           <div className="space-y-3">
-            {WIDGET_META.map((widget, i) => {
+            {DASHBOARD_WIDGETS.map((widget, i) => {
               const visible = isWidgetVisible(widget.id);
               return (
                 <div key={widget.id}>
@@ -732,6 +809,18 @@ export default function Settings() {
               <button type="button" onClick={armWipe} disabled={wiping}
                 className="w-full h-12 border-4 border-action-bleed rounded-full bg-action-bleed/10 text-action-bleed font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-action-bleed/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 <Trash2 size={16} /> {wiping ? 'WIPING…' : 'WIPE SYSTEM'}
+              </button>
+            )}
+            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60 mt-2">Account</p>
+            {deleteAccountArmed ? (
+              <button type="button" onClick={handleDeleteAccount} disabled={deletingAccount}
+                className="w-full h-12 border-4 border-action-bleed rounded-full bg-action-bleed text-white font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all animate-pulse disabled:opacity-60 disabled:cursor-not-allowed">
+                <Trash2 size={16} /> {deletingAccount ? 'DELETING...' : 'DELETE FOREVER'}
+              </button>
+            ) : (
+              <button type="button" onClick={armDeleteAccount} disabled={deletingAccount}
+                className="w-full h-12 border-4 border-action-bleed rounded-full bg-surface text-action-bleed font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-action-bleed/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                <Trash2 size={16} /> {deletingAccount ? 'DELETING...' : 'DELETE ACCOUNT'}
               </button>
             )}
           </div>

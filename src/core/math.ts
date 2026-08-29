@@ -37,7 +37,7 @@ export const calculateRemainingDaysInMonth = (): number => {
 
 // Excluded from "daily drain" — these are not discretionary spend.
 // Bills, debt minimums and vault transfers are pre-reserved and tracked separately.
-const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
 export const calculateDaysUntilPayday = (nextPayday: string): number => {
   if (!nextPayday) return 1;
@@ -83,13 +83,15 @@ export const calculateRawSafeSpend = (state: AppState): number => {
   if (!state.nextPayday) return 0;
   const days = calculateDaysUntilPayday(state.nextPayday);
 
-  // Bills are reserved out of current cash only if the balance can cover them;
-  // otherwise they're funded by the next paycheck and don't squeeze pre-payday spend.
+  // Bills due before payday are always reserved out of current cash. Reserving them
+  // only when the balance could cover them (the previous rule) created a cliff: at
+  // a 1000 balance, 999 of bills allowed 0.05/day while 1001 of bills allowed the
+  // full 1000/days, so being deeper in the hole raised the allowance. When bills
+  // cannot be covered the honest answer is 0, not the whole balance.
   const upcoming = state.upcomingBills || 0;
-  const billsToReserve = state.liquidAssets >= upcoming ? upcoming : 0;
   // Cash safety: never green-light spending more than the current balance can sustain
   // until payday (after reserving any unpaid bills).
-  const dailyFromCash = (state.liquidAssets - billsToReserve) / days;
+  const dailyFromCash = Math.max(0, state.liquidAssets - upcoming) / days;
 
   // Income-based budget: savings is funded from your monthly take-home, not frozen
   // in your pre-payday balance. So the sustainable daily allowance is what's left of

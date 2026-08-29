@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Wallet, Zap, ShieldCheck, Scissors, List, TrendingUp, X, ChevronRight } from 'lucide-react';
 import { userKey } from '../lib/userScopedStorage';
+import { useStore } from '../store/useStore';
 
 const STEPS = [
   {
@@ -13,8 +14,8 @@ const STEPS = [
   {
     icon: Zap,
     color: 'bg-action-primary',
-    title: 'Log Spend Daily',
-    body: 'Open Daily Log each day and enter what you spent. It keeps your number accurate and builds the habit, and a streak counter tracks how consistent you are.',
+    title: 'Review Each Day',
+    body: 'Log purchases from the Dashboard as they happen, then open Daily Review to check the total and catch anything missed. The review keeps your number honest without double-counting quick logs.',
   },
   {
     icon: ShieldCheck,
@@ -45,10 +46,25 @@ const STEPS = [
 const TOUR_BASE = 'pocket-cfo-tour-v1';
 
 export function useFeatureTour() {
-  const [visible, setVisible] = useState(() => !localStorage.getItem(userKey(TOUR_BASE)));
+  const userId = useStore(s => s.userId);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!userId) {
+      setVisible(false);
+      return;
+    }
+    try {
+      setVisible(!localStorage.getItem(userKey(TOUR_BASE)));
+    } catch {
+      setVisible(true);
+    }
+  }, [userId]);
 
   const dismiss = () => {
-    localStorage.setItem(userKey(TOUR_BASE), '1');
+    try {
+      localStorage.setItem(userKey(TOUR_BASE), '1');
+    } catch {}
     setVisible(false);
   };
 

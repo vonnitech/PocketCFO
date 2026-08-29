@@ -6,8 +6,16 @@ import { formatCurrency } from '../lib/utils';
 import { CSVImport } from '../components/CSVImport';
 import { ProAction } from '../components/ProAction';
 import type { Transaction } from '../types';
+import { toLocalDateKey } from '../core/math';
 
 const CATEGORY_META: Record<string, { label: string; bg: string; text: string }> = {
+  FOOD:             { label: 'Food',       bg: 'bg-input',                text: 'text-text-muted' },
+  TRANSPORT:        { label: 'Transport',  bg: 'bg-input',                text: 'text-text-muted' },
+  FUN:              { label: 'Fun',        bg: 'bg-input',                text: 'text-text-muted' },
+  SHOPPING:         { label: 'Shopping',   bg: 'bg-input',                text: 'text-text-muted' },
+  HEALTH:           { label: 'Health',     bg: 'bg-input',                text: 'text-text-muted' },
+  HOME:             { label: 'Home',       bg: 'bg-input',                text: 'text-text-muted' },
+  WORK:             { label: 'Work',       bg: 'bg-input',                text: 'text-text-muted' },
   VAULT_DEPOSIT:    { label: 'Vaulted',    bg: 'bg-action-capture',       text: 'text-capture-contrast' },
   VAULT_WITHDRAWAL: { label: 'Withdrawal', bg: 'bg-action-bleed/20',      text: 'text-action-bleed' },
   VAULT_TRANSFER:   { label: 'Transfer',   bg: 'bg-input',                text: 'text-text-muted' },
@@ -15,6 +23,7 @@ const CATEGORY_META: Record<string, { label: string; bg: string; text: string }>
   SAVINGS:          { label: 'Savings',    bg: 'bg-action-capture',       text: 'text-capture-contrast' },
   DEBT_PAYMENT:     { label: 'Debt',       bg: 'bg-[#14b8a6]/20',         text: 'text-[#14b8a6]' },
   BILL_PAYMENT:     { label: 'Bill',       bg: 'bg-action-bleed/15',      text: 'text-action-bleed' },
+  SUBSCRIPTION_PAYMENT: { label: 'Sub',    bg: 'bg-action-bleed/15',      text: 'text-action-bleed' },
   PENALTY:          { label: 'Penalty',    bg: 'bg-action-bleed/20',      text: 'text-action-bleed' },
   SOCIAL:           { label: 'Social',     bg: 'bg-[#facc15]/20',         text: 'text-[#facc15]' },
   PAYDAY:           { label: 'Payday',     bg: 'bg-action-primary',       text: 'text-primary-contrast' },
@@ -22,10 +31,11 @@ const CATEGORY_META: Record<string, { label: string; bg: string; text: string }>
 };
 
 const INCOME_CATEGORIES = new Set(['INCOME', 'VAULT_WITHDRAWAL']);
+const SPEND_FILTER_CATEGORIES = new Set(['FOOD', 'TRANSPORT', 'FUN', 'SHOPPING', 'HEALTH', 'HOME', 'WORK', 'OTHER', 'SOCIAL']);
 
 const EDITABLE_CATEGORIES = [
   'FOOD', 'TRANSPORT', 'FUN', 'SHOPPING', 'HEALTH', 'HOME', 'WORK', 'OTHER',
-  'INCOME', 'SAVINGS', 'BILL_PAYMENT', 'DEBT_PAYMENT',
+  'INCOME', 'SAVINGS', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'DEBT_PAYMENT',
 ];
 
 const FILTER_TABS = [
@@ -35,19 +45,22 @@ const FILTER_TABS = [
   { id: 'SAVINGS',          label: 'Savings' },
   { id: 'DEBT_PAYMENT',     label: 'Debt' },
   { id: 'BILL_PAYMENT',     label: 'Bill' },
+  { id: 'SUBSCRIPTION_PAYMENT', label: 'Sub' },
   { id: 'PENALTY',          label: 'Penalty' },
-  { id: 'OTHER',            label: 'Spend' },
+  { id: 'SPEND',            label: 'Spend' },
 ];
 
 function formatDate(iso: string): string {
-  const d = new Date(iso);
+  const key = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : toLocalDateKey(iso);
+  const [year, month, day] = key.split('-').map(Number);
+  const d = year && month && day ? new Date(year, month - 1, day) : new Date(iso);
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function groupByDate(txs: ReturnType<typeof useStore.getState>['transactions']) {
   const map = new Map<string, typeof txs>();
   for (const tx of txs) {
-    const key = tx.date.slice(0, 10);
+    const key = toLocalDateKey(tx.date);
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(tx);
   }
@@ -98,7 +111,11 @@ export default function Ledger() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return transactions.filter(tx => {
-      if (category !== 'ALL' && tx.category !== category) return false;
+      if (category === 'SPEND') {
+        if (!SPEND_FILTER_CATEGORIES.has(tx.category)) return false;
+      } else if (category !== 'ALL' && tx.category !== category) {
+        return false;
+      }
       if (q && !tx.merchant.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -309,7 +326,7 @@ export default function Ledger() {
                 <div className="p-5 space-y-4">
                   <div className="bg-input border-2 border-border rounded-2xl px-3 py-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                      {new Date(pendingDelete.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {formatDate(pendingDelete.date)}
                       <span className="mx-1.5">·</span>{pendingDelete.category}
                     </p>
                     <p className="text-sm font-black uppercase tracking-wide text-text-main mt-1 truncate">

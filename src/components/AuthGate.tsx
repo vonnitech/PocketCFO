@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, User, UserPlus, LogIn, AlertOctagon, CheckCircle, KeyRound, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, LogIn, AlertOctagon, CheckCircle, KeyRound, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../core/supabase';
+import { logProductEvent } from '../core/telemetry';
 
 // Modes:
 //  login   — email + password sign in (+ forgot-password link)
@@ -32,6 +33,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
   const [mode, setMode]           = useState<Mode>(recoveryMode ? 'recover' : 'login');
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
@@ -44,6 +46,10 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
   }, [recoveryMode]);
 
   const clearMessages = () => { setError(''); setNotice(''); };
+
+  useEffect(() => {
+    setPasswordVisible(false);
+  }, [mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,21 +64,38 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
 
       } else if (mode === 'signup') {
         if (!email.trim() || !password) return;
+        // Logged before the call so a signup that never completes (duplicate email,
+        // rejected password) shows as submitted-without-created.
+        logProductEvent({ type: 'signup_submitted', method: 'password' });
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: { data: { first_name: firstName.trim() } },
         });
         if (authError) throw authError;
-        if (data.user && firstName.trim()) {
+        // If email confirmation is disabled, Supabase returns a live session.
+        // Create the profile here as a backstop in case the auth trigger did not
+        // create it before the app loads onboarding.
+        const autoSignedIn = !!data.session;
+        if (data.user && autoSignedIn) {
           await (supabase.from('profiles') as any)
-            .update({ first_name: firstName.trim() })
-            .eq('id', data.user.id);
+            .upsert({
+              id: data.user.id,
+              first_name: firstName.trim() || null,
+            }, { onConflict: 'id' });
         }
-        setNotice('Account created. Check your email to confirm before logging in.');
-        setMode('login');
-        setPassword('');
-        setFirstName('');
+        // Supabase returns a live session here whenever email confirmation is
+        // off for the project. In that case the user is already signed in and
+        // App's auth listener will swap this screen for the app, so bouncing
+        // them back to the login form would strand them one step short of their
+        // first Safe-to-Spend number. Only hold them when there is no session.
+        logProductEvent({ type: 'signup_created', method: 'password', autoSignedIn });
+        if (!autoSignedIn) {
+          setNotice('Account created. Check your email to confirm before logging in.');
+          setMode('login');
+          setPassword('');
+          setFirstName('');
+        }
 
       } else if (mode === 'reset') {
         if (!email.trim()) return;
@@ -113,6 +136,9 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
     setLoading(true);
     clearMessages();
     try {
+      // Intent only: after the redirect a Google signup is indistinguishable from
+      // a Google login, so this is recorded when the user is on the signup tab.
+      if (mode === 'signup') logProductEvent({ type: 'signup_submitted', method: 'google' });
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin },
@@ -230,26 +256,38 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
               />
               {mode === 'login' ? (
                 <input
-                  type="password"
+                  type={passwordVisible ? 'text' : 'password'}
                   autoComplete="current-password"
                   placeholder="PASSWORD"
                   required
                   minLength={8}
                   value={password}
                   onChange={e => { setPassword(e.target.value); clearMessages(); }}
-                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 pr-12 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
                 />
               ) : (
                 <input
-                  type="password"
+                  type={passwordVisible ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder={mode === 'recover' ? 'NEW PASSWORD' : 'PASSWORD'}
                   required
                   minLength={8}
                   value={password}
                   onChange={e => { setPassword(e.target.value); clearMessages(); }}
-                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 pr-12 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
                 />
+              )}
+              {password && (
+                <button
+                  type="button"
+                  aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+                  title={passwordVisible ? 'Hide password' : 'Show password'}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => setPasswordVisible(visible => !visible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl border-2 border-black bg-surface text-text-muted hover:text-text-main hover:bg-action-primary transition-colors flex items-center justify-center"
+                >
+                  {passwordVisible ? <EyeOff size={15} strokeWidth={2.7} /> : <Eye size={15} strokeWidth={2.7} />}
+                </button>
               )}
             </div>
           )}

@@ -1,11 +1,50 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { deleteAccountForToken } from './api/_delete-account-core';
 
-export default defineConfig({
+function localAccountApi(env: Record<string, string>): Plugin {
+  return {
+    name: 'pocketcfo-local-account-api',
+    configureServer(server) {
+      server.middlewares.use('/api/delete-account', async (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Method not allowed' }));
+          return;
+        }
+
+        try {
+          const header = req.headers.authorization ?? '';
+          const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+          const result = await deleteAccountForToken(env, token);
+          res.statusCode = result.status;
+          res.setHeader('Content-Type', 'application/json');
+          if ('error' in result) {
+            res.end(JSON.stringify({ error: result.error }));
+            return;
+          }
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+          console.error('[local delete-account]', e);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Could not delete account' }));
+        }
+      });
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
   plugins: [
+    localAccountApi(env),
     react(),
     tailwindcss(),
     VitePWA({
@@ -90,4 +129,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });

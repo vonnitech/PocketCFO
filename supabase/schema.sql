@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   -- Horizon math
   liquid_assets        NUMERIC(14,2) NOT NULL DEFAULT 0,
   next_payday          DATE,
+  payday_anchor_day    INTEGER CHECK (payday_anchor_day IS NULL OR payday_anchor_day BETWEEN 1 AND 31),
   upcoming_bills       NUMERIC(14,2) NOT NULL DEFAULT 0,
   hard_daily_cap       NUMERIC(14,2) NOT NULL DEFAULT 0,
   monthly_take_home    NUMERIC(14,2) NOT NULL DEFAULT 0,
@@ -48,10 +49,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   theme_capture_color TEXT,
 
   -- Dashboard widget visibility (JSONB array)
+  -- Keep in step with DASHBOARD_WIDGETS in src/core/widgets.ts. Migration 013
+  -- realigned this after a removed 'momentum' widget lingered here.
   dashboard_widgets JSONB NOT NULL DEFAULT '[
     {"id":"safe-spend","visible":true},
     {"id":"vault-status","visible":true},
-    {"id":"momentum","visible":true},
     {"id":"alert","visible":true}
   ]'::jsonb,
 
@@ -179,14 +181,16 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
   user_id       UUID          NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
 
   name          TEXT          NOT NULL,
-  amount        NUMERIC(14,2) NOT NULL DEFAULT 0,
-  usage         TEXT          NOT NULL DEFAULT 'Active'   CHECK (usage IN ('Active', 'Low Use', 'Idle')),
-  billing_cycle TEXT          NOT NULL DEFAULT 'Monthly'  CHECK (billing_cycle IN ('Monthly', 'Yearly')),
+    amount        NUMERIC(14,2) NOT NULL DEFAULT 0,
+    usage         TEXT          NOT NULL DEFAULT 'Active'   CHECK (usage IN ('Active', 'Low Use', 'Idle')),
+    billing_cycle TEXT          NOT NULL DEFAULT 'Monthly'  CHECK (billing_cycle IN ('Monthly', 'Yearly')),
+    next_billing_date DATE,
 
-  created_at    TIMESTAMPTZ   NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON public.subscriptions (user_id);
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT now()
+  );
+  
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON public.subscriptions (user_id);
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_user_next_billing ON public.subscriptions (user_id, next_billing_date);
 
 
 -- ── vaults ─────────────────────────────────────────────────────────────────────
