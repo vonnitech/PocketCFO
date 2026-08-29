@@ -812,9 +812,29 @@ export const useStore = create<StoreState>()(
       // bill is due again); otherwise keep it, pruning keys for bills no longer in
       // the template. The queue is then DERIVED from (template − paid keys), so paid
       // bills can never be resurrected by editing the template or re-saving the cycle.
+      //
+      // Keys are name:amount, so correcting a bill's amount used to change its
+      // identity: the old key matched nothing in the new template, got pruned, and
+      // the bill came back as unpaid. A bill's id survives an edit even though its
+      // key does not, so the key is MIGRATED across the edit rather than dropped.
+      // Someone who ticked rent off and then corrected the figure has still dealt
+      // with rent this cycle.
+      const keyMigrations = new Map<string, string>();
+      for (const next of recurringToUse) {
+        const prev = (recurringBills || []).find(b => b.id === next.id);
+        if (!prev) continue;
+        const prevKey = billKey(prev);
+        const nextKey = billKey(next);
+        if (prevKey !== nextKey) keyMigrations.set(prevKey, nextKey);
+      }
+
       const nextPaidKeys = isNewCycle
         ? []
-        : (currentPaidKeys || []).filter(k => recurringToUse.some(b => billKey(b) === k));
+        : Array.from(new Set(
+            (currentPaidKeys || [])
+              .map(k => keyMigrations.get(k) ?? k)
+              .filter(k => recurringToUse.some(b => billKey(b) === k)),
+          ));
       const freshQueue = deriveBillQueue(recurringToUse, nextPaidKeys);
 
       const effectiveUpcomingBills = calculateReservedObligations(freshQueue, subscriptions, paydayToUse);
@@ -1253,10 +1273,26 @@ export const useStore = create<StoreState>()(
       const liquidDelta = isIncome ? -tx.amount : tx.amount;
 
       // If it's a bill payment, un-pay that bill (strip its key) so it reappears unpaid.
+      //
+      // The key is rebuilt from the transaction, which stores only the merchant and
+      // the amount PAID. If the bill's amount was corrected after payment, setHorizon
+      // migrated the paid marker to the new figure, so the rebuilt key no longer
+      // matches and deleting the payment would leave the bill stuck marked paid.
+      // Falling back to the bill's current key by name recovers that case. Name
+      // alone is a weaker match than name+amount, so it is only consulted when the
+      // exact key is absent.
       const isBillPayment = tx.category === 'BILL_PAYMENT';
       const billName = isBillPayment ? tx.merchant.replace(/^BILL:\s*/i, '') : '';
-      const payKey   = isBillPayment ? billKey({ name: billName, amount: tx.amount }) : '';
-      const unpays   = isBillPayment && (paidBillKeys || []).includes(payKey);
+      const exactKey = isBillPayment ? billKey({ name: billName, amount: tx.amount }) : '';
+      const keys     = paidBillKeys || [];
+      const byName   = isBillPayment && !keys.includes(exactKey)
+        ? (recurringBills || [])
+            .filter(b => b.name.trim().toLowerCase() === billName.trim().toLowerCase())
+            .map(b => billKey(b))
+            .find(k => keys.includes(k))
+        : undefined;
+      const payKey   = keys.includes(exactKey) ? exactKey : (byName ?? exactKey);
+      const unpays   = isBillPayment && keys.includes(payKey);
       const nextPaidKeys = unpays ? (paidBillKeys || []).filter(k => k !== payKey) : paidBillKeys;
       const nextQueue    = unpays ? deriveBillQueue(recurringBills, nextPaidKeys) : null;
 

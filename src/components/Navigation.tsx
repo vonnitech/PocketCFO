@@ -4,7 +4,7 @@ import { Terminal, ShieldCheck, PieChart, Zap, Compass, Settings, Search, Users,
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
-import { useIsPro } from '../lib/pro';
+import { useProLocked } from '../lib/pro';
 import { supabase } from '../core/supabase';
 import { BrandLogo } from './BrandLogo';
 
@@ -127,7 +127,7 @@ export default function Navigation() {
       togglePrivacyMode: s.togglePrivacyMode,
     })),
   );
-  const isPro = useIsPro();
+  const proLocked = useProLocked();
   const [moreOpen, setMoreOpen] = useState(false);
   const close = () => setMoreOpen(false);
   const signOut = () => supabase.auth.signOut();
@@ -154,7 +154,7 @@ export default function Navigation() {
           {/* Tools nav */}
           <div className="flex flex-col gap-0.5">
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50 px-3 mb-1.5">Tools</p>
-            {calculatorTools.map(item => <NavItem key={item.path} path={item.path} icon={item.icon} label={item.label} accent locked={!!item.pro && !isPro} />)}
+            {calculatorTools.map(item => <NavItem key={item.path} path={item.path} icon={item.icon} label={item.label} accent locked={!!item.pro && proLocked} />)}
           </div>
 
           {/* Settings + Sign out */}
@@ -276,7 +276,7 @@ export default function Navigation() {
               <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50 mb-2">Tools</p>
               <div className="flex flex-col gap-2 mb-5">
                 {calculatorTools.map(item => (
-                  <ToolSheetLink key={item.path} path={item.path} icon={item.icon} label={item.label} subtitle={item.subtitle} onClick={close} locked={!!item.pro && !isPro} />
+                  <ToolSheetLink key={item.path} path={item.path} icon={item.icon} label={item.label} subtitle={item.subtitle} onClick={close} locked={!!item.pro && proLocked} />
                 ))}
               </div>
 

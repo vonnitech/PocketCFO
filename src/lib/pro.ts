@@ -61,6 +61,24 @@ export function useProStatus(): { isPro: boolean; isLoading: boolean } {
   return { isPro: entitlement.isPro, isLoading: !entitlement.loaded };
 }
 
+// Whether Pro-gated UI should render as LOCKED.
+//
+// useIsPro() returns false while the entitlement is still being fetched, which
+// conflates "not subscribed" with "not known yet". Locking on that flashed Pro
+// locks at paying customers on every refresh: vault deposit locks, capped
+// subscriptions, locked themes and locked nav tools, all for the duration of the
+// first query.
+//
+// This stays false until the answer is actually known. The asymmetry is
+// deliberate: a free account briefly seeing an unlocked control costs nothing,
+// because every gated action is checked again in the store and, for the caps,
+// in the database. A paying customer being told they have lost access is a
+// support ticket.
+export function useProLocked(): boolean {
+  const { isPro, isLoading } = useProStatus();
+  return !isLoading && !isPro;
+}
+
 // Boolean-only view for the gates that just need locked/unlocked.
 export function useIsPro(): boolean {
   return useProStatus().isPro;

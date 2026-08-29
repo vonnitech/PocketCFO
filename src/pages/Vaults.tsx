@@ -10,7 +10,7 @@ import { useStore } from '../store/useStore';
 import type { VaultAssetClass } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
-import { useIsPro } from '../lib/pro';
+import { useProLocked } from '../lib/pro';
 import { FREE_VAULT_CAP, lockedVaultIds } from '../core/vaults';
 import { userKey } from '../lib/userScopedStorage';
 import { calculateVaultProgress, calculateCurrentMonthDeposits, calculateAvailableToVault, calculateVaultOvershoot } from '../core/math';
@@ -127,12 +127,16 @@ export default function Vaults() {
     permanentlyDeleteVault,
     addVault,
   } = useStore();
-  const isPro = useIsPro();
-  const vaultCapReached = !isPro && vaults.length >= FREE_VAULT_CAP;
+  // Locked only once the entitlement is known, so a refresh never flashes locks
+  // at a paying account. `proKnownAsPro` is the inverse for helpers that take an
+  // isPro flag: while loading it reads as Pro, i.e. nothing locked.
+  const proLocked = useProLocked();
+  const proKnownAsPro = !proLocked;
+  const vaultCapReached = proLocked && vaults.length >= FREE_VAULT_CAP;
   // On a lapsed account holding more than the cap, everything past the oldest
   // FREE_VAULT_CAP is deposit-locked: still visible, still withdrawable, still
   // deletable, just closed to new money until Pro returns.
-  const lockedIds = lockedVaultIds(vaults, isPro);
+  const lockedIds = lockedVaultIds(vaults, proKnownAsPro);
 
   // Section customization (order / hidden / collapsed), persisted per user.
   const [sectionPrefs, setSectionPrefs] = useState<SectionPrefs>(loadSectionPrefs);
@@ -176,7 +180,7 @@ export default function Vaults() {
   // Restore is gated: a free user at the cap can't restore back over 3 active vaults.
   const [showRestoreLimitModal, setShowRestoreLimitModal] = useState(false);
   const handleRestore = (id: string) => {
-    if (!isPro && vaults.length >= FREE_VAULT_CAP) { setShowRestoreLimitModal(true); return; }
+    if (proLocked && vaults.length >= FREE_VAULT_CAP) { setShowRestoreLimitModal(true); return; }
     restoreVault(id);
   };
   const handleCloseRestoreModal = () => setShowRestoreLimitModal(false);

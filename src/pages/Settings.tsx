@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
+import { COLOR_THEMES, FREE_THEME_IDS } from '../core/themes';
 import { DASHBOARD_WIDGETS } from '../core/widgets';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { supabase } from '../core/supabase';
@@ -22,7 +23,7 @@ import { logSecurityEvent, logProductEvent } from '../core/telemetry';
 import { clearUserLocalData } from '../lib/userScopedStorage';
 import { clearSnapshot, cancelQueuedSnapshotSave } from '../db/storage';
 import { CURRENCIES } from '../lib/currency';
-import { useIsPro, refreshProStatus } from '../lib/pro';
+import { useIsPro, useProLocked, refreshProStatus } from '../lib/pro';
 import { PRICING } from '../lib/pricing';
 import { ProAction } from '../components/ProAction';
 
@@ -61,61 +62,17 @@ const buildImportedState = (payload: unknown) => {
   return built;
 };
 
-const COLOR_THEMES = [
-  // Original
-  { id: 'default',           name: 'Original',           primary: '#facc15', capture: '#00CC55' },
-  // Pinks — vivid → soft → pale
-  { id: 'hot-magenta',       name: 'Hot Magenta',         primary: '#FF006E', capture: '#FFD60A' },
-  { id: 'pink-sky',          name: 'Pink & Sky',          primary: '#FF5C9E', capture: '#4BBFD4' },
-  { id: 'blush-butter',      name: 'Blush & Butter',      primary: '#E36887', capture: '#F3D98F' },
-  { id: 'ballet-cherry',     name: 'Ballet & Cherry',     primary: '#F5A0B8', capture: '#CC1133' },
-  { id: 'hibiscus-cola',     name: 'Hibiscus Cola',       primary: '#E0A4B0', capture: '#7C0116' },
-  { id: 'bubblegum',         name: 'Sand & Steel',        primary: '#E8C29A', capture: '#57798F' },
-  { id: 'sweet-ocean',       name: 'Sweet Ocean',         primary: '#F8C6F2', capture: '#01006C' },
-  // Reds
-  { id: 'raspberry-lemon',   name: 'Raspberry Lemon',     primary: '#C8154B', capture: '#FFF8B6' },
-  { id: 'coral-lemon',       name: 'Coral & Lemon',       primary: '#FF5960', capture: '#FFE783' },
-  { id: 'sunny-spark',       name: 'Sunny Spark',         primary: '#DE4818', capture: '#ECDC80' },
-  // Oranges
-  { id: 'deep-roots',        name: 'Deep Roots',          primary: '#FB884C', capture: '#3A1A0A' },
-  { id: 'orange-royal',      name: 'Orange & Royal',      primary: '#FF8800', capture: '#3355CC' },
-  { id: 'yam-tide',          name: 'Yam & High Tide',     primary: '#EA9216', capture: '#313841' },
-  { id: 'amber-flamingo',    name: 'Amber & Flamingo',    primary: '#FFBF00', capture: '#F0563A' },
-  { id: 'chili-flare',       name: 'Chili Flare',         primary: '#FFD9A1', capture: '#BE2717' },
-  // Yellows & Golds
-  { id: 'saffron-steel',     name: 'Saffron & Steel',     primary: '#E8C547', capture: '#4F7CAC' },
-  { id: 'gold-vintage',      name: 'Gold Vintage',        primary: '#A77E16', capture: '#1A2800' },
-  { id: 'cherry-blossom',    name: 'Cherry Blossom',      primary: '#FAFFC7', capture: '#F8A8B9' },
-  // Olives & Yellow-Greens
-  { id: 'olive-foliage',     name: 'Olive & Foliage',     primary: '#D2DB76', capture: '#2D371D' },
-  { id: 'matcha-honey',      name: 'Matcha Honey',        primary: '#9CA764', capture: '#F1E8C7' },
-  // Greens
-  { id: 'lime-royal',        name: 'Lime & Royal',        primary: '#88CC22', capture: '#3355CC' },
-  { id: 'avocado-chiffon',   name: 'Avocado & Chocolate', primary: '#568203', capture: '#7B3F00' },
-  { id: 'cyprus-jade',       name: 'Cyprus & Jade',       primary: '#004643', capture: '#ABD1C6' },
-  // Teals & Cyans
-  { id: 'turquoise-teal',    name: 'Turquoise & Teal',    primary: '#22CCBB', capture: '#007799' },
-  { id: 'pool-poppy',        name: 'Pool & Poppy',        primary: '#00AACC', capture: '#FF3344' },
-  { id: 'sky-kelly',         name: 'Sky & Kelly',         primary: '#4BBFD4', capture: '#2EAA5C' },
-  // Blues & Navies
-  { id: 'blue-choc',         name: 'Blue & Choc',         primary: '#7CA7EB', capture: '#402924' },
-  { id: 'cobalt-butter',     name: 'Cobalt & Butter',     primary: '#0F52BB', capture: '#FFFF9A' },
-  { id: 'blue-yellow',       name: 'Blue & Sunshine',     primary: '#4455CC', capture: '#FFD600' },
-  { id: 'midnight-ocean',    name: 'Midnight Ocean',      primary: '#122C4F', capture: '#5B88B2' },
-  { id: 'deep-mariner',      name: 'Deep Mariner',        primary: '#014770', capture: '#E9E5D2' },
-  // Purples
-  { id: 'lavender-purple',   name: 'Lavender & Purple',   primary: '#B8A8D8', capture: '#7733BB' },
-];
-
-// Free tier: 3 preset themes (Original + 2). All other presets and the custom
-// color studio are Pro. Change which two accompany 'default' here.
-const FREE_THEME_IDS = new Set(['default', 'pink-sky', 'orange-royal']);
 
 export default function Settings() {
   const state = useStore();
   const { theme, setTheme, privacyMode, togglePrivacyMode, dashboardWidgets, updateDashboardWidgets, lockEnabled, pinHash, setState, setThemeColors } = state;
   const navigate = useNavigate();
   const isPro = useIsPro();
+  // Separate from `isPro` on purpose. `isPro` decides WHICH billing panel to show,
+  // where defaulting to the pricing view during load is the safe error. `proLocked`
+  // decides whether to draw a lock, and there the safe error is the opposite: never
+  // stamp locks on a paying customer's themes while their status is still loading.
+  const proLocked = useProLocked();
 
   // Kick off LemonSqueezy Checkout for a plan (the /api/checkout function builds
   // the hosted checkout; we just redirect to it).
@@ -884,7 +841,7 @@ export default function Settings() {
                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
                   {COLOR_THEMES.map(t => {
                     const isActive = primaryColor === t.primary && captureColor === t.capture;
-                    const locked = !isPro && !FREE_THEME_IDS.has(t.id);
+                    const locked = proLocked && !FREE_THEME_IDS.has(t.id);
                     return (
                       <button
                         key={t.id}

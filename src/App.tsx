@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AnimatePresence } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useStore, INITIAL_STATE } from './store/useStore';
+import { useProStatus } from './lib/pro';
+import { DEFAULT_THEME, shouldRevertProTheme } from './core/themes';
 import { initDB } from './db';
 import { queueSnapshotSave, cancelQueuedSnapshotSave, clearSnapshot } from './db/storage';
 import { supabase, isSupabaseConfigured } from './core/supabase';
@@ -150,6 +152,7 @@ function App() {
   const hydrateFromCache      = useStore(s => s.hydrateFromCache);
   const theme                 = useStore(s => s.theme);
   const themeColors           = useStore(s => s.themeColors);
+  const { isPro: isProUser, isLoading: proLoading } = useProStatus();
   const hasCompletedOnboarding = useStore(s => s.hasCompletedOnboarding);
   const isNewUser             = useStore(s => s.transactions.length === 0 && s.reconHistory.length === 0);
   const { visible: tourVisible, dismiss: dismissTour } = useFeatureTour();
@@ -199,6 +202,25 @@ function App() {
   useEffect(() => {
     if (dataFresh) runPaydayCheck(useStore.getState() as any);
   }, [dataFresh]);
+
+  // A Pro colour theme used to outlive the subscription that paid for it: the
+  // picker in Settings gates SELECTING a locked theme, but an already-applied one
+  // was never revisited, so the palette persisted indefinitely after Pro lapsed.
+  //
+  // Gated on dataFresh and on the entitlement having actually resolved, so this
+  // can never fire from a cached snapshot or during the first entitlement fetch
+  // and strip a paying user's theme. Custom colour-studio pairs match no free
+  // preset and are Pro-only, so they revert too.
+  useEffect(() => {
+    if (!shouldRevertProTheme({
+      isPro: isProUser,
+      isLoading: proLoading,
+      dataFresh,
+      primary: themeColors?.primary,
+      capture: themeColors?.secondary,
+    })) return;
+    void useStore.getState().setThemeColors(DEFAULT_THEME.primary, DEFAULT_THEME.capture);
+  }, [proLoading, isProUser, dataFresh, themeColors]);
 
   // Establish session on mount and subscribe to auth changes
   useEffect(() => {

@@ -5,7 +5,7 @@ import { formatCurrency } from '../lib/utils';
 import { isSubscriptionDueBeforePayday, isSubscriptionDueToday, useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Subscription } from '../store/useStore';
-import { useIsPro } from '../lib/pro';
+import { useProLocked } from '../lib/pro';
 import { executeSubCancel } from '../db';
 
 // Free tier: track up to 3 subscriptions. Existing over-cap subs are grandfathered
@@ -25,8 +25,8 @@ export default function Subscriptions() {
   );
   const { privacyMode, addSubscription, setSubscriptionUsage, cancelSubscription } = storeState;
   const state = storeState;
-  const isPro = useIsPro();
-  const subCapReached = !isPro && state.subscriptions.length >= FREE_SUB_CAP;
+  const proLocked = useProLocked();
+  const subCapReached = proLocked && state.subscriptions.length >= FREE_SUB_CAP;
 
   const totalBleed = useMemo(() => state.subscriptions.reduce((acc, sub) => acc + sub.amount, 0), [state.subscriptions]);
   const reservedBeforePayday = useMemo(
