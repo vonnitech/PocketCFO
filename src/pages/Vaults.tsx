@@ -11,6 +11,7 @@ import type { VaultAssetClass } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { useIsPro } from '../lib/pro';
+import { FREE_VAULT_CAP, lockedVaultIds } from '../core/vaults';
 import { userKey } from '../lib/userScopedStorage';
 import { calculateVaultProgress, calculateCurrentMonthDeposits, calculateAvailableToVault, calculateVaultOvershoot } from '../core/math';
 import { FundVaultSheet } from '../components/FundVaultSheet';
@@ -18,7 +19,7 @@ import { VaultTransferSheet } from '../components/VaultTransferSheet';
 
 // Free tier: up to 3 vaults total (any type). Existing over-cap vaults are
 // grandfathered (never deleted); only the create action is gated.
-const FREE_VAULT_CAP = 3;
+
 
 // Per-user Vaults section preferences (order / hidden / collapsed), saved to
 // user-scoped localStorage so no DB migration is needed.
@@ -44,6 +45,14 @@ function loadSectionPrefs(): SectionPrefs {
     return fallback;
   }
 }
+
+// Example name per vault type. A single "Emergency Fund" hint was shown for every
+// type, which reads as wrong guidance on an investment or a sinking fund.
+const NAME_HINTS: Record<VaultAssetClass, string> = {
+  INVESTMENT:   'Roth IRA',
+  SINKING_FUND: 'New Laptop',
+  CASH_RESERVE: 'Emergency Fund',
+};
 
 const CLASS_OPTIONS: { id: VaultAssetClass; label: string; desc: string; icon: React.ElementType }[] = [
   { id: 'INVESTMENT',   label: 'Investment',   desc: 'Brokerage, IRA, index funds · counts toward your FIRE number', icon: TrendingUp },
@@ -120,6 +129,10 @@ export default function Vaults() {
   } = useStore();
   const isPro = useIsPro();
   const vaultCapReached = !isPro && vaults.length >= FREE_VAULT_CAP;
+  // On a lapsed account holding more than the cap, everything past the oldest
+  // FREE_VAULT_CAP is deposit-locked: still visible, still withdrawable, still
+  // deletable, just closed to new money until Pro returns.
+  const lockedIds = lockedVaultIds(vaults, isPro);
 
   // Section customization (order / hidden / collapsed), persisted per user.
   const [sectionPrefs, setSectionPrefs] = useState<SectionPrefs>(loadSectionPrefs);
@@ -174,6 +187,13 @@ export default function Vaults() {
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   const openCreate = (cls: VaultAssetClass = 'SINKING_FUND') => {
+    // The per-group "+ Add" buttons call this directly, bypassing the lock on the
+    // "Create New Vault" toggle. Without this check a free account at the cap could
+    // open the form from any empty group and keep creating vaults.
+    if (vaultCapReached) {
+      window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'vault_cap' } }));
+      return;
+    }
     setFormClass(cls);
     setFormName('');
     setFormTarget('');
@@ -184,6 +204,14 @@ export default function Vaults() {
   const submitForm = async () => {
     const t = parseFloat(formTarget);
     if (!formName.trim() || !t || t <= 0) return;
+    // Re-checked at submit, not just when the form opens: the cap can be reached
+    // while the form sits open, and any future path that opens it would otherwise
+    // inherit the same gap.
+    if (vaultCapReached) {
+      window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'vault_cap' } }));
+      setShowForm(false);
+      return;
+    }
     await addVault(formName.trim(), t, formClass);
     setShowForm(false);
     setFormName('');
@@ -327,6 +355,7 @@ export default function Vaults() {
           // invisible unless it is read separately. Surfacing it matters: money
           // sitting above a met goal is money that could be working elsewhere.
           const overshoot  = calculateVaultOvershoot(vault.current, vault.target);
+          const depositLocked = lockedIds.has(vault.id);
           return (
             <div key={vault.id} className={`relative group bg-surface border-4 rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)] ${isComplete ? group.borderActive : 'border-border'}`}>
               {/* Delete — revealed on card hover so it never steals width from the name */}
@@ -383,7 +412,12 @@ export default function Vaults() {
                   {!isComplete && (
                     <span className="text-[9px] font-black text-text-muted tabular-nums">{Math.min(100, progress).toFixed(0)}%</span>
                   )}
-                  {isComplete && (
+                  {depositLocked && (
+                    <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">
+                      Pro to add · move out anytime
+                    </span>
+                  )}
+                  {!depositLocked && isComplete && (
                     <span className="text-[9px] font-black text-capture-readable uppercase tracking-widest tabular-nums">
                       {overshoot > 0
                         ? `${formatCurrency(overshoot, privacyMode)} over target`
@@ -394,9 +428,21 @@ export default function Vaults() {
               </div>
               {/* Actions */}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setFundingVault({ id: vault.id, name: vault.name })}
-                  className="flex-1 h-9 border-[3px] border-black rounded-xl bg-action-capture text-capture-contrast font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all">
-                  Fund
+                <button
+                  type="button"
+                  title={depositLocked ? 'Upgrade to add money to this vault' : undefined}
+                  onClick={() => {
+                    if (depositLocked) {
+                      window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'vault_deposit_locked' } }));
+                      return;
+                    }
+                    setFundingVault({ id: vault.id, name: vault.name });
+                  }}
+                  className={`flex-1 h-9 border-[3px] border-black rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-px hover:translate-y-px transition-all flex items-center justify-center gap-1.5 ${
+                    depositLocked ? 'bg-surface text-text-muted' : 'bg-action-capture text-capture-contrast'
+                  }`}>
+                  {depositLocked && <Lock size={11} strokeWidth={3} />}
+                  {depositLocked ? 'Locked' : 'Fund'}
                 </button>
                 <button
                   type="button"
@@ -586,7 +632,7 @@ export default function Vaults() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Vault Name</p>
                     <input
                       title="Vault Name"
-                      placeholder="e.g. EMERGENCY FUND"
+                      placeholder={`e.g. ${NAME_HINTS[formClass]}`}
                       className="w-full h-16 bg-input border-4 border-black rounded-2xl px-4 font-black uppercase text-sm text-text-main outline-none focus:border-action-capture transition-colors"
                       value={formName}
                       onChange={e => setFormName(e.target.value)}

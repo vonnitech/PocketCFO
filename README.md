@@ -1,6 +1,6 @@
 # Pocket CFO
 
-A neobrutalist personal-finance PWA that tells you one thing the rest don't: **exactly how much you can safely spend today** without blowing your pay cycle.
+A neobrutalist personal-finance app that tells you one thing the rest don't: **exactly how much you can safely spend today** without blowing your pay cycle.
 
 Most budgeting apps show you where money *went*. Pocket CFO is forward-looking — it reserves your bills, savings, and debt obligations off the top, then divides what's genuinely left across the days until your next payday. The number on the dashboard is the only one you have to obey.
 

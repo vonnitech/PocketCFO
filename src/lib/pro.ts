@@ -34,6 +34,14 @@ async function loadEntitlement(): Promise<void> {
   entListeners.forEach(l => l());
 }
 
+// Non-hook read of the cached entitlement, for guards that run outside React
+// (store actions). `loaded` is exposed so callers can tell "definitely free"
+// from "not fetched yet" and avoid locking a paying user out during the first
+// fetch. UI gates should keep using the hooks; this is the belt to their braces.
+export function proSnapshot(): { isPro: boolean; loaded: boolean } {
+  return { isPro: entitlement.isPro, loaded: entitlement.loaded };
+}
+
 // Force a re-fetch (e.g. after returning from LemonSqueezy Checkout).
 export function refreshProStatus(): void {
   entitlement = { isPro: false, loaded: false };

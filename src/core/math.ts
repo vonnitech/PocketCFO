@@ -210,11 +210,18 @@ export const calculateVaultOvershoot = (current: number, target: number): number
 // nothing. A vault with no target set (target <= 0) is never "complete" and stays
 // eligible. Falls back to the first vault when every goal is met, since leaving
 // the money liquid would defeat the point of intercepting it.
-export const pickAutoDepositVault = <T extends { current: number; target: number }>(
+// `excludeIds` carries the deposit-locked vaults on a lapsed free account. An
+// automatic sweep into a locked vault would be the same deposit the lock exists
+// to prevent, just arriving by a different route.
+export const pickAutoDepositVault = <T extends { id?: string; current: number; target: number }>(
   vaults: T[],
+  excludeIds?: Set<string>,
 ): T | null => {
-  if (vaults.length === 0) return null;
-  return vaults.find(v => v.target <= 0 || v.current < v.target) ?? vaults[0];
+  const eligible = excludeIds && excludeIds.size > 0
+    ? vaults.filter(v => !v.id || !excludeIds.has(v.id))
+    : vaults;
+  if (eligible.length === 0) return null;
+  return eligible.find(v => v.target <= 0 || v.current < v.target) ?? eligible[0];
 };
 
 // Cash that can actually be moved into a vault: liquid assets minus what's

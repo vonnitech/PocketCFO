@@ -109,6 +109,23 @@ export default function Config() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.recurringBills]);
 
+  // The payday and balance fields need the same protection as configBills above:
+  // both initialise once via useState, so a Config screen that mounted before the
+  // store had loaded keeps them blank, and "Save Pay Cycle" then submits those
+  // blanks. A blank payday used to read as a new pay cycle and wiped every
+  // paid-bill marker, resurrecting bills already ticked off; a blank balance
+  // would write liquid assets to zero. Each only fills when its own field is
+  // still empty, so neither can overwrite a value the user is editing.
+  useEffect(() => {
+    if (!horizonPayday && state.nextPayday) setHorizonPayday(state.nextPayday);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.nextPayday]);
+
+  useEffect(() => {
+    if (horizonCapital === '' && state.liquidAssets) setHorizonCapital(state.liquidAssets);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.liquidAssets]);
+
   // Monthly Baseline state — string so empty field shows blank not "0"
   const [baselineIncome, setBaselineIncome] = useState(() => state.monthlyTakeHome || '');
   const [baselineSavings, setBaselineSavings] = useState(() => state.monthlySavingsGoal || '');

@@ -10,6 +10,9 @@ import { supabase } from '../core/supabase';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
 import { setActiveCurrency } from '../lib/currency';
 import { loadSnapshot } from '../db/storage';
+export { FREE_VAULT_CAP } from '../core/vaults';
+import { proSnapshot } from '../lib/pro';
+import { FREE_VAULT_CAP, lockedVaultIds } from '../core/vaults';
 import { defaultDashboardWidgets } from '../core/widgets';
 import { SpendTierId } from '../core/math';
 
@@ -44,6 +47,9 @@ export interface Vault {
   target: number;
   current: number;
   asset_class: VaultAssetClass;
+  // Added in migration 018. Optional because a cached snapshot written before
+  // that migration will not carry it; sortVaultsByAge falls back to id.
+  created_at?: string | null;
 }
 
 export interface Debt {
@@ -479,8 +485,8 @@ export const useStore = create<StoreState>()(
       const [profileRes, txRes, vaultRes, deletedVaultRes, debtRes, subRes, reconRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('transactions').select('*').eq('user_id', userId).gte('date', cutoffIso).order('date', { ascending: false }),
-        supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', false).order('name'),
-        supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', true).order('name'),
+        supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', false).order('created_at').order('id'),
+        supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', true).order('created_at').order('id'),
         supabase.from('debts').select('*').eq('user_id', userId),
         supabase.from('subscriptions').select('*').eq('user_id', userId),
         supabase.from('recon_history').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(90),
@@ -784,11 +790,23 @@ export const useStore = create<StoreState>()(
 
       // Normalize to YYYY-MM-DD so a stored timestamp ("2026-06-30T00:00:00Z") and a
       // date-input value ("2026-06-30") don't read as a changed payday.
-      const dayOnly  = (s: string) => (s || '').slice(0, 10);
-      const isNewCycle = dayOnly(nextPayday) !== dayOnly(currentNextPayday);
+      const dayOnly     = (s: string) => (s || '').slice(0, 10);
+      const incomingDay = dayOnly(nextPayday);
+      const currentDay  = dayOnly(currentNextPayday);
+
+      // A BLANK incoming payday means the caller had nothing to send, not that the
+      // cycle rolled over. Config seeds its date field once via
+      // `useState(state.nextPayday || '')` and never re-syncs it, so a save made
+      // from a form that mounted before the payday had loaded arrives empty. The
+      // old comparison read '' !== '2026-09-15' as a new cycle, wiped every paid
+      // marker, and resurrected bills the user had already ticked off. Blank now
+      // means "unchanged": keep the stored payday and the paid state.
+      const paydayToUse = incomingDay ? nextPayday : (currentNextPayday || '');
+      const isNewCycle  = !!incomingDay && !!currentDay && incomingDay !== currentDay;
+
       const paydayAnchorDay = isNewCycle
-        ? dateDay(nextPayday)
-        : (currentPaydayAnchorDay || dateDay(nextPayday));
+        ? dateDay(paydayToUse)
+        : (currentPaydayAnchorDay || dateDay(paydayToUse));
 
       // Paid state is the single source of truth. A new pay cycle clears it (every
       // bill is due again); otherwise keep it, pruning keys for bills no longer in
@@ -799,12 +817,12 @@ export const useStore = create<StoreState>()(
         : (currentPaidKeys || []).filter(k => recurringToUse.some(b => billKey(b) === k));
       const freshQueue = deriveBillQueue(recurringToUse, nextPaidKeys);
 
-      const effectiveUpcomingBills = calculateReservedObligations(freshQueue, subscriptions, nextPayday);
+      const effectiveUpcomingBills = calculateReservedObligations(freshQueue, subscriptions, paydayToUse);
 
       const calcState = {
         ...(get() as StoreState),
         liquidAssets: capital,
-        nextPayday,
+        nextPayday: paydayToUse,
         paydayAnchorDay,
         upcomingBills: effectiveUpcomingBills,
         fixedBills: billsTotal,
@@ -822,7 +840,13 @@ export const useStore = create<StoreState>()(
       const todayKey    = toLocalDateKey(new Date());
       const alreadySwept = lastSweepDate === todayKey;
       const doSweep     = sweepAmount > 0 && !alreadySwept && currentVaults.length > 0;
-      const firstVault  = pickAutoDepositVault(currentVaults);
+      // Locked vaults are excluded: an automatic sweep into one would be the
+      // same blocked deposit arriving by another route.
+      const proForSweep = proSnapshot();
+      const firstVault  = pickAutoDepositVault(
+        currentVaults,
+        proForSweep.loaded ? lockedVaultIds(currentVaults, proForSweep.isPro) : undefined,
+      );
       const finalLiquid = doSweep ? capital - sweepAmount : capital;
 
       // Claim the sweep date immediately before any awaits. A concurrent call to
@@ -835,7 +859,7 @@ export const useStore = create<StoreState>()(
         const baseNext = {
           ...state,
           liquidAssets:          finalLiquid,
-          nextPayday,
+          nextPayday:            paydayToUse,
           paydayAnchorDay,
           upcomingBills:         effectiveUpcomingBills,
           fixedBills:            billsTotal,
@@ -853,7 +877,7 @@ export const useStore = create<StoreState>()(
       const profilePayload: Record<string, unknown> = {
         id:                      userId,
         liquid_assets:           finalLiquid,
-        next_payday:             nextPayday || null,
+        next_payday:             paydayToUse || null,
         payday_anchor_day:        paydayAnchorDay || null,
         upcoming_bills:          effectiveUpcomingBills,
         fixed_bills:             billsTotal,
@@ -960,7 +984,11 @@ export const useStore = create<StoreState>()(
       const now         = new Date().toISOString();
       const mainTxId    = crypto.randomUUID();
       const penaltyTxId = isOverspend && penalty > 0 ? crypto.randomUUID() : null;
-      const firstVault  = pickAutoDepositVault(vaults);
+      const proForPenalty = proSnapshot();
+      const firstVault  = pickAutoDepositVault(
+        vaults,
+        proForPenalty.loaded ? lockedVaultIds(vaults, proForPenalty.isPro) : undefined,
+      );
 
       const inserts: Record<string, unknown>[] = [{
         id:          mainTxId,
@@ -1668,13 +1696,34 @@ export const useStore = create<StoreState>()(
     // ── Vaults ────────────────────────────────────────────────────────────────
 
     addVault: async (name, target, asset_class) => {
-      const { userId } = get() as StoreState;
+      const { userId, vaults } = get() as StoreState;
+
+      // Single choke point for the free-tier cap. Every UI path to vault creation
+      // has to pass through here, which is the point: the cap used to live only on
+      // the "Create New Vault" toggle's onClick, so the per-group "+ Add" button
+      // (which calls openCreate directly) walked straight past it and let a free
+      // account create vaults without limit. Guarding the action instead of the
+      // button means a future entry point cannot reopen that hole.
+      //
+      // Only blocks once the entitlement has actually been fetched, so a paying
+      // user is never locked out during the first load. This is a client-side
+      // guard and therefore advisory; migration 017 enforces the same cap in the
+      // database, which is the copy that actually holds.
+      const { isPro, loaded } = proSnapshot();
+      if (loaded && !isPro && (vaults || []).length >= FREE_VAULT_CAP) {
+        console.warn('[addVault] blocked: free tier is capped at', FREE_VAULT_CAP, 'vaults');
+        return;
+      }
+
       const newVault: Vault = {
         id:          crypto.randomUUID(),
         name:        name.trim(),
         target,
         current:     0,
         asset_class,
+        // Stamped client-side so ordering is correct immediately, before the row
+        // round-trips. The column defaults to now() server-side either way.
+        created_at:  new Date().toISOString(),
       };
 
       set((state: any) => {
@@ -1702,6 +1751,16 @@ export const useStore = create<StoreState>()(
       const { userId, vaults, liquidAssets, upcomingBills } = get() as StoreState;
       // Cap at cash not already earmarked for bills, matching the Fund sheet.
       if (amount <= 0 || amount > calculateAvailableToVault(liquidAssets, upcomingBills)) return;
+
+      // Deposit lock: on a lapsed account holding more than the free cap, the
+      // vaults beyond the oldest FREE_VAULT_CAP accept no new money. Withdrawals
+      // and deletion stay open elsewhere, so nothing is trapped. Checked here
+      // rather than only on the button so every deposit path is covered at once.
+      const proNow = proSnapshot();
+      if (proNow.loaded && lockedVaultIds(vaults, proNow.isPro).has(vaultId)) {
+        console.warn('[addFundsToVault] blocked: vault is deposit-locked on the free tier');
+        return;
+      }
       const vault = vaults.find(v => v.id === vaultId);
       if (!vault) return;
 
@@ -1754,6 +1813,17 @@ export const useStore = create<StoreState>()(
       const toLiquid  = destinationId === 'LIQUID';
       const destVault = toLiquid ? null : vaults.find(v => v.id === destinationId);
       if (!toLiquid && !destVault) return;
+
+      // Moving money OUT is always allowed, including out of a locked vault, so
+      // an account can get itself back under the cap. Moving money INTO a locked
+      // vault is the same deposit the lock exists to prevent.
+      if (!toLiquid) {
+        const proNow = proSnapshot();
+        if (proNow.loaded && lockedVaultIds(vaults, proNow.isPro).has(destinationId)) {
+          console.warn('[transferVaultFunds] blocked: destination vault is deposit-locked');
+          return;
+        }
+      }
 
       const txId     = crypto.randomUUID();
       const now      = new Date().toISOString();
