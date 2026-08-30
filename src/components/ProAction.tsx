@@ -1,5 +1,5 @@
 import { cloneElement, ReactElement } from 'react';
-import { useProStatus } from '../lib/pro';
+import { useProLocked } from '../lib/pro';
 
 interface Props {
   feature: string;
@@ -10,8 +10,8 @@ interface Props {
 // real onClick is intercepted and the upsell popover is surfaced instead, so the
 // underlying action never fires. Pro users get the button untouched.
 export function ProAction({ feature, children }: Props) {
-  const { isPro } = useProStatus();
-  if (isPro) return children;
+  const locked = useProLocked();
+  if (!locked) return children;
   return cloneElement(children, {
     onClick: (e: React.MouseEvent) => {
       e.preventDefault();

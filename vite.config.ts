@@ -122,9 +122,15 @@ export default defineConfig(({ mode }) => {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
-          if (id.includes('react-dom') || id.includes('react-router-dom') || id.includes('react/')) return 'react-vendor';
-          if (id.includes('lucide-react') || id.includes('motion')) return 'ui-vendor';
-          if (id.includes('zustand') || id.includes('idb')) return 'state-vendor';
+          // Match the package NAME, not a substring of the whole path. The old
+          // rules used id.includes('react/'), which also matches
+          // 'node_modules/lucide-react/...', so every icon was being bundled into
+          // react-vendor instead of ui-vendor. scheduler is grouped with React
+          // because react-dom depends on it.
+          const pkg = (id.split('node_modules/').pop() || '').replace(/^\.pnpm\/[^/]+\/node_modules\//, '');
+          if (/^(react|react-dom|react-router|react-router-dom|scheduler|use-sync-external-store)\//.test(pkg)) return 'react-vendor';
+          if (/^(lucide-react|motion|framer-motion)\//.test(pkg)) return 'ui-vendor';
+          if (/^(zustand|idb)\//.test(pkg)) return 'state-vendor';
         },
       },
     },
