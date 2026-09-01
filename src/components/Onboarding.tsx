@@ -6,8 +6,15 @@ import { useStore } from '../store/useStore';
 import { calculateRawSafeSpend, calculateDaysUntilPayday } from '../core/math';
 import { formatCurrency } from '../lib/utils';
 import { logProductEvent } from '../core/telemetry';
+import { NotificationPrimer } from './NotificationPrimer';
+import { getPrefs, initForUser, permissionState } from '../core/notifications';
 
-type Step = 'basics' | 'bills';
+// 'notify' is the permission ask, and it is deliberately LAST. Asking before the
+// user has seen a Safe-to-Spend figure is asking a stranger for their attention;
+// asking after it is asking someone who has just been shown something useful.
+// It is also skipped outright whenever the answer is already known, so nobody
+// gets a step that cannot do anything.
+type Step = 'basics' | 'bills' | 'notify';
 
 interface DraftBill {
   id: string;
@@ -74,6 +81,17 @@ export function OnboardingModal() {
       hardDailyCap:    0,
     });
   }, [canSubmit, numBalance, numTakeHome, payday, billsTotal]);
+
+  // Decided once, on mount, so the flow cannot grow or lose a step underneath
+  // the user. There is nothing to ask if the browser has no support, if the
+  // answer is already granted or denied (a denial cannot be re-prompted from
+  // script), or if this account has been asked on this device before.
+  const [askNotifications] = useState(() => {
+    initForUser(useStore.getState().userId);
+    return permissionState() === 'default' && getPrefs().primer === 'unasked';
+  });
+  const totalSteps = askNotifications ? 3 : 2;
+  const stepNumber = step === 'basics' ? 1 : step === 'bills' ? 2 : 3;
 
   const startedRef   = useRef(false);
   const previewedRef = useRef(false);
@@ -153,11 +171,15 @@ export function OnboardingModal() {
       return;
     }
 
+    // `hasCompletedOnboarding` is deliberately NOT set here when a notification
+    // step follows: flipping it unmounts this modal (see the guard at the top of
+    // the component). The profile row is already marked complete, so abandoning
+    // on step 3 costs the user nothing but the ask.
     setState({
       firstName:               resolvedFirstName,
       monthlyTakeHome:         numTakeHome,
       isConfigured:            true,
-      hasCompletedOnboarding:  true,
+      ...(askNotifications ? {} : { hasCompletedOnboarding: true }),
     });
     // Properly computes safeSpendLimit, bill queue, and all derived values.
     // Bills collected on step 2 are passed straight through, so the very first
@@ -171,6 +193,17 @@ export function OnboardingModal() {
       billsReserved: billsTotal,
       billCount: parsedBills.length,
     });
+
+    if (askNotifications) {
+      setLoading(false);
+      setStep('notify');
+    }
+  };
+
+  // Both answers to the primer land here. Declining is a complete, valid way to
+  // finish setup, so it is not treated as a skip or held against the user.
+  const finishOnboarding = () => {
+    setState({ hasCompletedOnboarding: true });
   };
 
   const inputClass =
@@ -193,23 +226,31 @@ export function OnboardingModal() {
         transition={{ duration: 0.25, ease: 'easeOut' }}
       >
         <form
-          onSubmit={step === 'basics' ? handleContinue : handleSubmit}
+          onSubmit={
+            step === 'basics' ? handleContinue
+            : step === 'bills' ? handleSubmit
+            : (e: React.FormEvent) => e.preventDefault()
+          }
           className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4 overflow-hidden"
         >
           {/* Title + step counter */}
           <div className="overflow-hidden">
             <div className="flex items-baseline justify-between gap-2">
               <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-none truncate">
-                {step === 'basics' ? 'Set Up Your Account' : 'Your Fixed Bills'}
+                {step === 'basics' ? 'Set Up Your Account'
+                  : step === 'bills' ? 'Your Fixed Bills'
+                  : "You're All Set"}
               </h1>
               <span className="text-[10px] font-black uppercase tracking-widest text-text-muted shrink-0">
-                {step === 'basics' ? '1/2' : '2/2'}
+                {stepNumber}/{totalSteps}
               </span>
             </div>
             <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1">
               {step === 'basics'
                 ? 'You can update these any time in Settings.'
-                : 'Bills due before your next payday. Add them so your daily number holds back enough to cover them.'}
+                : step === 'bills'
+                  ? 'Bills due before your next payday. Add them so your daily number holds back enough to cover them.'
+                  : 'One last thing, and it is optional.'}
             </p>
           </div>
 
@@ -321,7 +362,7 @@ export function OnboardingModal() {
                   </div>
                 </div>
               </motion.div>
-            ) : (
+            ) : step === 'bills' ? (
               <motion.div
                 key="bills"
                 initial={{ opacity: 0, x: 12 }}
@@ -405,6 +446,33 @@ export function OnboardingModal() {
                   </p>
                 </div>
               </motion.div>
+            ) : (
+              <motion.div
+                key="notify"
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{ duration: 0.18 }}
+                className="space-y-4"
+              >
+                {/* The number is repeated here on purpose. The ask lands better
+                    next to the thing it protects than next to a form. */}
+                <div className="bg-action-capture border-4 border-black rounded-2xl px-4 py-3 overflow-hidden">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-capture-contrast/60">
+                    Your safe spend per day
+                  </p>
+                  <p className="text-3xl font-black italic tracking-tighter text-capture-contrast leading-none mt-0.5 truncate">
+                    {formatCurrency(previewSafeSpend)}
+                  </p>
+                </div>
+
+                <NotificationPrimer
+                  onDone={finishOnboarding}
+                  headline="Want payday-safe reminders?"
+                  subline="We can tell you when a bill is about to land, when your pay arrives, and when a day has gone over your number."
+                  dismissLabel="No thanks, take me in"
+                />
+              </motion.div>
             )}
           </AnimatePresence>
 
@@ -418,18 +486,22 @@ export function OnboardingModal() {
             </div>
           )}
 
-          {/* Submit */}
-          <motion.button
-            type="submit"
-            disabled={loading || !canSubmit}
-            whileTap={{ scale: 0.97 }}
-            className={submitClass}
-          >
-            {loading
-              ? <span className="animate-pulse">Saving…</span>
-              : step === 'basics' ? 'Next: Your Bills →' : 'Get Started →'
-            }
-          </motion.button>
+          {/* Submit. The notify step drives itself through the primer's own
+              buttons, so the form's control is hidden there rather than
+              competing with them. */}
+          {step !== 'notify' && (
+            <motion.button
+              type="submit"
+              disabled={loading || !canSubmit}
+              whileTap={{ scale: 0.97 }}
+              className={submitClass}
+            >
+              {loading
+                ? <span className="animate-pulse">Saving…</span>
+                : step === 'basics' ? 'Next: Your Bills →' : 'Get Started →'
+              }
+            </motion.button>
+          )}
 
           {step === 'bills' && (
             <button

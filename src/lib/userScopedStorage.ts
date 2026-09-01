@@ -18,6 +18,8 @@ export const USER_LOCAL_BASES = [
   'pocket-cfo-tier-lock-v1',     // Recon tier lock
   'pocket-cfo-tier-breaks-v1',   // Recon break count
   'pocket-cfo-tour-v1',          // Feature tour seen flag
+  'pocket-cfo-notif-prefs-v1',   // Notification preferences + permission primer state
+  'pocket-cfo-notif-log-v1',     // Notification inbox, cooldowns, rule memory
 ];
 
 // Removes all per-user browser-local data for a given user. Called by the wipe.

@@ -19,6 +19,7 @@ import { formatCurrency } from "../lib/utils";
 import { currencySymbol } from "../lib/currency";
 import { toLocalDateKey, calculateDaysUntilPayday, isCashInflow } from "../core/math";
 import { OnboardingModal } from "../components/Onboarding";
+import { NotificationBell } from "../components/NotificationCenter";
 import { BottomSheet } from "../components/BottomSheet";
 import { TransactionForm } from "../components/TransactionForm";
 import { dueSubscriptionsBeforePayday } from "../store/useStore";
@@ -362,7 +363,8 @@ export default function Dashboard() {
         className="space-y-6"
       >
         {/* Header */}
-        <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
             {(() => {
               const h = new Date().getHours();
@@ -382,6 +384,8 @@ export default function Dashboard() {
               day: "numeric",
             })}
           </p>
+          </div>
+          <NotificationBell />
         </div>
 
         {/* Log Spend trigger */}

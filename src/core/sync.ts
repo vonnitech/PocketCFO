@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { recordSyncFailure, recordSyncSuccess } from './notifications/health';
 
 // ── Debounced sync infrastructure ────────────────────────────────────────────
 // Profile and vault updates are idempotent — only the latest payload per record
@@ -27,7 +28,13 @@ function scheduleDebounced(
   const timer = setTimeout(() => {
     const finalPayload = bucket.get(key)?.payload ?? mergedPayload;
     bucket.delete(key);
-    flush(finalPayload).catch(() => {});
+    // Outcomes are reported to the sync-health signal rather than swallowed.
+    // Two failures inside half an hour is what raises the "changes have not
+    // saved" notification; a single success clears the counter.
+    // Wrapped, not passed by reference: `.then(ok, err)` hands the rejection
+    // reason to its handler, and recordSyncFailure's first parameter is a
+    // timestamp.
+    flush(finalPayload).then(() => recordSyncSuccess(), () => recordSyncFailure());
   }, DEBOUNCE_MS);
   bucket.set(key, { payload: mergedPayload, timer });
 }
@@ -57,33 +64,40 @@ if (typeof window !== 'undefined') {
 export async function pushTransactions(rows: Record<string, unknown>[]): Promise<void> {
   if (!rows.length) return;
   try {
-    await (supabase.from('transactions') as any).insert(rows);
-  } catch { /* silently fail */ }
+    const { error } = await (supabase.from('transactions') as any).insert(rows);
+    if (error) recordSyncFailure(); else recordSyncSuccess();
+  } catch { recordSyncFailure(); }
 }
 
 // Profile updates are debounced per-user. Rapid toggles (paying bills one after
 // another, editing fields, dragging sliders) collapse into a single network call.
 export async function pushProfileUpdate(userId: string, payload: Record<string, unknown>): Promise<void> {
   scheduleDebounced(pendingProfileUpdates, userId, payload, async (merged) => {
-    await (supabase.from('profiles') as any).update(merged).eq('id', userId);
+    // supabase-js resolves with { error } rather than rejecting, so the error
+    // has to be rethrown for scheduleDebounced's health reporting to see it.
+    const { error } = await (supabase.from('profiles') as any).update(merged).eq('id', userId);
+    if (error) throw error;
   });
 }
 
 // Vault updates are debounced per-vault. Rapid balance adjustments collapse.
 export async function pushVaultUpdate(vaultId: string, payload: Record<string, unknown>): Promise<void> {
   scheduleDebounced(pendingVaultUpdates, vaultId, payload, async (merged) => {
-    await (supabase.from('vaults') as any).update(merged).eq('id', vaultId);
+    const { error } = await (supabase.from('vaults') as any).update(merged).eq('id', vaultId);
+    if (error) throw error;
   });
 }
 
 export async function pushVaultInsert(userId: string, row: Record<string, unknown>): Promise<void> {
   try {
-    await (supabase.from('vaults') as any).insert({ ...row, user_id: userId });
-  } catch { /* silently fail */ }
+    const { error } = await (supabase.from('vaults') as any).insert({ ...row, user_id: userId });
+    if (error) recordSyncFailure(); else recordSyncSuccess();
+  } catch { recordSyncFailure(); }
 }
 
 export async function pushReconEntry(userId: string, row: Record<string, unknown>): Promise<void> {
   try {
-    await (supabase.from('recon_history') as any).insert({ ...row, user_id: userId });
-  } catch { /* silently fail */ }
+    const { error } = await (supabase.from('recon_history') as any).insert({ ...row, user_id: userId });
+    if (error) recordSyncFailure(); else recordSyncSuccess();
+  } catch { recordSyncFailure(); }
 }

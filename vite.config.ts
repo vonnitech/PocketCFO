@@ -70,6 +70,11 @@ export default defineConfig(({ mode }) => {
         ],
       },
       workbox: {
+        // Adds the notificationclick handler (and, later, the push listener) to
+        // the generated service worker. It has to be a real file in public/ so
+        // importScripts can fetch it at install time; if this URL ever 404s the
+        // whole SW install fails, so do not rename one without the other.
+        importScripts: ['/sw-notifications.js'],
         globPatterns: ['**/*.{js,css,html,svg,png}'],
         // The report/import machinery — xlsx + papaparse (export-*), jspdf, and
         // jspdf's html2canvas / DOMPurify / ESM-sibling deps — is ~408KB gzipped,

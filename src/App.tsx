@@ -17,6 +17,8 @@ import { FeatureTour, useFeatureTour } from './components/FeatureTour';
 import { PaydayBanner } from './components/PaydayBanner';
 import { ProUpsellPopover } from './components/ProUpsellPopover';
 import { runPaydayCheck } from './core/lifecycle';
+import { NotificationToaster } from './components/NotificationCenter';
+import { useNotificationEngine } from './hooks/useNotifications';
 
 // Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -156,6 +158,10 @@ function App() {
   const hasCompletedOnboarding = useStore(s => s.hasCompletedOnboarding);
   const isNewUser             = useStore(s => s.transactions.length === 0 && s.reconHistory.length === 0);
   const { visible: tourVisible, dismiss: dismissTour } = useFeatureTour();
+
+  // Drives notification evaluation for the whole session. Mounted once, here,
+  // so there is exactly one ticker no matter what the user has open.
+  useNotificationEngine();
 
   const [session, setSession]           = useState<Session | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
@@ -423,6 +429,7 @@ function App() {
         <OnboardingRouteGuard hasCompletedOnboarding={hasCompletedOnboarding} />
         <PaydayBanner />
         <ProUpsellPopover />
+        <NotificationToaster />
         <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">
           <div className="md:w-64 shrink-0 z-50">
             <Suspense fallback={<NavigationFallback />}>

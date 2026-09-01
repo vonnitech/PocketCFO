@@ -14,6 +14,7 @@ import { supabase } from '../core/supabase';
 import { calculateTrueSafeSpend } from '../core/math';
 import type { ImportPayload } from '../components/ImportMapperModal';
 import { SetPinModal } from '../components/SetPinModal';
+import { NotificationSettings } from '../components/NotificationSettings';
 import { BillQueueItem } from '../store/useStore';
 import {
   isPlatformAuthenticatorAvailable, hasEnrolledCredential,
@@ -586,6 +587,9 @@ export default function Settings() {
             </button>
           </div>
         </div>
+
+        {/* Notifications */}
+        <NotificationSettings />
 
         {/* Pro tier — three-tier pricing, state driven by the LemonSqueezy webhook */}
         <div id="pro" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
