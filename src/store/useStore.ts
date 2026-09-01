@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
-import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey } from '../core/math';
+import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey, billKey } from '../core/math';
 import { supabase } from '../core/supabase';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
 import { setActiveCurrency } from '../lib/currency';
@@ -204,8 +204,7 @@ const calculatePrimaryVaultBalance = (vaults: Vault[]): number =>
 // ── Bill queue: derived, never independently stored ─────────────────────────
 // A bill's identity within a cycle = name + amount. Stable across template edits
 // and across devices, so it's the key we use to track which bills are paid.
-export const billKey = (b: { name: string; amount: number }): string =>
-  `${b.name.trim().toLowerCase()}:${(b.amount || 0).toFixed(2)}`;
+export { billKey } from '../core/math';
 
 // The live bill queue is DERIVED from (recurring template − paid-this-cycle keys),
 // never stored as its own source of truth. This makes paid state bulletproof:

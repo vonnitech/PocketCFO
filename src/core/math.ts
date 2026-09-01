@@ -1,4 +1,4 @@
-import { AppState, Transaction } from '../store/useStore';
+import type { AppState, Transaction } from '../store/useStore';
 import { SplitBreakdown } from '../types/split';
 
 const formatLocalDateKey = (date: Date): string => {
@@ -16,6 +16,14 @@ const parseStoredDate = (value: string): Date => {
 
   return new Date(value);
 };
+
+// Identity of a bill for paid-this-cycle bookkeeping. Lives here rather than in
+// the store because it is pure and because `core/notifications/rules.ts` needs
+// it without dragging the whole Zustand store (and Supabase) into a module that
+// is meant to stay runnable outside the browser. Re-exported from the store so
+// existing call sites are unchanged.
+export const billKey = (b: { name: string; amount: number }): string =>
+  `${b.name.trim().toLowerCase()}:${(b.amount || 0).toFixed(2)}`;
 
 export const toLocalDateKey = (value: Date | string): string => {
   const date = typeof value === 'string' ? parseStoredDate(value) : value;
