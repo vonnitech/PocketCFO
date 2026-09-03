@@ -323,6 +323,48 @@ export default function Dashboard() {
   const fmtWhole = (val: number) =>
     `${currencySymbol()}${Math.round(Math.abs(val)).toLocaleString()}`;
 
+  // Today's position against the daily number. Hoisted out of the hero card so
+  // the card can respond to being over, not just the meter buried inside it.
+  const todaySpend     = last7Days[6]?.spend ?? 0;
+  const spendRemaining = safeSpendLimit - todaySpend;
+  const spendPct       = safeSpendLimit > 0
+    ? Math.min(100, (todaySpend / safeSpendLimit) * 100)
+    : 0;
+  const isOverToday    = !isFirstTime && spendRemaining < 0;
+  const hasSpentToday  = todaySpend > 0.005;
+
+  // The half-width pillars carry six-figure balances. `break-all` "handled"
+  // the overflow by splitting them mid-digit ($427,701.0 / 0), which reads as
+  // a rendering fault rather than a number. fmtWhole already exists for exactly
+  // this ("tight summary stat cells... so it fits on mobile"); it just was not
+  // wired up here. Privacy masking has to survive the switch, hence the wrapper.
+  const maskWhole = (val: number) => (privacyMode ? "••••••" : fmtWhole(val));
+  const pillarSize = (text: string) =>
+    text.length <= 8 ? "text-2xl" : text.length <= 11 ? "text-xl" : "text-lg";
+  const vaultedText   = maskWhole(totalVaulted);
+  const spendableText = maskWhole(liquidAssets);
+
+  // Same treatment for the headline figures that sit at text-4xl. Cents are
+  // kept here, unlike the pillars, because net worth is a figure people read
+  // precisely rather than at a glance.
+  const bigSize = (text: string) =>
+    text.length <= 10 ? "text-4xl" : text.length <= 13 ? "text-3xl" : "text-2xl";
+  const netWorthText = privacyMode
+    ? "••••••"
+    : (netWorth >= 0 ? "" : "-") + formatCurrency(Math.abs(netWorth), false);
+
+  // Sized off the rendered string, so a four-figure amount steps down instead
+  // of running into the edge of the card.
+  const heroAmount = maskBal(safeSpendLimit);
+  const heroSize =
+    heroAmount.length <= 7 ? "text-6xl md:text-7xl"
+    : heroAmount.length <= 9 ? "text-5xl md:text-6xl"
+    : "text-4xl md:text-5xl";
+  const spendBarColor  =
+    spendPct >= 100 ? "bg-action-bleed"
+    : spendPct >= 80 ? "bg-action-primary"
+    : "bg-action-capture";
+
   if (!hasCompletedOnboarding) {
     return (
       <>
@@ -464,77 +506,70 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:items-start">
           {/* Safe Spend Hero */}
           {widgetVisible("safe-spend") && (
-            <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden">
-              <div className="flex items-center justify-between mb-3">
+            <div
+              className={`md:col-span-2 bg-surface border-4 rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden transition-colors duration-300 ${
+                isOverToday ? "border-action-bleed" : "border-border"
+              }`}
+            >
+              {/* "today" lives in the label, not beside the number. Next to a
+                  four-figure amount it had nowhere to sit and wrapped onto its
+                  own line, where it read as a stray heading rather than the end
+                  of the sentence. */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <Wallet size={13} strokeWidth={3} className="text-text-muted shrink-0" />
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                  Daily Safe Spend
+                  You can spend today
                 </p>
               </div>
-              <div className="flex items-end gap-4 mb-5">
-                <div className="w-12 h-12 bg-action-capture border-[3px] border-black shadow-brutal-sm rounded-xl flex items-center justify-center shrink-0">
-                  <Wallet size={22} strokeWidth={3} className="text-black" />
-                </div>
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-0.5">
-                    You can safely spend
-                  </p>
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-5xl font-black italic tracking-tighter leading-none text-text-main tabular-nums break-all min-w-0">
-                      {maskBal(safeSpendLimit)}
+
+              {/* The number. `break-all` is gone: it split currency figures
+                  mid-digit ("£1,2 / 34.56"). Length-based sizing replaces it. */}
+              <p className={`${heroSize} font-black italic tracking-tighter leading-[0.9] text-text-main tabular-nums mb-5`}>
+                {heroAmount}
+              </p>
+
+              {/* Before anything is spent, "left" is the same figure as the one
+                  above it and the meter is an empty grey slab. Both are noise,
+                  so the quiet state gets one line instead. */}
+              {!isFirstTime && !hasSpentToday && (
+                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                  Nothing spent yet
+                </p>
+              )}
+
+              {!isFirstTime && hasSpentToday && (
+                <div className="space-y-2.5">
+                  {/* Meter in the house language: hard black border, squared
+                      corners, thick enough to read without looking. */}
+                  <div className="h-5 bg-input border-[3px] border-black rounded-lg overflow-hidden">
+                    <motion.div
+                      className={`h-full ${spendBarColor}`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${spendPct}%` }}
+                      transition={{ type: "spring", stiffness: 200, damping: 30 }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                      {format(todaySpend)} spent
                     </span>
-                    <span className="text-text-muted text-sm font-bold uppercase tracking-widest shrink-0">
-                      today
+                    {/* Promoted out of 10px grey text into a chip. This is the
+                        figure someone actually checks mid-afternoon. */}
+                    <span
+                      className={`px-2.5 py-1 border-2 border-black rounded-lg text-[11px] font-black uppercase tracking-widest shrink-0 ${
+                        isOverToday
+                          ? "bg-action-bleed text-white"
+                          : "bg-action-capture text-capture-contrast"
+                      }`}
+                    >
+                      {isOverToday
+                        ? `${format(Math.abs(spendRemaining))} over`
+                        : `${format(spendRemaining)} left`}
                     </span>
                   </div>
                 </div>
-              </div>
-              {!isFirstTime &&
-                (() => {
-                  const todaySpend = last7Days[6]?.spend ?? 0;
-                  const remaining = safeSpendLimit - todaySpend;
-                  const pct =
-                    safeSpendLimit > 0
-                      ? Math.min(100, (todaySpend / safeSpendLimit) * 100)
-                      : 0;
-                  const barColor =
-                    pct >= 100
-                      ? "bg-action-bleed"
-                      : pct >= 80
-                        ? "bg-action-primary"
-                        : "bg-action-capture";
-                  return (
-                    <div className="space-y-2">
-                      <div className="h-3 bg-input border-2 border-border rounded-full overflow-hidden">
-                        <motion.div
-                          className={`h-full rounded-full ${barColor}`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${pct}%` }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 200,
-                            damping: 30,
-                          }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                        <span className="text-text-muted">
-                          {format(todaySpend)} spent today
-                        </span>
-                        <span
-                          className={
-                            remaining < 0
-                              ? "text-action-bleed font-black"
-                              : "text-capture-readable font-black"
-                          }
-                        >
-                          {remaining < 0
-                            ? `${format(Math.abs(remaining))} over`
-                            : `${format(remaining)} left`}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
+              )}
               {hardCapSweep > 0 && (
                 <div className="mt-3 px-3 py-2 bg-black border-2 border-black rounded-xl">
                   <p className="font-mono text-[10px] font-black tracking-widest text-emerald-500">
@@ -818,16 +853,16 @@ export default function Dashboard() {
                   strokeWidth={2.5}
                 />
               </div>
-              <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums break-all min-w-0">
-                {maskBal(totalVaulted)}
+              <p className={`${pillarSize(vaultedText)} font-black italic tracking-tighter text-text-main tabular-nums`}>
+                {vaultedText}
               </p>
               {totalVaulted > 0 && investedVaulted > 0 && savedVaulted > 0 ? (
                 <div className="mt-2 space-y-0.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary">
-                    {maskBal(investedVaulted)} invested
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary tabular-nums">
+                    {maskWhole(investedVaulted)} invested
                   </p>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
-                    {maskBal(savedVaulted)} saved
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted tabular-nums">
+                    {maskWhole(savedVaulted)} saved
                   </p>
                 </div>
               ) : (
@@ -848,26 +883,26 @@ export default function Dashboard() {
                   strokeWidth={2.5}
                 />
               </div>
-              <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums break-all min-w-0">
-                {maskBal(liquidAssets)}
+              <p className={`${pillarSize(spendableText)} font-black italic tracking-tighter text-text-main tabular-nums`}>
+                {spendableText}
               </p>
               {upcomingBills > 0 ? (
                 liquidAssets >= upcomingBills ? (
                   <div className="mt-2 space-y-0.5">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">
-                      −{maskBal(upcomingBills)} obligations reserved
+                      −{maskWhole(upcomingBills)} reserved
                     </p>
                     <p className="text-[10px] font-black uppercase tracking-wide text-capture-readable tabular-nums">
-                      {maskBal(Math.max(0, liquidAssets - upcomingBills))} free
+                      {maskWhole(Math.max(0, liquidAssets - upcomingBills))} free
                     </p>
                   </div>
                 ) : (
                   <div className="mt-2 space-y-0.5">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">
-                      {maskBal(upcomingBills)} obligations before payday
+                      {maskWhole(upcomingBills)} due before payday
                     </p>
                     <p className="text-[10px] font-black uppercase tracking-wide text-action-bleed tabular-nums">
-                      {maskBal(upcomingBills - liquidAssets)} short
+                      {maskWhole(upcomingBills - liquidAssets)} short
                     </p>
                   </div>
                 )
@@ -897,12 +932,9 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <p
-                  className={`text-4xl font-black italic tracking-tighter tabular-nums break-all min-w-0 mb-4 ${netWorth >= 0 ? "text-text-main" : "text-action-bleed"}`}
+                  className={`${bigSize(netWorthText)} font-black italic tracking-tighter tabular-nums mb-4 ${netWorth >= 0 ? "text-text-main" : "text-action-bleed"}`}
                 >
-                  {privacyMode
-                    ? "••••••"
-                    : (netWorth >= 0 ? "" : "-") +
-                      formatCurrency(Math.abs(netWorth), false)}
+                  {netWorthText}
                 </p>
                 <div className="grid grid-cols-3 gap-2 pt-3 border-t-2 border-border/30">
                   <div>

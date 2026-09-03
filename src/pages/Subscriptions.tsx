@@ -105,9 +105,20 @@ export default function Subscriptions() {
       {/* Total Bleed */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden min-h-fit">
         <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Total Monthly Bleed</p>
-        <p className="text-4xl font-black italic tracking-tighter text-action-bleed tabular-nums break-all min-w-0">
-          -{formatCurrency(totalBleed, privacyMode)}
-        </p>
+        {/* `break-all` split the figure mid-digit on narrow screens. Sized
+            from its own length instead so it stays on one line. */}
+        {(() => {
+          const bleedText = `-${formatCurrency(totalBleed, privacyMode)}`;
+          const size =
+            bleedText.length <= 10 ? "text-4xl"
+            : bleedText.length <= 13 ? "text-3xl"
+            : "text-2xl";
+          return (
+            <p className={`${size} font-black italic tracking-tighter text-action-bleed tabular-nums`}>
+              {bleedText}
+            </p>
+          );
+        })()}
         {state.subscriptions.length > 0 && (
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1">
             {state.subscriptions.length} subscription{state.subscriptions.length !== 1 ? 's' : ''} active · tracked separately from Bill Queue
