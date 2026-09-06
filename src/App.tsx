@@ -51,6 +51,7 @@ const AuditLog = lazy(() =>
 
 // Components
 const Navigation = lazy(() => import('./components/Navigation'));
+const TopHeader = lazy(() => import('./components/TopHeader'));
 import { PageWrapper } from './components/PageWrapper';
 
 // Resets the main scroll container to the top on every route change. Without this,
@@ -87,39 +88,25 @@ function RouteFallback() {
 }
 
 
+function TopHeaderFallback() {
+  return (
+    <div className="shrink-0 z-50 w-full flex justify-between items-center gap-3 px-4 pb-4 header-pt-safe bg-base border-b-[3px] border-border">
+      <div className="flex items-center gap-2.5">
+        <div className="w-10 h-10 rounded-xl bg-input/60" />
+        <div className="h-4 w-24 rounded bg-input/60" />
+      </div>
+      <div className="w-11 h-11 rounded-xl bg-input/60 border-[3px] border-border" />
+    </div>
+  );
+}
+
 function NavigationFallback() {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t-[4px] border-black md:relative md:border-t-0 md:bg-transparent px-2 pt-1 pb-2 md:p-6 h-[68px] md:h-screen flex flex-col transition-colors duration-300">
-      <div className="md:hidden flex gap-1.5 overflow-x-auto no-scrollbar items-end pb-0.5">
-        <div className="w-12 h-14 border-[3px] border-black rounded-2xl bg-surface" />
-        <div className="w-12 h-14 border-[3px] border-black/20 rounded-2xl bg-surface" />
-        <div className="w-12 h-14 border-[3px] border-black/20 rounded-2xl bg-surface" />
-        <div className="w-px h-10 bg-black/20 self-center" />
-        <div className="w-12 h-14 border-[3px] border-black/20 rounded-2xl bg-surface" />
-        <div className="w-12 h-14 border-[3px] border-black/20 rounded-2xl bg-surface" />
-      </div>
-
-      <div className="hidden md:flex flex-col gap-4 flex-1">
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] font-black tracking-[0.3em] uppercase text-text-main">Pocket CFO</p>
-        </div>
-
-        <div className="flex flex-col flex-1 gap-3">
-          <div className="space-y-2">
-            <div className="h-3 w-12 rounded bg-black/10" />
-            <div className="h-14 rounded-2xl border-4 border-black bg-surface shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" />
-            <div className="h-14 rounded-2xl border-4 border-black/10 bg-surface" />
-            <div className="h-14 rounded-2xl border-4 border-black/10 bg-surface" />
-          </div>
-
-          <div className="space-y-2">
-            <div className="h-3 w-14 rounded bg-black/10" />
-            <div className="h-14 rounded-2xl border-4 border-black/10 bg-surface" />
-            <div className="h-14 rounded-2xl border-4 border-black/10 bg-surface" />
-          </div>
-
-          <div className="mt-auto h-14 rounded-2xl border-4 border-black/10 bg-surface" />
-        </div>
+    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 nav-pb-safe pointer-events-none">
+      <div className="w-full max-w-md flex items-stretch gap-1 bg-surface border-[3px] border-border rounded-full shadow-[4px_4px_0px_0px_var(--shadow-color)] px-1.5 py-1.5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex-1 h-14 rounded-full bg-input/60" />
+        ))}
       </div>
     </div>
   );
@@ -430,14 +417,16 @@ function App() {
         <PaydayBanner />
         <ProUpsellPopover />
         <NotificationToaster />
-        <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">
-          <div className="md:w-64 shrink-0 z-50">
-            <Suspense fallback={<NavigationFallback />}>
-              <Navigation />
-            </Suspense>
-          </div>
+        <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col overflow-hidden relative">
+          <Suspense fallback={<TopHeaderFallback />}>
+            <TopHeader />
+          </Suspense>
 
-          <main id="main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden main-pb-safe md:pb-0 p-4 pt-4 md:p-8 relative">
+          <Suspense fallback={<NavigationFallback />}>
+            <Navigation />
+          </Suspense>
+
+          <main id="main-scroll" className="w-full flex-1 overflow-y-auto overflow-x-hidden main-pb-safe p-4 pt-4 md:p-8 relative">
             <div className="max-w-4xl mx-auto">
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />

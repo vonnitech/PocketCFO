@@ -72,6 +72,18 @@ function relativeDate(iso: string) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// Rotating pot colours. Written as complete literal class strings so Tailwind's
+// scanner can see them; a template-built class name would be purged from the
+// build. Every one takes black text, so they read the same in both themes.
+const POT_COLORS = [
+  "bg-[#FFD166]",
+  "bg-[#7DE2D1]",
+  "bg-[#FFADAD]",
+  "bg-[#A0C4FF]",
+  "bg-[#BDB2FF]",
+  "bg-[#CAFFBF]",
+];
+
 export default function Dashboard() {
   const {
     safeSpendLimit,
@@ -132,10 +144,15 @@ export default function Dashboard() {
     return w?.visible !== false;
   };
   const totalVaulted = vaults.reduce((acc, v) => acc + v.current, 0);
-  const investedVaulted = vaults
-    .filter((v) => v.asset_class === "INVESTMENT")
-    .reduce((acc, v) => acc + v.current, 0);
-  const savedVaulted = totalVaulted - investedVaulted;
+  // Discretionary money the user is free to spend, kept visually separate from
+  // the long-term money that is meant to sit still.
+  const discretionaryPots = vaults.filter(
+    (v) => v.asset_class === "SINKING_FUND",
+  );
+  const longTermReserves = vaults.filter(
+    (v) => v.asset_class !== "SINKING_FUND",
+  );
+  const longTermTotal = longTermReserves.reduce((acc, v) => acc + v.current, 0);
   const totalDebt = debts.reduce((acc, d) => acc + d.balance, 0);
   const netWorth = liquidAssets + totalVaulted - totalDebt;
   const isFirstTime = transactions.length === 0 && reconHistory.length === 0;
@@ -341,7 +358,6 @@ export default function Dashboard() {
   const maskWhole = (val: number) => (privacyMode ? "••••••" : fmtWhole(val));
   const pillarSize = (text: string) =>
     text.length <= 8 ? "text-2xl" : text.length <= 11 ? "text-xl" : "text-lg";
-  const vaultedText   = maskWhole(totalVaulted);
   const spendableText = maskWhole(liquidAssets);
 
   // Same treatment for the headline figures that sit at text-4xl. Cents are
@@ -518,7 +534,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 mb-1.5">
                 <Wallet size={13} strokeWidth={3} className="text-text-muted shrink-0" />
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                  You can spend today
+                  Cleared to spend today
                 </p>
               </div>
 
@@ -842,34 +858,26 @@ export default function Dashboard() {
         {/* Pillars */}
         {widgetVisible("vault-status") && (
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden min-h-fit">
+            {/* Long-term money is deliberately quiet: thin border, muted type,
+                no hard shadow. It is handled in the background, so it should not
+                compete with the discretionary pots below. */}
+            <div className="bg-surface border-2 border-border/50 rounded-3xl p-5 overflow-hidden min-h-fit">
               <div className="flex justify-between items-start mb-3">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                  Vaulted
+                  Long-Term Reserves
                 </p>
                 <Shield
                   size={18}
-                  className="text-capture-readable shrink-0"
-                  strokeWidth={2.5}
+                  className="text-text-muted shrink-0"
+                  strokeWidth={2}
                 />
               </div>
-              <p className={`${pillarSize(vaultedText)} font-black italic tracking-tighter text-text-main tabular-nums`}>
-                {vaultedText}
+              <p className={`${pillarSize(maskWhole(longTermTotal))} font-black italic tracking-tighter text-text-muted tabular-nums`}>
+                {maskWhole(longTermTotal)}
               </p>
-              {totalVaulted > 0 && investedVaulted > 0 && savedVaulted > 0 ? (
-                <div className="mt-2 space-y-0.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary tabular-nums">
-                    {maskWhole(investedVaulted)} invested
-                  </p>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted tabular-nums">
-                    {maskWhole(savedVaulted)} saved
-                  </p>
-                </div>
-              ) : (
-                <p className="text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">
-                  {investedVaulted > 0 ? "Investments" : "Goals & reserves"}
-                </p>
-              )}
+              <p className="text-[11px] text-text-muted/70 mt-2 font-bold uppercase tracking-wide">
+                Investments and reserves
+              </p>
             </div>
 
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden min-h-fit">
@@ -911,6 +919,53 @@ export default function Dashboard() {
                   Available cash
                 </p>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Sinking Funds ── */}
+        {discretionaryPots.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">
+              Sinking Funds
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {discretionaryPots.map((pot, i) => {
+                const pct =
+                  pot.target > 0
+                    ? Math.min(100, (pot.current / pot.target) * 100)
+                    : 0;
+                return (
+                  <Link
+                    key={pot.id}
+                    to="/vaults"
+                    className={`${POT_COLORS[i % POT_COLORS.length]} border-[3px] border-black rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all overflow-hidden`}
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-widest text-black/60 truncate">
+                      {pot.name}
+                    </p>
+                    <p className="text-2xl font-black italic tracking-tighter text-black tabular-nums mt-1">
+                      {maskWhole(pot.current)}
+                    </p>
+                    {/* Meter only means something against a target. */}
+                    {pot.target > 0 && (
+                      <>
+                        <div className="h-3 bg-black/10 border-2 border-black rounded-full overflow-hidden mt-3">
+                          <motion.div
+                            className="h-full bg-black"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ type: "spring", stiffness: 200, damping: 30 }}
+                          />
+                        </div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-black/60 mt-1.5 tabular-nums">
+                          {pct.toFixed(0)}% of {maskWhole(pot.target)}
+                        </p>
+                      </>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}

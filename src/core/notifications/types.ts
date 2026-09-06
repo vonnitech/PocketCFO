@@ -55,7 +55,7 @@ export const CATEGORY_META: Record<NotificationCategory, CategoryMeta> = {
     level: 'important',
   },
   'safe-spend': {
-    label: 'Safe spend changes',
+    label: 'Cleared allowance changes',
     description: 'When your daily number moves enough to matter.',
     level: 'helpful',
   },

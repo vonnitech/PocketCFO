@@ -182,7 +182,10 @@
   .swatch-dot-capture  { background: var(--tc); }
 }
 
-/* Safe-area padding for bottom-nav devices (iPhone home indicator) */
+/* Safe-area padding for notched devices (status bar + home indicator) */
+.header-pt-safe {
+  padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+}
 .nav-pb-safe {
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
 }

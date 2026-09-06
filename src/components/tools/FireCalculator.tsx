@@ -681,7 +681,7 @@ export function FireCalculator() {
             />
           </div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
-            401(k), IRA, brokerage, crypto — anything not tracked in your app vaults
+            401(k), IRA, brokerage, crypto · anything not tracked in your app vaults
             {externalInvestments > 0 && ` · combined starting balance: ${fmtFull(totalVaulted)}`}
           </p>
         </div>

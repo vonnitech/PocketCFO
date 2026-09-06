@@ -86,7 +86,7 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
     [],
     ['Net Worth', netWorth],
     ['Liquid Assets', snap.liquidAssets],
-    ['Safe Spend Limit', snap.safeSpendLimit],
+    ['Cleared to Spend', snap.safeSpendLimit],
     ['Upcoming Bills', snap.upcomingBills],
     ['Total Vaulted', totalVaulted],
     ['Total Debt', totalDebt],
@@ -181,7 +181,7 @@ export async function exportReportPDF(snap: ExportSnapshot): Promise<void> {
   // Balance cards — 3 per row
   const cards: { label: string; value: number }[] = [
     { label: 'LIQUID ASSETS',   value: snap.liquidAssets },
-    { label: 'SAFE SPEND/DAY',  value: snap.safeSpendLimit },
+    { label: 'CLEARED/DAY',     value: snap.safeSpendLimit },
     { label: 'UPCOMING BILLS',  value: snap.upcomingBills },
     { label: 'VAULTED',         value: totalVaulted },
     { label: 'DEBT',            value: totalDebt },

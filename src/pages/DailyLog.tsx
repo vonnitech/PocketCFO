@@ -1,14 +1,13 @@
 ﻿import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap, AlertCircle, Lock } from 'lucide-react';
+import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap, Lock } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
-import { useStore, Impulse } from '../store/useStore';
+import { useStore } from '../store/useStore';
 import { userKey } from '../lib/userScopedStorage';
 import { BottomSheet } from '../components/BottomSheet';
 import {
   calculateTrueSafeSpend,
-  calculateImpulsePenalty,
   calculateDailySurplus,
   calculateDailyDrain,
   calculateTierLimit,
@@ -18,7 +17,18 @@ import {
   toLocalDateKey,
 } from '../core/math';
 
-type Step = 'RAW_SPEND' | 'HABIT_CHECK' | 'SELECT_HABIT' | 'SUMMARY';
+type Step = 'RAW_SPEND' | 'WORTH_IT_CHECK' | 'SUMMARY';
+
+// How the day's unplanned spending felt in hindsight. Only 'SKIP' opens the
+// offset module; the other two are acknowledgements and move straight to the
+// summary.
+type WorthIt = 'LOVED' | 'GOOD' | 'SKIP';
+
+const WORTH_IT_OPTIONS: { id: WorthIt; label: string }[] = [
+  { id: 'LOVED', label: 'Worth it' },
+  { id: 'GOOD',  label: 'Neutral' },
+  { id: 'SKIP',  label: 'Regret' },
+];
 
 const TIER_LOCK_BASE = 'pocket-cfo-tier-lock-v1';
 const BREAK_COUNT_BASE = 'pocket-cfo-tier-breaks-v1';
@@ -70,15 +80,16 @@ export default function DailyLog() {
   // Full-store subscription is intentional here: calculateTrueSafeSpend(state)
   // below needs the complete AppState, so a narrowed selector would not help.
   const state = useStore();
-  const { privacyMode, impulses, reconHistory, setState, nextPayday, submitReconEntry, vaults } = state;
+  const { privacyMode, reconHistory, nextPayday, submitReconEntry, vaults } = state;
 
   const [step, setStep] = useState<Step>('RAW_SPEND');
   const [rawSpend, setRawSpend] = useState('');
-  const [selectedImpulseId, setSelectedImpulseId] = useState<string | null>(null);
-  const [impulseSpend, setImpulseSpend] = useState('');
+  const [worthIt, setWorthIt] = useState<WorthIt | null>(null);
+  const [offsetInput, setOffsetInput] = useState('');
+  // Held apart from offsetInput on purpose: the money only counts once Send is
+  // pressed, so typing a figure and backing out costs nothing.
+  const [offsetAmount, setOffsetAmount] = useState(0);
   const [completed, setCompleted] = useState(false);
-  const [isAddingImpulse, setIsAddingImpulse] = useState(false);
-  const [newImpulseName, setNewImpulseName] = useState('');
   const [tierLock, setTierLock] = useState<TierLock | null>(() => getTierLock());
   const isLocked = tierLock !== null;
   const [_selectedTierId, setSelectedTierId] = useState<SpendTierId>(() => getTierLock()?.tierId ?? 'TIGHT');
@@ -109,16 +120,6 @@ export default function DailyLog() {
 
   const activeTier = SPEND_TIERS.find(t => t.id === selectedTierId)!;
 
-  const submitNewImpulse = () => {
-    if (newImpulseName.trim()) {
-      const newImpulse: Impulse = { id: crypto.randomUUID(), name: newImpulseName.trim(), taxRate: 0.5 };
-      setState({ impulses: [...impulses, newImpulse] });
-      setSelectedImpulseId(newImpulse.id);
-    }
-    setIsAddingImpulse(false);
-    setNewImpulseName('');
-  };
-
   const todayKey = toLocalDateKey(new Date());
   const todayLabel = new Date().toLocaleDateString();
   const alreadyDoneToday = reconHistory.some(entry => toLocalDateKey(entry.date) === todayKey);
@@ -136,24 +137,26 @@ export default function DailyLog() {
       .filter(tx => !SPEND_LOG_EXCLUDED_CATEGORIES.has(tx.category))
       .reduce((acc, tx) => acc + tx.amount, 0);
   }, [transactionsToday]);
-  const impulseTaxToday = useMemo(() => {
+  const capturedToday = useMemo(() => {
     return transactionsToday
       .reduce((acc, tx) => acc + tx.flipAmount, 0);
   }, [transactionsToday]);
-  const totalCashMovedToday = spendLoggedToday + impulseTaxToday;
+  const totalCashMovedToday = spendLoggedToday + capturedToday;
   const displayRawSpend = rawSpend === '' ? recordedDailyDrain.toString() : rawSpend;
   const spendAmount = parseFloat(displayRawSpend || '0');
   const catchUpSpend = Math.max(0, spendAmount - recordedDailyDrain);
   const hasValidReviewedSpend = Number.isFinite(spendAmount) && spendAmount >= 0;
   const hasVault = vaults.length > 0;
 
-  const taxAmount = useMemo(() => {
-    if (!selectedImpulseId || !impulseSpend) return 0;
-    const impulse = impulses.find(g => g.id === selectedImpulseId);
-    return impulse ? calculateImpulsePenalty(parseFloat(impulseSpend), impulse.taxRate) : 0;
-  }, [selectedImpulseId, impulseSpend, impulses]);
+  // Balancing out moves cash into savings, so unlike the old impulse tax it is
+  // not a drain on the day. Surplus and the danger meter track spending only.
+  const totalDrain = spendAmount;
 
-  const totalDrain = spendAmount + taxAmount;
+  const parsedOffset = parseFloat(offsetInput || '0');
+  const canOffset = hasVault && Number.isFinite(parsedOffset) && parsedOffset > 0;
+  // vaults[0] is where submitReconEntry credits the money, so name it rather
+  // than promising a vault the user may not have set as their first one.
+  const offsetDestination = vaults[0]?.name ?? '';
   const surplus = useMemo(() => calculateDailySurplus(safeSpendLimit, totalDrain), [safeSpendLimit, totalDrain]);
   const dangerProgress = useMemo(() => calculateDangerProgress(totalDrain, tierLimit), [totalDrain, tierLimit]);
   const needsCatchUpCategory = catchUpSpend > 0.005;
@@ -182,14 +185,31 @@ export default function DailyLog() {
     dangerProgress < 85 ? 'bg-action-primary' :
     'bg-action-bleed';
 
+const chooseWorthIt = (id: WorthIt) => {
+    setWorthIt(id);
+    if (id === 'SKIP') return;
+    setOffsetInput('');
+    setOffsetAmount(0);
+    setStep('SUMMARY');
+  };
+
+  const applyOffset = () => {
+    if (!canOffset) return;
+    setOffsetAmount(parsedOffset);
+    setStep('SUMMARY');
+  };
+
   const handleAction = (action: 'roll' | 'stash') => {
     if (action === 'stash' && !hasVault) return;
     submitReconEntry({
       rawSpend:       parseFloat(displayRawSpend),
       action,
-      impulseId:      selectedImpulseId,
-      impulseSpend:   parseFloat(impulseSpend || '0'),
-      taxAmount,
+      impulseId:      null,
+      impulseSpend:   0,
+      // Reuses the store's existing tax_amount slot, which already debits liquid
+      // assets and credits the vault. Same cash movement, no penalty framing,
+      // and no database migration.
+      taxAmount:      offsetAmount,
       surplus,
       catchUpCategory: needsCatchUpCategory ? catchUpCategory : undefined,
       tierId:         selectedTierId,
@@ -228,11 +248,11 @@ export default function DailyLog() {
                 <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(spendLoggedToday, privacyMode)}</p>
               </div>
             </div>
-            {impulseTaxToday > 0 && (
+            {capturedToday > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-3">
                 <div className="bg-input border-2 border-border rounded-2xl px-3 py-2">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-action-bleed">Impulse Tax</p>
-                  <p className="text-sm font-black tabular-nums text-action-bleed">{formatCurrency(impulseTaxToday, privacyMode)}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-capture-readable">Captured</p>
+                  <p className="text-sm font-black tabular-nums text-capture-readable">+{formatCurrency(capturedToday, privacyMode)}</p>
                 </div>
                 <div className="bg-input border-2 border-border rounded-2xl px-3 py-2 text-right">
                   <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Total Cash Moved</p>
@@ -283,9 +303,9 @@ export default function DailyLog() {
                 <span className="text-text-main">{formatCurrency(todayEntry.rawSpend, privacyMode)}</span>
               </div>
               {todayEntry.taxAmount > 0 && (
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest border-b-2 border-border pb-2">
-                  <span className="text-text-muted">Impulse Tax</span>
-                  <span className="text-action-bleed">{formatCurrency(todayEntry.taxAmount, privacyMode)}</span>
+                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest border-b-2 border-border pb-2 gap-2">
+                  <span className="text-text-muted">Captured → Vault</span>
+                  <span className="text-capture-readable">+{formatCurrency(todayEntry.taxAmount, privacyMode)}</span>
                 </div>
               )}
               {todayEntry.taxAmount > 0 && (
@@ -526,7 +546,7 @@ export default function DailyLog() {
                 type="button"
                 whileTap={{ scale: 0.97 }}
                 disabled={!hasValidReviewedSpend}
-                onClick={() => setStep('HABIT_CHECK')}
+                onClick={() => setStep('WORTH_IT_CHECK')}
                 className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40"
               >
                 Continue <ChevronRight size={20} strokeWidth={3} />
@@ -535,125 +555,106 @@ export default function DailyLog() {
           </motion.div>
         )}
 
-        {/* ── STEP 2: HABIT CHECK ── */}
-        {step === 'HABIT_CHECK' && (
-          <motion.div key="habit-check" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+        {/* ── STEP 2: WORTH IT CHECK ── */}
+        {step === 'WORTH_IT_CHECK' && (
+          <motion.div key="worth-it" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
-              <div className="inline-flex px-3 py-1 bg-action-bleed border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase">
-                HABIT CHECK
+              <div className="inline-flex px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase">
+                WORTH IT?
               </div>
-              <div className="flex justify-center py-4">
-                <div className="p-6 rounded-full bg-action-bleed/10 border-4 border-action-bleed text-action-bleed">
-                  <AlertCircle size={56} strokeWidth={2.5} />
-                </div>
-              </div>
-              <h3 className="text-2xl font-black italic text-center uppercase tracking-tight text-text-main px-4">
-                Any impulse or habit spending today?
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setStep('SUMMARY')}
-                  className="h-16 border-4 border-border rounded-full font-black uppercase tracking-widest text-lg bg-surface text-text-main hover:bg-action-capture hover:text-capture-contrast transition-all shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
-                >
-                  No
-                </motion.button>
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setStep('SELECT_HABIT')}
-                  className="h-16 border-4 border-black rounded-full font-black uppercase tracking-widest text-lg bg-action-bleed text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-                >
-                  Yes
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        )}
 
-        {/* ── STEP 3: SELECT HABIT ── */}
-        {step === 'SELECT_HABIT' && (
-          <motion.div key="select-habit" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-            <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
-              <div className="inline-flex px-3 py-1 bg-action-bleed border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase">
-                SELECT HABIT
+              <h3 className="text-2xl font-black italic text-center uppercase tracking-tight text-text-main px-2 leading-tight">
+                Any unplanned spending today? Was it worth it?
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {WORTH_IT_OPTIONS.map(opt => {
+                  const active = worthIt === opt.id;
+                  return (
+                    <motion.button
+                      key={opt.id}
+                      type="button"
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => chooseWorthIt(opt.id)}
+                      className={`flex sm:flex-col items-center justify-center gap-2 sm:gap-1.5 h-16 sm:h-24 px-3 border-4 rounded-3xl font-black uppercase tracking-widest text-[11px] transition-all shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 ${
+                        active
+                          ? 'border-black bg-black text-action-primary'
+                          : 'border-border bg-surface text-text-main hover:border-black'
+                      }`}
+                    >
+                      <span className="text-center leading-tight">{opt.label}</span>
+                    </motion.button>
+                  );
+                })}
               </div>
-              <div className="space-y-2">
-                {impulses.length > 0 ? impulses.map(g => (
+
+              {/* Offset — only for the spend they would take back */}
+              {worthIt === 'SKIP' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-3 border-t-4 border-border pt-5"
+                >
+                  <div>
+                    <p className="text-lg font-black italic uppercase tracking-tight text-text-main leading-tight">
+                      Offset this regret.
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1 leading-relaxed">
+                      Capture cash to your vault.
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none select-none text-2xl">
+                      {currencySymbol()}
+                    </span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      title="Amount to capture to your vault"
+                      placeholder="0.00"
+                      value={offsetInput}
+                      onChange={e => setOffsetInput(e.target.value)}
+                      onFocus={e => e.target.select()}
+                      className="w-full bg-input border-4 border-action-capture rounded-2xl py-4 pr-4 pl-11 text-3xl font-black italic outline-none text-center focus:bg-surface transition-colors text-text-main tabular-nums"
+                    />
+                  </div>
+
+                  {hasVault ? (
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted text-center">
+                      Goes to {offsetDestination}
+                    </p>
+                  ) : (
+                    <p className="text-[9px] font-black uppercase tracking-widest text-action-bleed text-center">
+                      Set up a vault first to capture
+                    </p>
+                  )}
+
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    disabled={!canOffset}
+                    onClick={applyOffset}
+                    className="w-full h-14 border-4 border-black rounded-full bg-action-capture text-capture-contrast font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:translate-x-0 disabled:translate-y-0"
+                  >
+                    Capture to Vault <ChevronRight size={20} strokeWidth={3} />
+                  </motion.button>
+
                   <button
                     type="button"
-                    key={g.id}
-                    onClick={() => setSelectedImpulseId(g.id)}
-                    className={`w-full p-4 rounded-2xl border-4 transition-all flex justify-between items-center ${
-                      selectedImpulseId === g.id ? 'border-action-bleed bg-action-bleed text-white' : 'border-black bg-input text-text-main hover:border-action-bleed'
-                    }`}
+                    onClick={() => { setOffsetInput(''); setOffsetAmount(0); setStep('SUMMARY'); }}
+                    className="w-full h-10 border-2 border-border rounded-2xl text-text-muted font-black uppercase tracking-widest text-[10px] hover:text-text-main hover:border-black transition-colors"
                   >
-                    <span className="font-black italic uppercase">{g.name}</span>
-                    <span className="font-black text-[10px] uppercase tracking-widest">{(g.taxRate * 100)}% tax</span>
+                    Not this time
                   </button>
-                )) : (
-                  <div className="text-center py-8 border-4 border-dashed border-black/20 rounded-3xl space-y-3 px-4">
-                    <Zap size={40} className="mx-auto opacity-20" />
-                    <p className="font-black italic uppercase text-text-main text-lg">No bad habits set up yet</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted leading-relaxed">
-                      A habit is a spending pattern you want to break · like Starbucks or takeout. Add one here and give it a penalty rate. Every time you confess to spending on it, that % gets sent to your vault.
-                    </p>
-                    {isAddingImpulse ? (
-                      <div className="flex gap-2 justify-center max-w-xs mx-auto px-4">
-                        <input
-                          autoFocus
-                          className="flex-1 bg-input border-4 border-black rounded-2xl p-2 text-center text-xs font-black uppercase outline-none focus:border-action-bleed"
-                          placeholder="Habit Name"
-                          value={newImpulseName}
-                          onChange={e => setNewImpulseName(e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && submitNewImpulse()}
-                        />
-                        <button type="button" onClick={submitNewImpulse} className="px-4 py-2 bg-black text-action-primary rounded-2xl font-black text-xs uppercase border-4 border-black">ADD</button>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={() => setIsAddingImpulse(true)} className="px-6 py-2 bg-black text-action-primary border-4 border-black text-[10px] font-black uppercase rounded-full">
-                        + Quick Add
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {selectedImpulseId && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-center text-text-muted">Amount spent on this habit</p>
-                  <input
-                    type="number"
-                    title="Amount Spent on Habit"
-                    placeholder="0.00"
-                    value={impulseSpend}
-                    onChange={e => setImpulseSpend(e.target.value)}
-                    className="w-full bg-input border-4 border-action-bleed rounded-2xl p-4 text-3xl font-black italic outline-none text-center focus:bg-surface transition-colors text-text-main"
-                  />
-                  {taxAmount > 0 && (
-                    <div className="flex justify-between bg-action-bleed/10 border-4 border-action-bleed rounded-2xl px-4 py-3">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-action-bleed">Impulse Tax</span>
-                      <span className="font-black text-action-bleed">{formatCurrency(taxAmount, privacyMode)}</span>
-                    </div>
-                  )}
                 </motion.div>
               )}
-
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.97 }}
-                disabled={!selectedImpulseId || !impulseSpend}
-                onClick={() => setStep('SUMMARY')}
-                className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40"
-              >
-                Apply Penalty <ChevronRight size={20} strokeWidth={3} />
-              </motion.button>
             </div>
           </motion.div>
         )}
 
-        {/* ── STEP 4: SUMMARY ── */}
+        {/* ── STEP 3: SUMMARY ── */}
         {step === 'SUMMARY' && (
           <motion.div key="summary" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}>
             <div className="bg-action-primary border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
@@ -691,16 +692,21 @@ export default function DailyLog() {
                   <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Reviewed Spend</span>
                   <span className="font-black text-text-main">-{formatCurrency(spendAmount, privacyMode)}</span>
                 </div>
-                {taxAmount > 0 && (
-                  <div className="flex justify-between items-center border-b-2 border-border pb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-action-bleed">Impulse Tax</span>
-                    <span className="font-black text-action-bleed">-{formatCurrency(taxAmount, privacyMode)}</span>
+                {offsetAmount > 0 && (
+                  <div className="flex justify-between items-center border-b-2 border-border pb-2 gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-capture-readable shrink-0">Captured</span>
+                    <span className="font-black text-capture-readable tabular-nums text-right">
+                      +{formatCurrency(offsetAmount, privacyMode)}
+                      <span className="block text-[9px] font-bold uppercase tracking-widest text-text-muted">
+                        to {offsetDestination || 'your vault'}
+                      </span>
+                    </span>
                   </div>
                 )}
-                {taxAmount > 0 && (
+                {offsetAmount > 0 && (
                   <div className="flex justify-between items-center border-b-2 border-border pb-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Total Cash Moved Today</span>
-                    <span className="font-black text-text-main">-{formatCurrency(spendAmount + taxAmount, privacyMode)}</span>
+                    <span className="font-black text-text-main">-{formatCurrency(spendAmount + offsetAmount, privacyMode)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-1 gap-2">

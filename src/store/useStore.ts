@@ -2004,11 +2004,11 @@ export const useStore = create<StoreState>()(
         const taxId = crypto.randomUUID();
         const capId = crypto.randomUUID();
         txInserts.push(
-          { id: taxId, merchant: 'RECON IMPULSE TAX', amount: 0, category: 'PENALTY', is_flip: true, flip_amount: effectiveTaxAmount, date: timestamp },
+          { id: taxId, merchant: 'RECON OFFSET', amount: 0, category: 'PENALTY', is_flip: true, flip_amount: effectiveTaxAmount, date: timestamp },
           { id: capId, merchant: 'RECON CAPTURE', amount: effectiveTaxAmount, category: 'SAVINGS', is_flip: true, flip_amount: 0, date: timestamp },
         );
         newTxs.push(
-          { id: taxId, merchant: 'RECON IMPULSE TAX', amount: 0, category: 'PENALTY', date: timestamp, isFlip: true, flipAmount: effectiveTaxAmount },
+          { id: taxId, merchant: 'RECON OFFSET', amount: 0, category: 'PENALTY', date: timestamp, isFlip: true, flipAmount: effectiveTaxAmount },
           { id: capId, merchant: 'RECON CAPTURE', amount: effectiveTaxAmount, category: 'SAVINGS', date: timestamp, isFlip: true, flipAmount: 0 },
         );
       }

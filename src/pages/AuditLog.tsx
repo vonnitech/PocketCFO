@@ -553,7 +553,7 @@ export const AuditLog: React.FC = () => {
             <ShieldCheck size={11} /> WEALTH CAPTURED
           </div>
           <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-capture-readable tabular-nums">+{formatCell(wealthCaptured)}</p>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Savings captures and vault investments</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Savings captures and vault deposits</p>
         </div>
       </div>
 

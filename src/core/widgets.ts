@@ -17,7 +17,7 @@ export interface DashboardWidgetMeta {
 }
 
 export const DASHBOARD_WIDGETS: DashboardWidgetMeta[] = [
-  { id: 'safe-spend',   label: 'Daily Safe Spend', description: 'Your main spending limit hero card' },
+  { id: 'safe-spend',   label: 'Cleared to Spend', description: 'Your main spending limit hero card' },
   { id: 'vault-status', label: 'Savings Overview', description: 'Vaulted & spendable balance pillars' },
   { id: 'alert',        label: 'Bill Queue',       description: 'Upcoming bills checklist' },
 ];

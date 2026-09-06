@@ -434,7 +434,7 @@ export function OnboardingModal() {
                 {/* Safe-to-Spend preview */}
                 <div className="bg-action-primary border-4 border-black rounded-2xl px-4 py-3 overflow-hidden">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-black/50">
-                    Your safe spend per day
+                    Your cleared daily allowance
                   </p>
                   <p className="text-4xl font-black italic tracking-tighter text-black leading-none mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
@@ -459,7 +459,7 @@ export function OnboardingModal() {
                     next to the thing it protects than next to a form. */}
                 <div className="bg-action-capture border-4 border-black rounded-2xl px-4 py-3 overflow-hidden">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-capture-contrast/60">
-                    Your safe spend per day
+                    Your cleared daily allowance
                   </p>
                   <p className="text-3xl font-black italic tracking-tighter text-capture-contrast leading-none mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
