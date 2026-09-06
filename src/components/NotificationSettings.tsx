@@ -41,7 +41,7 @@ export function NotificationSettings() {
 
   return (
     <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
-      <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Notifications</p>
+      <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">Notifications</p>
 
       {/* ── Permission state ── */}
       {permission === 'unsupported' && (

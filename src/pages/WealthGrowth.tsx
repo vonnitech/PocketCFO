@@ -142,7 +142,7 @@ export const WealthGrowth: React.FC = () => {
         <div className="space-y-4">
           {/* Future Value hero */}
           <div className="bg-surface border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-[10px] font-black tracking-widest uppercase mb-3 text-capture-readable">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-[10px] font-black tracking-widest uppercase mb-3 text-action-capture">
               <TrendingUp size={11} strokeWidth={3} /> Future Value
             </div>
             <p className="text-5xl md:text-6xl font-black italic leading-none tabular-nums text-capture-readable">

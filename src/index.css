@@ -38,7 +38,8 @@
   --bg-input: #E5E3DE;
   --border-primary: #1A1A1A;
   --text-primary: #111111;
-  --text-secondary: #666666;
+  /* #666666 measured 4.48:1 on bg-input, just under the 4.5 threshold. */
+  --text-secondary: #656565;
   --shadow-color: rgba(0, 0, 0, 0.88);
   --dot-color: rgba(0, 0, 0, 0.13);
   --capture-contrast: #000000;
@@ -55,9 +56,14 @@
   --bg-input: #242424;
   --border-primary: #4A4A4A;
   --text-primary: #F0F0F0;
-  --text-secondary: #888888;
+  /* #888888 measured 4.38:1 on the dark bg-input. */
+  --text-secondary: #8b8b8b;
   --shadow-color: rgba(0, 200, 80, 0.22);
   --dot-color: rgba(255, 255, 255, 0.10);
+  /* App.tsx overwrites these once it runs. Without a dark-mode default the
+     first paint renders the :root #000000 on a #1A1A1A card. */
+  --capture-readable: #00CC55;
+  --primary-readable: #facc15;
 }
 
 @layer base {

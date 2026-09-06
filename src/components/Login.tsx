@@ -58,7 +58,7 @@ export function Login({ onAuthenticated }: LoginProps) {
   };
 
   const inputBase =
-    'w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide';
+    'w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-surface transition-colors tracking-wide';
 
   return (
     <div className="fixed inset-0 z-9999 bg-base dot-bg flex flex-col items-center justify-center px-4 font-mono">
@@ -211,7 +211,7 @@ export function Login({ onAuthenticated }: LoginProps) {
           </div>
         </form>
 
-        <p className="text-center text-[11px] font-bold uppercase tracking-widest text-text-muted/40 mt-4">
+        <p className="text-center text-[11px] font-bold uppercase tracking-widest text-text-muted mt-4">
           Your data is yours · encrypted end-to-end.
         </p>
       </motion.div>

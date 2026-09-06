@@ -58,7 +58,7 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-3"
+      className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3"
     >
       {/* Header row */}
       {(showHeader || success) && (
@@ -98,7 +98,7 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           onFocus={(e) => e.target.select()}
-          className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-9 font-mono font-black text-2xl text-text-main outline-none placeholder:text-text-muted/40 focus:bg-input transition-colors tabular-nums"
+          className="w-full bg-transparent border-4 border-border rounded-2xl px-4 py-3 pl-9 font-mono font-black text-2xl text-text-main outline-none placeholder:text-text-muted focus:bg-input transition-colors tabular-nums"
         />
       </div>
 
@@ -109,17 +109,17 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
         value={merchant}
         maxLength={40}
         onChange={(e) => setMerchant(e.target.value)}
-        className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-input transition-colors tracking-wide truncate"
+        className="w-full bg-transparent border-4 border-border rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-input transition-colors tracking-wide truncate"
       />
 
       {/* Category pills */}
       <div className="space-y-1.5">
         <p
-          className={`text-[9px] font-black uppercase tracking-widest ${category ? "text-text-muted" : "text-action-bleed"}`}
+          className={`text-[9px] font-black uppercase tracking-widest ${!category && numAmt > 0 ? "text-action-bleed" : "text-text-muted"}`}
         >
           Category required
         </p>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
+        <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.key}

@@ -162,7 +162,7 @@ export function NotificationBell() {
                               <span className="block text-[11px] font-bold text-text-muted leading-snug mt-1">
                                 {record.body}
                               </span>
-                              <span className="block text-[9px] font-black uppercase tracking-widest text-text-muted/60 mt-1.5">
+                              <span className="block text-[9px] font-black uppercase tracking-widest text-text-muted mt-1.5">
                                 {CATEGORY_META[record.category].label}
                                 {!record.deliveredOs && permission === 'granted' ? ' · in app only' : ''}
                               </span>

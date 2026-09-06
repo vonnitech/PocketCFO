@@ -233,7 +233,7 @@ export default function IncomeTracker() {
       {chartPoints.length >= 2 && (
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">Income Growth</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Income Growth</p>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-0.5 rounded-full bg-action-capture" />
               <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">Monthly take-home</span>
@@ -249,7 +249,7 @@ export default function IncomeTracker() {
           <div className="w-7 h-7 bg-action-primary border-2 border-black rounded-xl flex items-center justify-center shrink-0">
             <BarChart3 size={14} strokeWidth={2.5} className="text-black" />
           </div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">Savings Rate Lab</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Savings Rate Lab</p>
         </div>
 
         <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted -mt-2">
@@ -343,7 +343,7 @@ export default function IncomeTracker() {
       {/* Milestone Log */}
       {incomeHistory.length > 0 && (
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">Income Milestones</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Income Milestones</p>
           <div className="space-y-2">
             {[...incomeHistory].reverse().map(entry => (
               <div key={entry.id} className="flex items-center gap-3 px-4 py-3 bg-input border-4 border-black rounded-2xl">
@@ -420,7 +420,7 @@ export default function IncomeTracker() {
                       onChange={e => setFormAmount(e.target.value)}
                       onFocus={e => e.target.select()}
                       placeholder="e.g. 8000"
-                      className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted/40"
+                      className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted"
                     />
                   </div>
                 </div>
@@ -449,7 +449,7 @@ export default function IncomeTracker() {
                     value={formLabel}
                     onChange={e => setFormLabel(e.target.value)}
                     placeholder="Or type a custom label"
-                    className="w-full bg-input border-4 border-black rounded-2xl py-3 px-4 font-black text-text-main outline-none focus:border-action-capture transition-colors placeholder:text-text-muted/40 text-sm"
+                    className="w-full bg-input border-4 border-black rounded-2xl py-3 px-4 font-black text-text-main outline-none focus:border-action-capture transition-colors placeholder:text-text-muted text-sm"
                   />
                 </div>
 
@@ -467,7 +467,7 @@ export default function IncomeTracker() {
                       type="button"
                       onClick={handleSubmit}
                       disabled={!formAmount || !formLabel.trim() || !formDate}
-                      className="flex-1 h-12 border-4 border-black rounded-2xl bg-black text-capture-readable font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-capture)]"
+                      className="flex-1 h-12 border-4 border-black rounded-2xl bg-black text-action-capture font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-capture)]"
                     >
                       <div className="flex items-center justify-center gap-2">
                         <Target size={14} strokeWidth={3} />

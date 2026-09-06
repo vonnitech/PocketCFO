@@ -230,7 +230,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                     {/* Optional category column — uses the source file's existing category data when available */}
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">
-                        Category Column <span className="text-text-muted/50">(Optional)</span>
+                        Category Column <span className="text-text-muted">(Optional)</span>
                       </label>
                       <select
                         value={mapping.category}

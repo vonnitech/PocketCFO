@@ -89,7 +89,7 @@ export function WealthVsLifestyleChart() {
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
             No tracked activity this month yet
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted/60 mt-1">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mt-1">
             Log a vault deposit or log spend to see your split
           </p>
         </div>

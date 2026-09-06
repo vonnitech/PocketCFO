@@ -161,14 +161,14 @@ export default function TopHeader() {
                 </button>
               </div>
 
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50 mb-2">Manage</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-2">Manage</p>
               <div className="flex flex-col gap-2 mb-4">
                 {manageLinks.map(item => (
                   <SheetLink key={item.path} path={item.path} icon={item.icon} label={item.label} onClick={close} />
                 ))}
               </div>
 
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50 mb-2">Tools</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-2">Tools</p>
               <div className="flex flex-col gap-2 mb-5">
                 {calculatorTools.map(item => (
                   <ToolSheetLink key={item.path} path={item.path} icon={item.icon} label={item.label} subtitle={item.subtitle} onClick={close} locked={!!item.pro && proLocked} />

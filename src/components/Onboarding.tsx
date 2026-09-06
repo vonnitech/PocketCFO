@@ -207,7 +207,7 @@ export function OnboardingModal() {
   };
 
   const inputClass =
-    'w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-input transition-colors';
+    'w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-input transition-colors';
 
   const plainInputClass = inputClass.replace('pl-10', 'pl-4');
 

@@ -85,7 +85,7 @@ export const TrueCost: React.FC = () => {
   // Matches the rest of the app's soft-brutalist style: grey field, heavy border,
   // large rounded corners, accent-colored focus. Symbols are permanent prefix/suffix.
   const registerBox = "flex items-center gap-2 bg-input border-4 border-black rounded-2xl px-4 py-3 transition-colors focus-within:bg-surface focus-within:border-action-capture";
-  const registerInput = "flex-1 min-w-0 bg-transparent text-3xl font-black text-text-main outline-none placeholder:text-text-muted/40 tabular-nums";
+  const registerInput = "flex-1 min-w-0 bg-transparent text-3xl font-black text-text-main outline-none placeholder:text-text-muted tabular-nums";
   const registerLabel = "label-xs block mb-2";
   const registerFix = "shrink-0 text-2xl font-black text-text-muted pointer-events-none select-none";
 

@@ -24,7 +24,10 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const GAP_RATIO = 0.012;
 
 const PALETTE = [
-  '#000000', '#6366f1', '#f59e0b', '#10b981',
+  // Slot 0 always goes to the largest category. It was '#000000', which is
+  // invisible on the dark card; the token is near-black on light, near-white
+  // on dark. The rest are mid-tone and already read on both surfaces.
+  'var(--text-primary)', '#6366f1', '#f59e0b', '#10b981',
   '#3b82f6', '#06b6d4', '#ec4899', '#14b8a6',
   '#f97316', '#84cc16',
 ];
@@ -84,7 +87,7 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
             cy={CHART_SIZE / 2}
             r={RADIUS}
             fill="none"
-            stroke="#e5e7eb"
+            style={{ stroke: 'var(--color-input)' }}
             strokeWidth={STROKE_WIDTH}
           />
 
@@ -95,7 +98,7 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
               cy={CHART_SIZE / 2}
               r={RADIUS}
               fill="none"
-              stroke={segment.color}
+              style={{ stroke: segment.color }}
               strokeWidth={activeIndex === index ? STROKE_WIDTH + 4 : STROKE_WIDTH}
               strokeDasharray={segment.dashArray}
               strokeDashoffset={segment.dashOffset}
@@ -112,9 +115,9 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-10 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">{centerLabel}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-text-muted">{centerLabel}</p>
           <p className="text-2xl font-black italic tracking-tighter text-text-main">{centerValue}</p>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{centerShare}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{centerShare}</p>
         </div>
       </div>
 
@@ -128,7 +131,7 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
             onFocus={() => setActiveIndex(index)}
             onBlur={() => setActiveIndex(current => (current === index ? null : current))}
             className={`w-full text-left bg-input border-[3px] rounded-2xl px-4 py-3 transition-colors ${
-              activeIndex === index ? 'border-black bg-surface' : 'border-black/10'
+              activeIndex === index ? 'border-border bg-surface' : 'border-border/30'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
@@ -137,9 +140,9 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
                   className="w-3 h-3 rounded-full border-2 border-black flex-shrink-0"
                   style={{ backgroundColor: segment.color }}
                 />
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 truncate">{segment.name}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted truncate">{segment.name}</span>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-black flex-shrink-0">
+              <span className="text-[10px] font-black uppercase tracking-widest text-text-main flex-shrink-0">
                 {Math.round(segment.percentage * 100)}%
               </span>
             </div>

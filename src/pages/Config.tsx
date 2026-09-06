@@ -231,7 +231,7 @@ export default function Config() {
                     className="flex-1 min-w-0 font-black uppercase text-sm text-text-main bg-transparent outline-none"
                   />
                   <div className="flex items-center gap-0.5 shrink-0">
-                    <span className="text-[10px] font-black uppercase text-text-muted/60 tracking-widest">Day</span>
+                    <span className="text-[10px] font-black uppercase text-text-muted tracking-widest">Day</span>
                     <input
                       type="number"
                       title="Day of month due (1-31)"

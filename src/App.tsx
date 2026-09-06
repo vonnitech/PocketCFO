@@ -296,11 +296,36 @@ function App() {
       return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.45 ? '#000000' : '#ffffff';
     };
 
-    // Darken a color that's too light to read as text on a light surface
-    const readableOnLight = (hex: string): string => {
+    // Pick the version of an accent colour that reads as *text* on the current
+    // surface. Light darkens a too-bright colour; dark brightens a too-dark one.
+    //
+    // This previously ran the light branch in both themes, so every *-readable
+    // token was a dark colour sitting on a dark card: #007932 on #1A1A1A is
+    // 3.1:1. The light branch is unchanged; only the dark case is new.
+    const readableOnSurface = (hex: string): string => {
       const r = parseInt(hex.slice(1, 3), 16);
       const g = parseInt(hex.slice(3, 5), 16);
       const b = parseInt(hex.slice(5, 7), 16);
+
+      if (theme === 'dark') {
+        // Scale up until the colour clears 4.5:1 against the dark card. This
+        // branch uses WCAG relative luminance rather than the perceptual
+        // measure below, because it is targeting a specific ratio.
+        const toLinear = (c: number) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+        const wcag = (rr: number, gg: number, bb: number) =>
+          0.2126 * toLinear(rr) + 0.7152 * toLinear(gg) + 0.0722 * toLinear(bb);
+        const NEEDED = 4.5 * (0.0109 + 0.05) - 0.05; // #1A1A1A card, ~0.224
+        let scale = 1;
+        while (
+          scale < 6 &&
+          wcag(Math.min(255, r * scale), Math.min(255, g * scale), Math.min(255, b * scale)) < NEEDED
+        ) {
+          scale += 0.05;
+        }
+        const ch = (v: number) => Math.min(255, Math.round(v * scale)).toString(16).padStart(2, '0');
+        return `#${ch(r)}${ch(g)}${ch(b)}`;
+      }
+
       const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
       if (lum <= 0.35) return hex;
       const scale = 0.3 / lum;
@@ -315,13 +340,13 @@ function App() {
       const p = boostForDark(primary);
       document.documentElement.style.setProperty('--color-action-primary', p);
       document.documentElement.style.setProperty('--primary-contrast', contrastFor(p));
-      document.documentElement.style.setProperty('--primary-readable', readableOnLight(p));
+      document.documentElement.style.setProperty('--primary-readable', readableOnSurface(p));
     }
     {
       const boosted = boostForDark(secondary);
       document.documentElement.style.setProperty('--color-action-capture', boosted);
       document.documentElement.style.setProperty('--capture-contrast', contrastFor(boosted));
-      document.documentElement.style.setProperty('--capture-readable', readableOnLight(boosted));
+      document.documentElement.style.setProperty('--capture-readable', readableOnSurface(boosted));
       if (theme === 'dark') {
         const r = parseInt(boosted.slice(1, 3), 16);
         const g = parseInt(boosted.slice(3, 5), 16);

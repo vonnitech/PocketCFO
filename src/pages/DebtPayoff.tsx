@@ -295,7 +295,7 @@ export const DebtPayoff: React.FC = () => {
                       Payment Amount
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted/40 pointer-events-none">{currencySymbol()}</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-text-muted pointer-events-none">{currencySymbol()}</span>
                       <input
                         autoFocus
                         type="number"
@@ -340,7 +340,7 @@ export const DebtPayoff: React.FC = () => {
                     </button>
                   </div>
 
-                  <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted/60 text-center">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted text-center">
                     Logs a DEBT_PAYMENT transaction and reduces your cash balance
                   </p>
                 </div>

@@ -567,7 +567,7 @@ export function FireCalculator() {
       {/* Live Data */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">From Your Profile</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">From Your Profile</p>
           <LiveBadge />
         </div>
 
@@ -626,12 +626,12 @@ export function FireCalculator() {
 
       {/* User Inputs */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
-        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">Your Numbers</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Your Numbers</p>
 
         {/* Strategy Selector */}
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Strategy</p>
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          <div className="flex flex-wrap gap-1.5">
             {STRATEGIES.map(s => (
               <button
                 key={s.id}
@@ -655,7 +655,7 @@ export function FireCalculator() {
             <div className="flex flex-col justify-center items-center bg-input border-4 border-black/20 rounded-2xl px-3 py-2 gap-0.5">
               <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Target Age</p>
               <p className="text-2xl font-black italic text-text-main">65</p>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted/50">locked</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">locked</p>
             </div>
           ) : (
             <Field label="Target Retire Age" value={ta} onChange={setTa} integer />
@@ -677,7 +677,7 @@ export function FireCalculator() {
               placeholder="0"
               onChange={e => setExternalInvestments(e.target.value.replace(/[^0-9.]/g, ''))}
               onFocus={e => e.target.select()}
-              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted/40"
+              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted"
             />
           </div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
@@ -699,7 +699,7 @@ export function FireCalculator() {
               placeholder={String(Math.round(monthlyContribBase))}
               onChange={e => setMonthlyOverride(e.target.value.replace(/[^0-9.]/g, ''))}
               onFocus={e => e.target.select()}
-              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted/40"
+              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-4 pl-9 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted"
             />
           </div>
           {monthlyOverride !== '' && Math.round(parseFloat(monthlyOverride)) !== Math.round(monthlyContribBase) && (
@@ -722,7 +722,7 @@ export function FireCalculator() {
               placeholder="0"
               onChange={e => setIncomeGrowthRaw(e.target.value.replace(/[^0-9.]/g, ''))}
               onFocus={e => e.target.select()}
-              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-9 pl-4 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted/40"
+              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-9 pl-4 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none text-lg">%</span>
           </div>
@@ -752,7 +752,7 @@ export function FireCalculator() {
             <button
               type="button"
               onClick={handleLockIn}
-              className="w-full h-12 flex items-center justify-center gap-2 border-4 border-black rounded-2xl bg-black text-capture-readable font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+              className="w-full h-12 flex items-center justify-center gap-2 border-4 border-black rounded-2xl bg-black text-action-capture font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-capture)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
             >
               <Lock size={14} strokeWidth={3} />
               {fireConfig ? 'Update Locked Strategy' : 'Lock In Strategy'}
@@ -770,7 +770,7 @@ export function FireCalculator() {
       {calc && calc.chartData.length > 1 && (
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted/60">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
               {strategy === 'COAST' ? 'Growth to 65 · No Contributions' : 'Portfolio Trajectory'}
             </p>
             <div className="flex items-center gap-3 text-[9px] font-bold uppercase tracking-wide">
@@ -860,7 +860,7 @@ export function FireCalculator() {
               }
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60 mb-1">{currentStrategy.tag}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">{currentStrategy.tag}</p>
               <p className="text-[10px] font-bold text-text-muted leading-relaxed mb-2.5">{currentStrategy.desc}</p>
 
               {calc.isCoast ? (

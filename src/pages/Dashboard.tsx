@@ -432,7 +432,8 @@ export default function Dashboard() {
                   : h >= 12 && h < 17
                     ? "Good afternoon"
                     : "Good evening";
-              return firstName ? `${salutation}, ${firstName}` : salutation;
+              const name = firstName.trim();
+              return name ? `${salutation}, ${name}` : salutation;
             })()}
           </h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
@@ -875,7 +876,7 @@ export default function Dashboard() {
               <p className={`${pillarSize(maskWhole(longTermTotal))} font-black italic tracking-tighter text-text-muted tabular-nums`}>
                 {maskWhole(longTermTotal)}
               </p>
-              <p className="text-[11px] text-text-muted/70 mt-2 font-bold uppercase tracking-wide">
+              <p className="text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">
                 Investments and reserves
               </p>
             </div>

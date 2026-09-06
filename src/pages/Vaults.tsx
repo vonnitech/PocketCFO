@@ -286,7 +286,7 @@ export default function Vaults() {
                 <div className={`w-7 h-7 ${g.iconBg} border-2 border-black rounded-lg flex items-center justify-center shrink-0 ${hidden ? 'opacity-40' : ''}`}>
                   <g.icon size={13} strokeWidth={2.5} className={g.iconText} />
                 </div>
-                <span className={`flex-1 text-[11px] font-black uppercase tracking-widest ${hidden ? 'text-text-muted/50' : 'text-text-main'}`}>{g.label}</span>
+                <span className={`flex-1 text-[11px] font-black uppercase tracking-widest ${hidden ? 'text-text-muted' : 'text-text-main'}`}>{g.label}</span>
                 <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveSection(id, -1)} className="w-8 h-8 flex items-center justify-center rounded-lg border-2 border-black bg-surface disabled:opacity-30 hover:bg-input transition-colors">
                   <ArrowUp size={13} strokeWidth={3} />
                 </button>
@@ -400,7 +400,7 @@ export default function Vaults() {
                     />
                   ) : (
                     <p onClick={() => { setEditingTargetId(vault.id); setEditingTargetValue(vault.target.toString()); }}
-                      className="text-[9px] font-bold text-text-muted/60 cursor-pointer hover:text-text-muted flex items-center gap-0.5 mt-0.5 tabular-nums">
+                      className="text-[9px] font-bold text-text-muted cursor-pointer hover:text-text-muted flex items-center gap-0.5 mt-0.5 tabular-nums">
                       {formatCurrency(vault.target, privacyMode)} <Edit2 size={8} />
                     </p>
                   )}

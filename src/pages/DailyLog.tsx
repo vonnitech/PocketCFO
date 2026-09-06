@@ -474,7 +474,7 @@ const chooseWorthIt = (id: WorthIt) => {
               )}
 
               {breakCount > 0 && (
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/50 text-center mt-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted text-center mt-3">
                   Broke early {breakCount}×
                 </p>
               )}
@@ -729,7 +729,7 @@ const chooseWorthIt = (id: WorthIt) => {
                       {formatCurrency(catchUpSpend, privacyMode)} will be added as a catch-up transaction
                     </p>
                   </div>
-                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
+                  <div className="flex flex-wrap gap-2">
                     {CATEGORIES.map(cat => (
                       <button
                         key={cat.key}

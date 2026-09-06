@@ -221,7 +221,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
                 placeholder="FIRST NAME"
                 value={firstName}
                 onChange={e => { setFirstName(e.target.value); clearMessages(); }}
-                className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+                className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-surface transition-colors tracking-wide"
               />
             </div>
           )}
@@ -241,7 +241,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
                 required
                 value={email}
                 onChange={e => { setEmail(e.target.value); clearMessages(); }}
-                className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+                className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-surface transition-colors tracking-wide"
               />
             </div>
           )}
@@ -263,7 +263,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
                   minLength={8}
                   value={password}
                   onChange={e => { setPassword(e.target.value); clearMessages(); }}
-                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 pr-12 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 pr-12 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-surface transition-colors tracking-wide"
                 />
               ) : (
                 <input
@@ -274,7 +274,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
                   minLength={8}
                   value={password}
                   onChange={e => { setPassword(e.target.value); clearMessages(); }}
-                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 pr-12 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted/40 focus:bg-surface transition-colors tracking-wide"
+                  className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 pr-12 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-surface transition-colors tracking-wide"
                 />
               )}
               {password && (
@@ -348,7 +348,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
             <>
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-0.5 bg-border/40" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted/60">or</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">or</span>
                 <div className="flex-1 h-0.5 bg-border/40" />
               </div>
               <button
@@ -392,7 +392,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
               </button>
             )}
             {mode === 'recover' && (
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted/60">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
                 Choose a strong, new password
               </span>
             )}

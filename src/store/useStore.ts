@@ -611,7 +611,7 @@ export const useStore = create<StoreState>()(
               subscriptionsCancelled: Number(profile.stat_subscriptions_cancelled ?? 0),
               lifetimeCapture:        Number(profile.stat_lifetime_capture ?? 0),
             },
-            firstName:             String(profile.first_name ?? ''),
+            firstName:             String(profile.first_name ?? '').trim(),
             theme:                 (profile.theme as 'light' | 'dark') ?? 'light',
             privacyMode:           Boolean(profile.privacy_mode),
             currency:              String(profile.currency ?? 'USD'),

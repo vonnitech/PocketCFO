@@ -251,16 +251,16 @@ const PivotTable: React.FC = () => {
                   {row.values.map((v, i) => (
                     <td key={i} className="border-b border-border/30 px-4 py-2.5 text-right text-[11px] font-bold">
                       {v === 0
-                        ? <span className="text-text-muted/30">—</span>
+                        ? <span className="text-text-muted">—</span>
                         : <span className={row.isIncome ? 'text-capture-readable' : 'text-text-main'}>{formatCell(v)}</span>
                       }
                     </td>
                   ))}
                   <td className={`border-b border-l-2 border-border/40 px-4 py-2.5 text-right text-[11px] font-black ${rowTone}`}>
-                    {row.total === 0 ? <span className="text-text-muted/30">—</span> : formatCell(row.total)}
+                    {row.total === 0 ? <span className="text-text-muted">—</span> : formatCell(row.total)}
                   </td>
                   <td className={`border-b border-border/30 px-4 py-2.5 text-right text-[11px] font-bold ${rowTone}`}>
-                    {row.average === 0 ? <span className="text-text-muted/30">—</span> : formatCell(row.average)}
+                    {row.average === 0 ? <span className="text-text-muted">—</span> : formatCell(row.average)}
                   </td>
                 </tr>
               );
@@ -274,7 +274,7 @@ const PivotTable: React.FC = () => {
               {matrix.netRow.values.map((v, i) => (
                 <td key={i} className="px-4 py-3 text-right text-[11px] font-black tabular-nums">
                   {v === 0
-                    ? <span className="text-text-muted/30">—</span>
+                    ? <span className="text-text-muted">—</span>
                     : <span className={v > 0 ? 'text-action-capture' : 'text-action-bleed'}>
                         {v > 0 ? '+' : '−'}{formatCell(Math.abs(v))}
                       </span>
@@ -283,7 +283,7 @@ const PivotTable: React.FC = () => {
               ))}
               <td className="border-l-2 border-border px-4 py-3 text-right text-[11px] font-black tabular-nums">
                 {matrix.netRow.total === 0
-                  ? <span className="text-text-muted/30">—</span>
+                  ? <span className="text-text-muted">—</span>
                   : <span className={matrix.netRow.total > 0 ? 'text-action-capture' : 'text-action-bleed'}>
                       {matrix.netRow.total > 0 ? '+' : '−'}{formatCell(Math.abs(matrix.netRow.total))}
                     </span>
@@ -291,7 +291,7 @@ const PivotTable: React.FC = () => {
               </td>
               <td className="px-4 py-3 text-right text-[11px] font-black tabular-nums">
                 {matrix.netRow.average === 0
-                  ? <span className="text-text-muted/30">—</span>
+                  ? <span className="text-text-muted">—</span>
                   : <span className={matrix.netRow.average > 0 ? 'text-action-capture' : 'text-action-bleed'}>
                       {matrix.netRow.average > 0 ? '+' : '−'}{formatCell(Math.abs(matrix.netRow.average))}
                     </span>
@@ -306,7 +306,7 @@ const PivotTable: React.FC = () => {
                   colSpan={matrix.intervals.length + 3}
                   className="px-4 py-1.5 bg-input border-y border-border/60"
                 >
-                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-text-muted/50">
+                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-text-muted">
                     Committed Capital
                   </span>
                 </td>
@@ -318,31 +318,31 @@ const PivotTable: React.FC = () => {
                   </td>
                   {row.values.map((v, i) => (
                     <td key={i} className="border-b border-border/20 px-4 py-2.5 text-right text-[11px] font-bold text-text-muted">
-                      {v === 0 ? <span className="text-text-muted/20">—</span> : formatCell(v)}
+                      {v === 0 ? <span className="text-text-muted">—</span> : formatCell(v)}
                     </td>
                   ))}
                   <td className="border-b border-l-2 border-border/30 px-4 py-2.5 text-right text-[11px] font-black text-text-muted">
-                    {row.total === 0 ? <span className="text-text-muted/20">—</span> : formatCell(row.total)}
+                    {row.total === 0 ? <span className="text-text-muted">—</span> : formatCell(row.total)}
                   </td>
                   <td className="border-b border-border/20 px-4 py-2.5 text-right text-[11px] font-bold text-text-muted">
-                    {row.average === 0 ? <span className="text-text-muted/20">—</span> : formatCell(row.average)}
+                    {row.average === 0 ? <span className="text-text-muted">—</span> : formatCell(row.average)}
                   </td>
                 </tr>
               ))}
               {matrix.allocatedRow.total > 0 && (
                 <tr className="bg-input/50 border-t border-border/40">
-                  <td className="sticky left-0 z-10 bg-input/50 border-r-2 border-border/30 px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-widest text-text-muted/70">
+                  <td className="sticky left-0 z-10 bg-input/50 border-r-2 border-border/30 px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-widest text-text-muted">
                     Total Committed
                   </td>
                   {matrix.allocatedRow.values.map((v, i) => (
-                    <td key={i} className="px-4 py-2.5 text-right text-[11px] font-black text-text-muted/70 tabular-nums">
-                      {v === 0 ? <span className="text-text-muted/20">—</span> : formatCell(v)}
+                    <td key={i} className="px-4 py-2.5 text-right text-[11px] font-black text-text-muted tabular-nums">
+                      {v === 0 ? <span className="text-text-muted">—</span> : formatCell(v)}
                     </td>
                   ))}
-                  <td className="border-l-2 border-border/30 px-4 py-2.5 text-right text-[11px] font-black text-text-muted/70 tabular-nums">
+                  <td className="border-l-2 border-border/30 px-4 py-2.5 text-right text-[11px] font-black text-text-muted tabular-nums">
                     {formatCell(matrix.allocatedRow.total)}
                   </td>
-                  <td className="px-4 py-2.5 text-right text-[11px] font-bold text-text-muted/70 tabular-nums">
+                  <td className="px-4 py-2.5 text-right text-[11px] font-bold text-text-muted tabular-nums">
                     {formatCell(matrix.allocatedRow.average)}
                   </td>
                 </tr>
@@ -616,7 +616,7 @@ export const AuditLog: React.FC = () => {
                         <span className={cat.thisMonth > cat.lastMonth ? 'text-action-bleed' : 'text-text-main'}>
                           {formatCell(cat.thisMonth)}
                         </span>
-                        <span className="text-text-muted/40">vs</span>
+                        <span className="text-text-muted">vs</span>
                         <span className="text-text-muted">{formatCell(cat.lastMonth)}</span>
                       </div>
                     </div>

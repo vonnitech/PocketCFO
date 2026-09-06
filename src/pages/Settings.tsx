@@ -455,7 +455,7 @@ export default function Settings() {
 
       {/* Profile */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-4">Profile</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-4">Profile</p>
         <div className="flex items-center gap-4 mb-4">
           <div className="w-14 h-14 bg-action-primary border-4 border-black rounded-xl flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] shrink-0">
             <User size={26} strokeWidth={3} />
@@ -493,7 +493,7 @@ export default function Settings() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
         {/* Display */}
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
-          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-1">Display</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-1">Display</p>
 
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
@@ -595,7 +595,7 @@ export default function Settings() {
         <div id="pro" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <Lock size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
-            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Pocket CFO Pro</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">Pocket CFO Pro</p>
           </div>
           {!isPro ? (
             <>
@@ -627,7 +627,7 @@ export default function Settings() {
                 </button>
               </div>
 
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted/60">No bank login · Cancel anytime</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No bank login · Cancel anytime</p>
             </>
           ) : (
             <>
@@ -652,7 +652,7 @@ export default function Settings() {
         <div id="dashboard-widgets" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <SlidersHorizontal size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
-            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Dashboard Widgets</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">Dashboard Widgets</p>
           </div>
           <div className="space-y-3">
             {DASHBOARD_WIDGETS.map((widget, i) => {
@@ -687,7 +687,7 @@ export default function Settings() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-stretch">
         {/* Achievements */}
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
-          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-4">Achievements</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-4">Achievements</p>
           <div className="space-y-3 flex-1">
             {achievements.map(ach => (
               <div key={ach.id} className={`flex items-center gap-4 p-3 rounded-2xl border-4 transition-all ${ach.unlocked ? 'bg-input border-black' : 'bg-transparent border-dashed border-black/20 opacity-40'}`}>
@@ -706,9 +706,9 @@ export default function Settings() {
 
         {/* Data & Security */}
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
-          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-4">Data & Security</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-4">Data & Security</p>
           <div className="space-y-3 flex-1">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60">Export</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Export</p>
             <div className="grid grid-cols-3 gap-2">
               <button type="button" onClick={() => runExport(m => m.exportLedgerCSV(state.transactions))}
                 className="h-12 border-4 border-black rounded-2xl bg-surface text-text-main font-black uppercase text-[10px] tracking-widest flex flex-col items-center justify-center gap-0.5 hover:bg-input transition-all shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5">
@@ -726,7 +726,7 @@ export default function Settings() {
               </ProAction>
             </div>
 
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60 mt-2">Import</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mt-2">Import</p>
             <ProAction feature="import">
               <button type="button" onClick={openImport}
                 className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
@@ -772,7 +772,7 @@ export default function Settings() {
                 <Trash2 size={16} /> {wiping ? 'WIPING…' : 'WIPE SYSTEM'}
               </button>
             )}
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted/60 mt-2">Account</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mt-2">Account</p>
             {deleteAccountArmed ? (
               <button type="button" onClick={handleDeleteAccount} disabled={deletingAccount}
                 className="w-full h-12 border-4 border-action-bleed rounded-full bg-action-bleed text-white font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all animate-pulse disabled:opacity-60 disabled:cursor-not-allowed">
@@ -790,7 +790,7 @@ export default function Settings() {
 
       {/* Currency */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60 mb-3">Currency</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-3">Currency</p>
         <label htmlFor="currency-select" className="block text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Display Currency</label>
         <div className="relative">
           <select
@@ -818,7 +818,7 @@ export default function Settings() {
           onClick={() => setAccentOpen(o => !o)}
           className="w-full flex items-center justify-between gap-3 px-5 py-4"
         >
-          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/60">Accent Colors</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">Accent Colors</p>
           <motion.div animate={{ rotate: accentOpen ? 180 : 0 }} transition={{ type: 'spring', stiffness: 380, damping: 38 }}>
             <ChevronDown size={16} strokeWidth={2.5} className="text-text-muted" />
           </motion.div>
@@ -860,7 +860,7 @@ export default function Settings() {
                           <div className="swatch-dot-primary w-5 h-5 rounded-full border-2 border-black/30" />
                           <div className="swatch-dot-capture w-5 h-5 rounded-full border-2 border-black/30" />
                         </div>
-                        <span className={`text-[9px] font-black uppercase tracking-wide leading-tight text-center ${locked ? 'text-text-muted/50' : 'text-text-muted'}`}>{t.name}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-wide leading-tight text-center ${locked ? 'text-text-muted' : 'text-text-muted'}`}>{t.name}</span>
                         {locked && (
                           <div className="absolute top-1 right-1 text-text-muted"><Lock size={10} strokeWidth={3} /></div>
                         )}

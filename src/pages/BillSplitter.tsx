@@ -325,7 +325,7 @@ export const BillSplitter: React.FC = () => {
                 value={currentInput}
                 onChange={e => setCurrentInput(e.target.value)}
                 onFocus={e => e.target.select()}
-                className="w-full min-w-0 bg-transparent text-4xl sm:text-5xl font-black italic tracking-tighter text-text-main tabular-nums outline-none placeholder:text-text-muted/30 pl-0.5"
+                className="w-full min-w-0 bg-transparent text-4xl sm:text-5xl font-black italic tracking-tighter text-text-main tabular-nums outline-none placeholder:text-text-muted pl-0.5"
               />
             </div>
           </div>

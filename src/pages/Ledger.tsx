@@ -174,7 +174,7 @@ export default function Ledger() {
           placeholder="Search merchant…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-input border-4 border-black rounded-2xl pl-10 pr-10 py-3.5 font-bold text-sm text-text-main placeholder:text-text-muted/50 outline-none focus:border-action-capture transition-colors uppercase tracking-wide"
+          className="w-full bg-input border-4 border-black rounded-2xl pl-10 pr-10 py-3.5 font-bold text-sm text-text-main placeholder:text-text-muted outline-none focus:border-action-capture transition-colors uppercase tracking-wide"
         />
         {search && (
           <button
@@ -190,7 +190,7 @@ export default function Ledger() {
       </div>
 
       {/* Category filter chips */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+      <div className="flex flex-wrap gap-2">
         {FILTER_TABS.map(tab => (
           <button
             key={tab.id}
@@ -266,7 +266,7 @@ export default function Ledger() {
                   </p>
 
                   {/* Amount */}
-                  <p className={`shrink-0 text-sm font-black tabular-nums ${credit ? 'text-action-primary' : 'text-text-main'}`}>
+                  <p className={`shrink-0 text-sm font-black tabular-nums ${credit ? 'text-capture-readable' : 'text-text-main'}`}>
                     {credit ? '+' : '-'}{formatCurrency(tx.amount, privacyMode)}
                   </p>
 
@@ -297,7 +297,7 @@ export default function Ledger() {
         </p>
       )}
       {allTransactionsLoaded && transactions.length > 0 && (
-        <p className="text-center text-[10px] font-bold uppercase tracking-widest text-text-muted/60 py-2">
+        <p className="text-center text-[10px] font-bold uppercase tracking-widest text-text-muted py-2">
           End of history
         </p>
       )}
