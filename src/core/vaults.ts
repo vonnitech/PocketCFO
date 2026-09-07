@@ -47,3 +47,11 @@ export const isVaultDepositLocked = <T extends VaultLike>(
   vaults: T[],
   isPro: boolean,
 ): boolean => lockedVaultIds(vaults, isPro).has(vaultId);
+
+// A vault's spending class. Rows created before the asset_class column carry
+// null, and Vaults.tsx has always rendered those under Sinking Funds, so null
+// means SINKING_FUND everywhere rather than only on that one screen. Strict
+// `=== 'SINKING_FUND'` comparisons hid legacy vaults from the Velocity sweep
+// picker and the dashboard split while still listing them on the Vaults page.
+export const isSinkingFund = (v: { asset_class?: string | null }): boolean =>
+  (v.asset_class ?? 'SINKING_FUND') === 'SINKING_FUND';

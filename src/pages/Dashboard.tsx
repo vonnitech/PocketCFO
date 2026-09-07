@@ -17,6 +17,7 @@ import { useStore } from "../store/useStore";
 import { useShallow } from "zustand/react/shallow";
 import { formatCurrency } from "../lib/utils";
 import { currencySymbol } from "../lib/currency";
+import { isSinkingFund } from "../core/vaults";
 import { toLocalDateKey, calculateDaysUntilPayday, isCashInflow } from "../core/math";
 import { OnboardingModal } from "../components/Onboarding";
 import { NotificationBell } from "../components/NotificationCenter";
@@ -146,12 +147,8 @@ export default function Dashboard() {
   const totalVaulted = vaults.reduce((acc, v) => acc + v.current, 0);
   // Discretionary money the user is free to spend, kept visually separate from
   // the long-term money that is meant to sit still.
-  const discretionaryPots = vaults.filter(
-    (v) => v.asset_class === "SINKING_FUND",
-  );
-  const longTermReserves = vaults.filter(
-    (v) => v.asset_class !== "SINKING_FUND",
-  );
+  const discretionaryPots = vaults.filter(isSinkingFund);
+  const longTermReserves = vaults.filter(v => !isSinkingFund(v));
   const longTermTotal = longTermReserves.reduce((acc, v) => acc + v.current, 0);
   const totalDebt = debts.reduce((acc, d) => acc + d.balance, 0);
   const netWorth = liquidAssets + totalVaulted - totalDebt;
@@ -993,28 +990,28 @@ export default function Dashboard() {
                   {netWorthText}
                 </p>
                 <div className="grid grid-cols-3 gap-2 pt-3 border-t-2 border-border/30">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
                       Cash
                     </p>
                     <p className="font-black text-sm text-text-main tabular-nums">
-                      {maskBal(liquidAssets)}
+                      {maskWhole(liquidAssets)}
                     </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[11px] font-bold uppercase tracking-wide text-capture-readable">
                       Vaulted
                     </p>
                     <p className="font-black text-sm text-text-main tabular-nums">
-                      +{maskBal(totalVaulted)}
+                      +{maskWhole(totalVaulted)}
                     </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[11px] font-bold uppercase tracking-wide text-action-bleed">
                       Debt
                     </p>
                     <p className="font-black text-sm text-action-bleed tabular-nums">
-                      {totalDebt > 0 ? `-${maskBal(totalDebt)}` : maskBal(0)}
+                      {totalDebt > 0 ? `-${maskWhole(totalDebt)}` : maskWhole(0)}
                     </p>
                   </div>
                 </div>

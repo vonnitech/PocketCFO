@@ -47,7 +47,7 @@ export default function Navigation() {
                 does not swell on select — the yellow pill carries that already,
                 which is also why these children no longer need `isActive`. */}
             <tab.icon size={22} strokeWidth={2} className="shrink-0" />
-            <span className="text-[9px] font-black uppercase tracking-wider leading-tight text-center px-0.5">
+            <span className="w-full truncate text-[9px] font-black uppercase tracking-wide sm:tracking-wider leading-tight text-center px-0.5">
               {tab.label}
             </span>
           </NavLink>

@@ -70,6 +70,7 @@ const PERSISTED_KEYS = [
   'nextPayday',
   'upcomingBills',
   'hardDailyCap',
+  'velocityConfig',
   'lastSweepDate',
   'billQueue',
   'recurringBills',

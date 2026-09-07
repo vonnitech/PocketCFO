@@ -80,7 +80,7 @@ export default function DailyLog() {
   // Full-store subscription is intentional here: calculateTrueSafeSpend(state)
   // below needs the complete AppState, so a narrowed selector would not help.
   const state = useStore();
-  const { privacyMode, reconHistory, nextPayday, submitReconEntry, vaults } = state;
+  const { privacyMode, reconHistory, nextPayday, submitReconEntry, vaults, velocityConfig } = state;
 
   const [step, setStep] = useState<Step>('RAW_SPEND');
   const [rawSpend, setRawSpend] = useState('');
@@ -151,6 +151,24 @@ export default function DailyLog() {
   // Balancing out moves cash into savings, so unlike the old impulse tax it is
   // not a drain on the day. Surplus and the danger meter track spending only.
   const totalDrain = spendAmount;
+
+  // Velocity surplus routing. Only SWEEP_VAULT collapses the choice, because it
+  // is the only route where submitReconEntry overrides what the buttons say: it
+  // forces a stash regardless of which one is pressed, so offering "Roll Over"
+  // would be a lie. Both ROLL_* routes leave the cash liquid, which is what the
+  // existing Roll Over button already does, so the Stash option stays available
+  // and only the label changes.
+  //
+  // Deliberately not collapsing on ROLL_TOMORROW: that is the default value for
+  // every account that has never opened Velocity, so treating it as an explicit
+  // choice would silently remove Stash It from users who never asked for that.
+  const sweepVault = velocityConfig?.surplusRouting === 'SWEEP_VAULT' && velocityConfig.sweepTargetVaultId
+    ? vaults.find(v => v.id === velocityConfig.sweepTargetVaultId) ?? null
+    : null;
+  const autoSweep = velocityConfig?.surplusRouting === 'SWEEP_VAULT' && !!sweepVault;
+  const rollLabel = velocityConfig?.surplusRouting === 'ROLL_WEEKEND'
+    ? 'Roll to Weekend Runway'
+    : 'Roll to Tomorrow';
 
   const parsedOffset = parseFloat(offsetInput || '0');
   const canOffset = hasVault && Number.isFinite(parsedOffset) && parsedOffset > 0;
@@ -753,7 +771,29 @@ const chooseWorthIt = (id: WorthIt) => {
                 </div>
               )}
 
-              {surplus > 0 ? (
+              {surplus > 0 && autoSweep ? (
+                // Routing already decided in Velocity, so the review confirms
+                // rather than asks.
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-center text-black/60">
+                    Surplus sweeps automatically
+                  </p>
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    disabled={!canCloseReview}
+                    onClick={() => handleAction('stash')}
+                    className="w-full h-16 flex flex-col items-center justify-center gap-1 bg-black text-action-primary border-4 border-black rounded-3xl shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-primary)]"
+                  >
+                    <span className="font-black uppercase text-[11px] tracking-widest px-3 text-center leading-tight">
+                      Sweep to {sweepVault?.name ?? 'Vault'}
+                    </span>
+                    <span className="text-[10px] font-bold text-action-primary/60 uppercase tracking-wide">
+                      {formatCurrency(surplus, privacyMode)}
+                    </span>
+                  </motion.button>
+                </div>
+              ) : surplus > 0 ? (
                 <div className="space-y-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-center text-black/60">What to do with the surplus?</p>
                   <div className="grid grid-cols-2 gap-3">
@@ -765,7 +805,7 @@ const chooseWorthIt = (id: WorthIt) => {
                       className="flex flex-col items-center gap-2 p-5 border-4 border-border rounded-3xl bg-surface text-text-main transition-all shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_var(--shadow-color)] disabled:translate-x-0 disabled:translate-y-0"
                     >
                       <ArrowRightLeft size={28} strokeWidth={3} />
-                      <span className="font-black uppercase text-[10px]">Roll Over</span>
+                      <span className="font-black uppercase text-[10px] text-center leading-tight px-1">{rollLabel}</span>
                       <span className="text-[11px] font-bold text-text-muted uppercase">Limit auto-adjusts</span>
                     </motion.button>
                     <motion.button

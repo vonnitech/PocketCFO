@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
 import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey, billKey } from '../core/math';
 import { supabase } from '../core/supabase';
+import { DEFAULT_VELOCITY_CONFIG, normalizeVelocityConfig, type VelocityConfig } from '../core/velocity';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
 import { setActiveCurrency } from '../lib/currency';
 import { loadSnapshot } from '../db/storage';
@@ -167,6 +168,7 @@ export interface AppState {
   paydayAnchorDay: number;
   upcomingBills: number;
   hardDailyCap: number;
+  velocityConfig: VelocityConfig;
   lastSweepDate: string;
   billQueue: BillQueueItem[];          // derived: recurringBills − paidBillKeys (cached in state for consumers)
   recurringBills: BillQueueItem[];     // the bill template (what bills exist)
@@ -344,6 +346,7 @@ export const INITIAL_STATE: AppState = {
   paydayAnchorDay: 0,
   upcomingBills: 0,
   hardDailyCap: 0,
+  velocityConfig: DEFAULT_VELOCITY_CONFIG,
   lastSweepDate: '',
   billQueue: [],
   recurringBills: [],
@@ -367,6 +370,7 @@ interface StoreActions {
   setTheme: (theme: 'light' | 'dark') => void;
   setThemeColors: (primary: string, capture: string) => Promise<void>;
   setCurrency: (code: string) => Promise<void>;
+  setVelocityConfig: (config: VelocityConfig) => Promise<void>;
   updateDashboardWidgets: (widgets: { id: string; visible: boolean }[]) => void;
   setState: (state: Partial<AppState>) => void;
   updateState: (fn: (prev: AppState) => AppState) => void;
@@ -594,6 +598,7 @@ export const useStore = create<StoreState>()(
             paydayAnchorDay:       Number(profile.payday_anchor_day ?? dateDay(String(profile.next_payday ?? ''))),
             upcomingBills:         Number(profile.upcoming_bills ?? 0),
             hardDailyCap:          Number(profile.hard_daily_cap ?? 0),
+            velocityConfig:        normalizeVelocityConfig(profile.velocity_config),
             lastSweepDate:         String(profile.last_sweep_date ?? ''),
             extraCashPool:         Number(profile.extra_cash_pool ?? 0),
             rolloverPool:          Number(profile.rollover_pool ?? 0),
@@ -739,6 +744,27 @@ export const useStore = create<StoreState>()(
         if (error) console.error('[setCurrency] update failed:', error);
       } catch (err) {
         console.error('[setCurrency] threw:', err);
+      }
+    },
+
+    setVelocityConfig: async (config) => {
+      const { userId } = get() as StoreState;
+      const clean = normalizeVelocityConfig(config);
+      // safeSpendLimit is a cached derived value, so changing the pacing without
+      // recomputing it left the dashboard showing the old number until a reload
+      // rehydrated the store. Same pattern every other mutator here uses.
+      set((state: any) => {
+        const nextState = { ...state, velocityConfig: clean };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
+      if (!userId) return;
+      try {
+        const { error } = await (supabase.from('profiles') as any)
+          .update({ velocity_config: clean })
+          .eq('id', userId);
+        if (error) console.error('[setVelocityConfig] update failed:', error);
+      } catch (err) {
+        console.error('[setVelocityConfig] threw:', err);
       }
     },
 
@@ -1954,7 +1980,7 @@ export const useStore = create<StoreState>()(
     },
 
     submitReconEntry: ({ rawSpend, action, impulseId, impulseSpend, taxAmount, surplus, catchUpCategory, tierId, tierMultiplier, tierLimit }) => {
-      const { userId, vaults, liquidAssets } = get() as StoreState;
+      const { userId, vaults, liquidAssets, velocityConfig } = get() as StoreState;
 
       const todayKey  = toLocalDateKey(new Date());
       const timestamp = new Date().toISOString();
@@ -1963,9 +1989,26 @@ export const useStore = create<StoreState>()(
         (get() as StoreState).transactions.filter(tx => toLocalDateKey(tx.date) === todayKey),
       );
       const catchUpSpend = Math.max(0, rawSpend - recordedDailyDrain);
-      const firstVault = vaults[0] ?? null;
-      const effectiveAction: 'roll' | 'stash' = action === 'stash' && !firstVault ? 'roll' : action;
-      const effectiveTaxAmount = firstVault ? taxAmount : 0;
+      // Velocity surplus routing decides where the day's leftover goes.
+      //
+      // SWEEP_VAULT sends it to the configured sinking fund and does not wait to
+      // be asked, so the review does not offer a choice the user already made.
+      // ROLL_TOMORROW and ROLL_WEEKEND both leave the cash liquid on purpose:
+      // calculateRawSafeSpend recomputes from liquidAssets and days remaining,
+      // so untouched money is already smeared across what is left. The
+      // difference between the two rolls is framing in the UI, not maths, which
+      // is what keeps a single engine in charge of the number.
+      const sweepTarget =
+        velocityConfig?.surplusRouting === 'SWEEP_VAULT' && velocityConfig.sweepTargetVaultId
+          ? vaults.find(v => v.id === velocityConfig.sweepTargetVaultId) ?? null
+          : null;
+
+      // Falls back to the first vault when nothing is configured, which is the
+      // behaviour every existing caller already relies on.
+      const targetVault = sweepTarget ?? vaults[0] ?? null;
+      const requestedAction: 'roll' | 'stash' = sweepTarget ? 'stash' : action;
+      const effectiveAction: 'roll' | 'stash' = requestedAction === 'stash' && !targetVault ? 'roll' : requestedAction;
+      const effectiveTaxAmount = targetVault ? taxAmount : 0;
 
       const stashAmount     = effectiveAction === 'stash' && surplus > 0 ? surplus : 0;
       const creditedToVault = stashAmount + effectiveTaxAmount;
@@ -2021,8 +2064,8 @@ export const useStore = create<StoreState>()(
 
       // Optimistic local update
       set((state: any) => {
-        const nextVaults = state.vaults.map((v: Vault, i: number) => {
-          if (i !== 0) return v;
+        const nextVaults = state.vaults.map((v: Vault) => {
+          if (!targetVault || v.id !== targetVault.id) return v;
           if (effectiveAction === 'roll' && effectiveTaxAmount > 0) return { ...v, current: v.current + effectiveTaxAmount };
           if (effectiveAction === 'stash' && creditedToVault > 0) return { ...v, current: v.current + creditedToVault };
           return v;
@@ -2046,11 +2089,11 @@ export const useStore = create<StoreState>()(
         if (txInserts.length > 0) {
           pushTransactions(txInserts.map(t => ({ ...t, user_id: userId }))).catch(() => {});
         }
-        if (creditedToVault > 0 && firstVault) {
+        if (creditedToVault > 0 && targetVault) {
           const newBalance = effectiveAction === 'roll'
-            ? firstVault.current + effectiveTaxAmount
-            : firstVault.current + creditedToVault;
-          pushVaultUpdate(firstVault.id, { current: newBalance }).catch(() => {});
+            ? targetVault.current + effectiveTaxAmount
+            : targetVault.current + creditedToVault;
+          pushVaultUpdate(targetVault.id, { current: newBalance }).catch(() => {});
         }
         pushProfileUpdate(userId, { liquid_assets: liquidAssets - catchUpSpend - creditedToVault }).catch(() => {});
         pushReconEntry(userId, {

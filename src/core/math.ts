@@ -1,4 +1,5 @@
 import type { AppState, Transaction } from '../store/useStore';
+import { calculatePacedAllowance, DEFAULT_VELOCITY_CONFIG } from './velocity';
 import { SplitBreakdown } from '../types/split';
 
 const formatLocalDateKey = (date: Date): string => {
@@ -129,10 +130,36 @@ export const calculateRawSafeSpend = (state: AppState): number => {
   return Math.max(0, dailyFromCash);
 };
 
-export const calculateTrueSafeSpend = (state: AppState): number => {
+/**
+ * The unshaped daily figure: the cash/budget horizon, then the hard cap.
+ *
+ * Anything that needs the BASELINE rather than today's shaped number must read
+ * this. The Velocity screen in particular: feeding it the paced result would
+ * apply the trim to an already-trimmed figure.
+ */
+export const calculateFlatSafeSpend = (state: AppState): number => {
   const raw = calculateRawSafeSpend(state);
   const cap = state.hardDailyCap ?? 0;
   return cap > 0 ? Math.min(raw, cap) : raw;
+};
+
+/**
+ * Today's allowance, after Velocity reshapes the flat figure across the days
+ * left in the cycle.
+ *
+ * The pacing is applied here rather than at each display site so that the
+ * dashboard hero, the daily review, the notification thresholds and the exports
+ * all read one number. Wiring it per-screen was the original mistake: the
+ * Velocity page previewed a weekday rate the rest of the app never used.
+ */
+export const calculateTrueSafeSpend = (state: AppState): number => {
+  const flat = calculateFlatSafeSpend(state);
+  if (!state.nextPayday) return flat;
+  return calculatePacedAllowance(
+    flat,
+    calculateDaysUntilPayday(state.nextPayday),
+    state.velocityConfig ?? DEFAULT_VELOCITY_CONFIG,
+  ).todayRate;
 };
 
 /**

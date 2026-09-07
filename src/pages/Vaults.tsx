@@ -10,6 +10,7 @@ import { useStore } from '../store/useStore';
 import type { VaultAssetClass } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
+import { isSinkingFund } from '../core/vaults';
 import { useProLocked } from '../lib/pro';
 import { FREE_VAULT_CAP, lockedVaultIds } from '../core/vaults';
 import { userKey } from '../lib/userScopedStorage';
@@ -240,7 +241,7 @@ export default function Vaults() {
 
   const safeDeleted           = deletedVaults || [];
   const investmentTotal       = vaults.filter(v => v.asset_class === 'INVESTMENT').reduce((s, v) => s + v.current, 0);
-  const sinkingTotal          = vaults.filter(v => v.asset_class === 'SINKING_FUND').reduce((s, v) => s + v.current, 0);
+  const sinkingTotal          = vaults.filter(isSinkingFund).reduce((s, v) => s + v.current, 0);
   const cashTotal             = vaults.filter(v => v.asset_class === 'CASH_RESERVE').reduce((s, v) => s + v.current, 0);
   const totalVaulted          = investmentTotal + sinkingTotal + cashTotal;
   const availableToVault      = calculateAvailableToVault(liquidAssets, upcomingBills);

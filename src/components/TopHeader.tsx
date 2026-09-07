@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Settings, ClipboardCheck, Split, Hourglass, Sun, Moon, Repeat, Menu, X, Eye, EyeOff, TrendingUp, TrendingDown, LogOut, Flame, Banknote, Lock, LifeBuoy } from 'lucide-react';
+import { Settings, ClipboardCheck, Split, Hourglass, Sun, Moon, Repeat, Menu, X, Eye, EyeOff, TrendingUp, TrendingDown, LogOut, Flame, Banknote, Lock, LifeBuoy, SlidersHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -13,9 +13,10 @@ import { BrandLogo } from './BrandLogo';
 // action, never an abstract concept. Search promised a search box that isn't
 // there; Scissors named the action you might take rather than the thing itself.
 const manageLinks = [
-  { path: '/recon',         icon: ClipboardCheck, label: 'Daily Review' },
-  { path: '/subscriptions', icon: Repeat,         label: 'Subscriptions' },
-  { path: '/settings',      icon: Settings,       label: 'Settings' },
+  { path: '/recon',         icon: ClipboardCheck,    label: 'Daily Review' },
+  { path: '/velocity',      icon: SlidersHorizontal, label: 'Velocity Controls' },
+  { path: '/subscriptions', icon: Repeat,            label: 'Subscriptions' },
+  { path: '/settings',      icon: Settings,          label: 'Settings' },
 ];
 
 // `pro: true` marks a Tool that requires Pro. Bill Splitter (viral acquisition)
@@ -105,8 +106,22 @@ export default function TopHeader() {
   );
   const proLocked = useProLocked();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
   const close = () => setMoreOpen(false);
   const signOut = () => supabase.auth.signOut();
+
+  // Read once on mount and keep it current, so signing into a different account
+  // without a reload does not leave a stale address above the Sign Out button.
+  useEffect(() => {
+    let live = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (live) setEmail(data.session?.user?.email ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user?.email ?? null);
+    });
+    return () => { live = false; sub.subscription.unsubscribe(); };
+  }, []);
 
   return (
     <>
@@ -197,10 +212,17 @@ export default function TopHeader() {
                 </div>
               </div>
 
+              {email && (
+                <div className="mt-4 px-1 min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Signed in as</p>
+                  <p className="text-[11px] font-bold text-text-main truncate mt-0.5" title={email}>{email}</p>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={signOut}
-                className="w-full flex items-center justify-center gap-2 h-12 border-2 border-action-bleed/30 rounded-2xl text-action-bleed bg-action-bleed/10 font-black uppercase text-[11px] tracking-widest mt-4 hover:bg-action-bleed/20 transition-colors"
+                className="w-full flex items-center justify-center gap-2 h-12 border-2 border-action-bleed/30 rounded-2xl text-action-bleed bg-action-bleed/10 font-black uppercase text-[11px] tracking-widest mt-3 hover:bg-action-bleed/20 transition-colors"
               >
                 <LogOut size={14} strokeWidth={2.5} />
                 Sign Out

@@ -52,6 +52,7 @@ const AuditLog = lazy(() =>
 // Components
 const Navigation = lazy(() => import('./components/Navigation'));
 const TopHeader = lazy(() => import('./components/TopHeader'));
+const VelocityConfigPage = lazy(() => import('./pages/Velocity'));
 import { PageWrapper } from './components/PageWrapper';
 
 // Resets the main scroll container to the top on every route change. Without this,
@@ -469,6 +470,7 @@ function App() {
                 <Route path="/transactions"    element={withPageWrapper(<Ledger />)} />
                 <Route path="/breakdown"      element={withPageWrapper(<AuditLog />)} />
                 <Route path="/config"          element={withPageWrapper(<Config />)} />
+                <Route path="/velocity"        element={withPageWrapper(<VelocityConfigPage />)} />
                 <Route path="/settings"        element={withPageWrapper(<Settings />)} />
                 <Route path="*"                element={<Navigate to="/" replace />} />
               </Routes>
