@@ -39,7 +39,14 @@ function fmt(n: number): string {
 }
 
 function fmtFull(n: number): string {
-  return '$' + Math.round(n).toLocaleString();
+  return currencySymbol() + Math.round(n).toLocaleString();
+}
+
+// These stat cards are a third of the row, so a six-figure income overruns the
+// card at a fixed text-2xl. Same length-based sizing the dashboard pillars use,
+// with tighter thresholds because these cards are narrower.
+function statSize(text: string): string {
+  return text.length <= 6 ? 'text-2xl' : text.length <= 9 ? 'text-xl' : 'text-base';
 }
 
 // ── Income Step Chart ─────────────────────────────────────────────────────────
@@ -206,19 +213,19 @@ export default function IncomeTracker() {
 
       {/* Snapshot */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-black border-4 border-black rounded-3xl p-4 col-span-1 shadow-[4px_4px_0px_0px_var(--color-action-capture)]">
+        <div className="bg-black border-4 border-black rounded-3xl p-4 col-span-1 min-w-0 shadow-[4px_4px_0px_0px_var(--color-action-capture)]">
           <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-2">Monthly Income</p>
-          <p className="text-2xl font-black italic tracking-tighter text-action-primary tabular-nums leading-none">{mask(monthlyTakeHome)}</p>
+          <p className={`${statSize(mask(monthlyTakeHome))} font-black italic tracking-tighter text-action-primary tabular-nums leading-none`}>{mask(monthlyTakeHome)}</p>
           {chartPoints.length >= 2 && totalGrowthPct > 0 && (
             <p className="text-[9px] font-black uppercase tracking-wide text-capture-readable mt-1.5">+{totalGrowthPct.toFixed(0)}% since start</p>
           )}
         </div>
-        <div className={`border-4 rounded-3xl p-4 ${currentRate >= neededRate && neededRate > 0 ? 'border-action-capture bg-action-capture/5' : 'border-border bg-surface'} shadow-[4px_4px_0px_0px_var(--shadow-color)]`}>
+        <div className={`border-4 rounded-3xl p-4 min-w-0 ${currentRate >= neededRate && neededRate > 0 ? 'border-action-capture bg-action-capture/5' : 'border-border bg-surface'} shadow-[4px_4px_0px_0px_var(--shadow-color)]`}>
           <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-2">Saving Now</p>
           <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums leading-none">{currentRate.toFixed(0)}%</p>
           <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted mt-1.5">{mask(monthlySavingsGoal)}/mo</p>
         </div>
-        <div className={`border-4 rounded-3xl p-4 ${neededRate > 0 ? 'border-border bg-surface' : 'border-border bg-surface'} shadow-[4px_4px_0px_0px_var(--shadow-color)]`}>
+        <div className={`border-4 rounded-3xl p-4 min-w-0 ${neededRate > 0 ? 'border-border bg-surface' : 'border-border bg-surface'} shadow-[4px_4px_0px_0px_var(--shadow-color)]`}>
           <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-2">FIRE Rate</p>
           <p className={`text-2xl font-black italic tracking-tighter tabular-nums leading-none ${neededRate > 0 ? 'text-action-primary' : 'text-text-muted'}`}>
             {neededRate > 0 ? `${neededRate.toFixed(0)}%` : '—'}
