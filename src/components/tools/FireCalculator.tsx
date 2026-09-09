@@ -631,7 +631,7 @@ export function FireCalculator() {
         {/* Strategy Selector */}
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Strategy</p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
             {STRATEGIES.map(s => (
               <button
                 key={s.id}

@@ -1,4 +1,5 @@
 import { VelocityConfig } from '../components/VelocityConfig';
+import { TierLockCard } from '../components/TierLockCard';
 
 export default function Velocity() {
   return (
@@ -11,6 +12,10 @@ export default function Velocity() {
           Controls when the allowance burns, not how much
         </p>
       </div>
+
+      {/* Tier first: it scales the number, pacing then reshapes what is left
+          across the days. Reading them in that order matches the maths. */}
+      <TierLockCard />
 
       <VelocityConfig />
     </div>

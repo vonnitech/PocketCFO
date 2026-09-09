@@ -71,6 +71,7 @@ const PERSISTED_KEYS = [
   'upcomingBills',
   'hardDailyCap',
   'velocityConfig',
+  'tierLock',
   'lastSweepDate',
   'billQueue',
   'recurringBills',

@@ -54,10 +54,10 @@ export function WealthVsLifestyleChart() {
       {hasAny ? (
         <div className="flex flex-col gap-6 mt-6">
 
-          {/* Track 1: Lifestyle Burn (present spend) */}
+          {/* Track 1: Living (present spend) */}
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-end">
-              <span className="text-sm font-black uppercase text-text-main">Lifestyle Burn</span>
+              <span className="text-sm font-black uppercase text-text-main">Living</span>
               <span className="text-lg font-black tabular-nums text-text-main">{fmtMoney(lifestyleTotal)}</span>
             </div>
             <div className="w-full h-8 bg-gray-200 dark:bg-gray-800 border-2 border-black dark:border-white rounded-lg overflow-hidden">

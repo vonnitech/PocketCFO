@@ -61,12 +61,12 @@ export const SafetyNet: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wide text-text-muted block mb-1.5">Monthly Burn</label>
+            <label className="text-[11px] font-bold uppercase tracking-wide text-text-muted block mb-1.5">Monthly Spending</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-text-muted text-sm">{currencySymbol()}</span>
               <input
                 type="number"
-                title="Monthly Burn"
+                title="Monthly Spending"
                 value={baselineBurn}
                 onFocus={e => e.target.select()}
                 onChange={e => setBaselineBurn(Number(e.target.value))}

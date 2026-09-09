@@ -152,6 +152,79 @@ export const calculateFlatSafeSpend = (state: AppState): number => {
  * all read one number. Wiring it per-screen was the original mistake: the
  * Velocity page previewed a weekday rate the rest of the app never used.
  */
+/**
+ * PARKED. Nothing calls this. Do not wire it up without reading the flaw below.
+ *
+ * It was written for the dashboard, shipped, and pulled the same day because
+ * the number it produces is not the number its name promises.
+ *
+ * THE FLAW: this assumes the cycle STARTED at dailyFromBudget, which is only
+ * true if cash was non-binding on day one. It often is not. Start a cycle with
+ * a low balance, right after rent, and dailyFromCash is already the lower of
+ * the two before a penny is overspent. The function then reports a large
+ * slip that never happened. On a real account it read ,870 below start
+ * against a daily number of ,150.
+ *
+ * What it actually measures: how far cash sits below the income plan. That is a
+ * real quantity, just not erosion, and the name and any UI copy would have to
+ * say so.
+ *
+ * TO DO IT PROPERLY you need the daily number as it stood on day one of the
+ * cycle. It is not recorded anywhere: ReconEntry keeps rawSpend, surplus and
+ * the tier fields but never the allowance, and the resultingRunway field in
+ * db/index.ts is written only by the Bill Splitter and never read back. So it
+ * needs a stored baseline, one number per pay cycle, plus a column and a
+ * migration.
+ *
+ * WHY IT WAS PARKED RATHER THAN DELETED: the gap is real. Spreading an overage
+ * across the remaining days makes each day's hit invisible, so someone going
+ * over daily watches the number erode with nothing naming the pattern. The
+ * per-day alert only ever judges today. Worth building when the storage is
+ * worth adding.
+ *
+ * Original description follows.
+ *
+ * How far today's allowance has slipped below where the cycle started.
+ *
+ * Needs no stored history. calculateRawSafeSpend takes the lower of two figures:
+ *
+ *   dailyFromBudget  income minus bills and savings, over the cycle. Fixed for
+ *                    the whole cycle, so it is the number you started with.
+ *   dailyFromCash    what the balance can actually sustain. Falls every time you
+ *                    spend more than a day's worth.
+ *
+ * On day one cash is ample, so the budget figure wins and IS the starting
+ * number. Spend ahead of it and cash becomes the binding constraint. The gap
+ * between them is therefore exactly the erosion, no snapshots required.
+ *
+ * This exists because spreading an overage across the remaining days makes each
+ * day's hit tiny and invisible: go over daily and the number quietly shrinks
+ * with nothing ever naming the pattern. The per-day alert only ever judges
+ * today.
+ *
+ * Returns 0 when there is no take-home configured, because without it there is
+ * no plan to have drifted from.
+ */
+export const calculateAllowanceDrift = (state: AppState): number => {
+  if (!state.nextPayday) return 0;
+  const takeHome = state.monthlyTakeHome || 0;
+  if (takeHome <= 0) return 0;
+
+  const days = calculateDaysUntilPayday(state.nextPayday);
+  if (days <= 0) return 0;
+
+  const upcoming = state.upcomingBills || 0;
+  const dailyFromCash = Math.max(0, state.liquidAssets - upcoming) / days;
+
+  const cycleDays = calculatePayCycleLength(state.nextPayday);
+  const monthlyDiscretionary = Math.max(0, takeHome - (state.fixedBills || 0) - (state.monthlySavingsGoal || 0));
+  const dailyFromBudget = monthlyDiscretionary / cycleDays;
+
+  // Deliberately ignores hardDailyCap and the tier multiplier: a number lowered
+  // on purpose is not drift.
+  return Math.max(0, dailyFromBudget - dailyFromCash);
+};
+
 export const calculateTrueSafeSpend = (state: AppState): number => {
   const flat = calculateFlatSafeSpend(state);
   if (!state.nextPayday) return flat;
@@ -194,6 +267,62 @@ export const SPEND_TIERS = [
 ] as const;
 
 export type SpendTierId = typeof SPEND_TIERS[number]['id'];
+
+const TIER_IDS = new Set<string>(SPEND_TIERS.map(t => t.id));
+
+/**
+ * The tier commitment. Previously localStorage only, which meant clearing
+ * browser data voided the lock and it never reached a second device.
+ */
+export interface TierLockState {
+  tierId: SpendTierId;
+  /** ISO timestamp, or null when no lock is running. */
+  lockedUntil: string | null;
+  breakCount: number;
+}
+
+export const DEFAULT_TIER_LOCK: TierLockState = {
+  tierId: 'TIGHT',
+  lockedUntil: null,
+  breakCount: 0,
+};
+
+/**
+ * Coerces the jsonb column into a usable shape. Rows written before the
+ * migration come back null, and an older or hand-edited row can carry anything,
+ * so every field is validated rather than trusted. An expired lock reads as no
+ * lock, which is what makes the expiry self-healing without a scheduled job.
+ */
+export const normalizeTierLock = (raw: unknown, now: Date = new Date()): TierLockState => {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_TIER_LOCK };
+  const r = raw as Record<string, unknown>;
+
+  const tierId = typeof r.tierId === 'string' && TIER_IDS.has(r.tierId)
+    ? (r.tierId as SpendTierId)
+    : DEFAULT_TIER_LOCK.tierId;
+
+  let lockedUntil: string | null = null;
+  if (typeof r.lockedUntil === 'string' && r.lockedUntil) {
+    const when = new Date(r.lockedUntil);
+    if (!Number.isNaN(when.getTime()) && when.getTime() > now.getTime()) {
+      lockedUntil = r.lockedUntil;
+    }
+  }
+
+  const countRaw = Number(r.breakCount);
+  const breakCount = Number.isFinite(countRaw) && countRaw > 0 ? Math.floor(countRaw) : 0;
+
+  return { tierId, lockedUntil, breakCount };
+};
+
+export const isTierLocked = (lock: TierLockState, now: Date = new Date()): boolean =>
+  !!lock.lockedUntil && new Date(lock.lockedUntil).getTime() > now.getTime();
+
+export const tierLockDaysLeft = (lock: TierLockState, now: Date = new Date()): number => {
+  if (!lock.lockedUntil) return 0;
+  const ms = new Date(lock.lockedUntil).getTime() - now.getTime();
+  return Math.max(0, Math.ceil(ms / 86400000));
+};
 
 export const calculateTierLimit = (safeSpendLimit: number, multiplier: number): number =>
   safeSpendLimit * multiplier;

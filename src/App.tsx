@@ -91,12 +91,9 @@ function RouteFallback() {
 
 function TopHeaderFallback() {
   return (
-    <div className="shrink-0 z-50 w-full flex justify-between items-center gap-3 px-4 pb-4 header-pt-safe bg-base border-b-[3px] border-border">
-      <div className="flex items-center gap-2.5">
-        <div className="w-10 h-10 rounded-xl bg-input/60" />
-        <div className="h-4 w-24 rounded bg-input/60" />
-      </div>
-      <div className="w-11 h-11 rounded-xl bg-input/60 border-[3px] border-border" />
+    <div className="shrink-0 z-50 w-full flex items-center gap-2.5 px-4 pb-3 header-pt-safe bg-base border-b-[3px] border-border">
+      <div className="w-10 h-10 rounded-xl bg-input/60" />
+      <div className="h-4 w-24 rounded bg-input/60" />
     </div>
   );
 }
@@ -104,9 +101,9 @@ function TopHeaderFallback() {
 function NavigationFallback() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 nav-pb-safe pointer-events-none">
-      <div className="w-full max-w-md flex items-stretch gap-1 bg-surface border-[3px] border-border rounded-full shadow-[4px_4px_0px_0px_var(--shadow-color)] px-1.5 py-1.5">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex-1 h-14 rounded-full bg-input/60" />
+      <div className="w-full max-w-md flex items-stretch gap-0.5 bg-surface border-[3px] border-border rounded-3xl shadow-[4px_4px_0px_0px_var(--shadow-color)] px-1.5 py-1.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex-1 h-14 rounded-2xl bg-input/60" />
         ))}
       </div>
     </div>

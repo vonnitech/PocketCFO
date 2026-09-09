@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
-import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey, billKey } from '../core/math';
+import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey, billKey, DEFAULT_TIER_LOCK, normalizeTierLock, type TierLockState } from '../core/math';
 import { supabase } from '../core/supabase';
 import { DEFAULT_VELOCITY_CONFIG, normalizeVelocityConfig, type VelocityConfig } from '../core/velocity';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
@@ -35,9 +35,15 @@ export interface Subscription {
   id: string;
   name: string;
   amount: number;
+  // Doubles as the ROI status. Active/Low Use/Idle already map to the
+  // green/amber/red treatment on the card, so there is no separate roiStatus.
   usage: 'Active' | 'Low Use' | 'Idle';
   billingCycle: 'Monthly' | 'Yearly';
   nextBillingDate?: string;
+  // Value-audit context, both user-entered (migration 020). The app tracks no
+  // usage telemetry, so it cannot derive "2.4 hrs/day" or "$17.70 / visit".
+  contextMetric?: string;
+  suggestedAction?: string;
 }
 
 export type VaultAssetClass = 'INVESTMENT' | 'SINKING_FUND' | 'CASH_RESERVE';
@@ -107,6 +113,20 @@ export interface IncomeEntry {
   label: string;  // "New job", "Promotion", etc.
 }
 
+// Shared persistence for the tier commitment. Kept out of the actions so all
+// three write the same shape through the same error handling.
+async function pushTierLock(userId: string | null, next: { tierId: string; lockedUntil: string | null; breakCount: number }): Promise<void> {
+  if (!userId) return;
+  try {
+    const { error } = await (supabase.from('profiles') as any)
+      .update({ tier_lock: next })
+      .eq('id', userId);
+    if (error) console.error('[tierLock] update failed:', error);
+  } catch (err) {
+    console.error('[tierLock] threw:', err);
+  }
+}
+
 export interface AppState {
   // Auth
   userId: string | null;
@@ -169,6 +189,7 @@ export interface AppState {
   upcomingBills: number;
   hardDailyCap: number;
   velocityConfig: VelocityConfig;
+  tierLock: TierLockState;
   lastSweepDate: string;
   billQueue: BillQueueItem[];          // derived: recurringBills − paidBillKeys (cached in state for consumers)
   recurringBills: BillQueueItem[];     // the bill template (what bills exist)
@@ -347,6 +368,7 @@ export const INITIAL_STATE: AppState = {
   upcomingBills: 0,
   hardDailyCap: 0,
   velocityConfig: DEFAULT_VELOCITY_CONFIG,
+  tierLock: DEFAULT_TIER_LOCK,
   lastSweepDate: '',
   billQueue: [],
   recurringBills: [],
@@ -371,6 +393,9 @@ interface StoreActions {
   setThemeColors: (primary: string, capture: string) => Promise<void>;
   setCurrency: (code: string) => Promise<void>;
   setVelocityConfig: (config: VelocityConfig) => Promise<void>;
+  setSpendTier: (tierId: SpendTierId) => Promise<void>;
+  lockSpendTier: (days: number) => Promise<void>;
+  breakSpendTier: () => Promise<void>;
   updateDashboardWidgets: (widgets: { id: string; visible: boolean }[]) => void;
   setState: (state: Partial<AppState>) => void;
   updateState: (fn: (prev: AppState) => AppState) => void;
@@ -404,6 +429,7 @@ interface StoreActions {
   makeDebtPayment: (debtId: string, extraAmount: number) => void;
   addSubscription: (name: string, amount: number, nextBillingDate: string) => Promise<void>;
   setSubscriptionUsage: (id: string, usage: Subscription['usage']) => Promise<void>;
+  setSubscriptionContext: (id: string, patch: { contextMetric?: string; suggestedAction?: string }) => Promise<void>;
   cancelSubscription: (id: string) => Promise<void>;
   paySubscription: (id: string) => Promise<void>;
   updateBaseline: (income: number, savingsGoal: number) => void;
@@ -547,6 +573,8 @@ export const useStore = create<StoreState>()(
         amount:       Number(s.amount ?? 0),
         usage:        (s.usage as 'Active' | 'Low Use' | 'Idle') ?? 'Active',
         billingCycle: (s.billing_cycle as 'Monthly' | 'Yearly') ?? 'Monthly',
+        contextMetric: s.context_metric ? String(s.context_metric) : undefined,
+        suggestedAction: s.suggested_action ? String(s.suggested_action) : undefined,
         nextBillingDate: s.next_billing_date ? String(s.next_billing_date).slice(0, 10) : undefined,
       }));
 
@@ -599,6 +627,7 @@ export const useStore = create<StoreState>()(
             upcomingBills:         Number(profile.upcoming_bills ?? 0),
             hardDailyCap:          Number(profile.hard_daily_cap ?? 0),
             velocityConfig:        normalizeVelocityConfig(profile.velocity_config),
+            tierLock:              normalizeTierLock(profile.tier_lock),
             lastSweepDate:         String(profile.last_sweep_date ?? ''),
             extraCashPool:         Number(profile.extra_cash_pool ?? 0),
             rolloverPool:          Number(profile.rollover_pool ?? 0),
@@ -766,6 +795,32 @@ export const useStore = create<StoreState>()(
       } catch (err) {
         console.error('[setVelocityConfig] threw:', err);
       }
+    },
+
+    // Three narrow actions rather than one generic setter: the break counter
+    // must only ever be incremented by breakSpendTier, never set by a caller.
+    setSpendTier: async (tierId) => {
+      const { userId, tierLock } = get() as StoreState;
+      // Changing tier mid-lock would defeat the lock.
+      if (tierLock.lockedUntil) return;
+      const next = { ...tierLock, tierId };
+      set((state: any) => ({ ...state, tierLock: next }));
+      await pushTierLock(userId, next);
+    },
+
+    lockSpendTier: async (days) => {
+      const { userId, tierLock } = get() as StoreState;
+      if (tierLock.lockedUntil || !Number.isFinite(days) || days <= 0) return;
+      const next = { ...tierLock, lockedUntil: new Date(Date.now() + days * 86400000).toISOString() };
+      set((state: any) => ({ ...state, tierLock: next }));
+      await pushTierLock(userId, next);
+    },
+
+    breakSpendTier: async () => {
+      const { userId, tierLock } = get() as StoreState;
+      const next = { ...tierLock, lockedUntil: null, breakCount: tierLock.breakCount + 1 };
+      set((state: any) => ({ ...state, tierLock: next }));
+      await pushTierLock(userId, next);
     },
 
     updateDashboardWidgets: async (widgets) => {
@@ -1587,6 +1642,32 @@ export const useStore = create<StoreState>()(
       }
     },
 
+    setSubscriptionContext: async (id, patch) => {
+      const { userId } = get() as StoreState;
+      // Empty string clears the field rather than storing a blank.
+      const clean = {
+        contextMetric: patch.contextMetric?.trim() || undefined,
+        suggestedAction: patch.suggestedAction?.trim() || undefined,
+      };
+      set((state: any) => ({
+        ...state,
+        subscriptions: state.subscriptions.map((s: Subscription) =>
+          s.id === id ? { ...s, ...clean } : s),
+      }));
+      if (!userId) return;
+      try {
+        const { error } = await (supabase.from('subscriptions') as any)
+          .update({
+            context_metric: clean.contextMetric ?? null,
+            suggested_action: clean.suggestedAction ?? null,
+          })
+          .eq('id', id);
+        if (error) console.error('[setSubscriptionContext] update failed:', error);
+      } catch (err) {
+        console.error('[setSubscriptionContext] threw:', err);
+      }
+    },
+
     cancelSubscription: async (id) => {
       const { userId, subscriptions } = get() as StoreState;
       const sub = subscriptions.find(s => s.id === id);
@@ -2047,19 +2128,19 @@ export const useStore = create<StoreState>()(
         const taxId = crypto.randomUUID();
         const capId = crypto.randomUUID();
         txInserts.push(
-          { id: taxId, merchant: 'RECON OFFSET', amount: 0, category: 'PENALTY', is_flip: true, flip_amount: effectiveTaxAmount, date: timestamp },
-          { id: capId, merchant: 'RECON CAPTURE', amount: effectiveTaxAmount, category: 'SAVINGS', is_flip: true, flip_amount: 0, date: timestamp },
+          { id: taxId, merchant: 'OFFSET', amount: 0, category: 'PENALTY', is_flip: true, flip_amount: effectiveTaxAmount, date: timestamp },
+          { id: capId, merchant: 'MOVED TO VAULT', amount: effectiveTaxAmount, category: 'SAVINGS', is_flip: true, flip_amount: 0, date: timestamp },
         );
         newTxs.push(
-          { id: taxId, merchant: 'RECON OFFSET', amount: 0, category: 'PENALTY', date: timestamp, isFlip: true, flipAmount: effectiveTaxAmount },
-          { id: capId, merchant: 'RECON CAPTURE', amount: effectiveTaxAmount, category: 'SAVINGS', date: timestamp, isFlip: true, flipAmount: 0 },
+          { id: taxId, merchant: 'OFFSET', amount: 0, category: 'PENALTY', date: timestamp, isFlip: true, flipAmount: effectiveTaxAmount },
+          { id: capId, merchant: 'MOVED TO VAULT', amount: effectiveTaxAmount, category: 'SAVINGS', date: timestamp, isFlip: true, flipAmount: 0 },
         );
       }
 
       if (stashAmount > 0) {
         const stashId = crypto.randomUUID();
-        txInserts.push({ id: stashId, merchant: 'RECON STASH', amount: stashAmount, category: 'VAULT_DEPOSIT', is_flip: false, flip_amount: 0, date: timestamp });
-        newTxs.push({ id: stashId, merchant: 'RECON STASH', amount: stashAmount, category: 'VAULT_DEPOSIT', date: timestamp, isFlip: false, flipAmount: 0 });
+        txInserts.push({ id: stashId, merchant: 'SURPLUS TO VAULT', amount: stashAmount, category: 'VAULT_DEPOSIT', is_flip: false, flip_amount: 0, date: timestamp });
+        newTxs.push({ id: stashId, merchant: 'SURPLUS TO VAULT', amount: stashAmount, category: 'VAULT_DEPOSIT', date: timestamp, isFlip: false, flipAmount: 0 });
       }
 
       // Optimistic local update

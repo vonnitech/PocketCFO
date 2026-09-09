@@ -31,6 +31,10 @@ const CATEGORY_META: Record<string, { label: string; bg: string; text: string }>
 };
 
 const INCOME_CATEGORIES = new Set(['INCOME', 'VAULT_WITHDRAWAL']);
+
+// Money that left the spending balance but was not spent. Shown with an arrow
+// instead of a minus so putting cash aside does not read as losing it.
+const TRANSFER_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'VAULT_TRANSFER']);
 const SPEND_FILTER_CATEGORIES = new Set(['FOOD', 'TRANSPORT', 'FUN', 'SHOPPING', 'HEALTH', 'HOME', 'WORK', 'OTHER', 'SOCIAL']);
 
 const EDITABLE_CATEGORIES = [
@@ -125,6 +129,7 @@ export default function Ledger() {
 
   const meta = (cat: string) => CATEGORY_META[cat] ?? CATEGORY_META.OTHER;
   const isCredit = (cat: string) => INCOME_CATEGORIES.has(cat);
+  const isTransfer = (cat: string) => TRANSFER_CATEGORIES.has(cat);
 
   return (
     <div className="space-y-5 pb-32 md:pb-6">
@@ -190,6 +195,20 @@ export default function Ledger() {
       </div>
 
       {/* Category filter chips */}
+      {/* Fourth and final shape for this row. The three rejected options and
+          why, so nobody cycles through them again:
+
+            scroll + hidden scrollbar  four of nine filters invisible, and on a
+                                       mouse they are unreachable: the wheel
+                                       scrolls vertically, so only touch works.
+            scroll + edge fade         same mouse problem. The fade advertises
+                                       content the user still cannot reach.
+            grid-cols-3                even rows, but pills stretch to fill a
+                                       cell and stop reading as pills.
+
+          Wrapping is the only option where nothing is hidden and nothing is
+          stretched. The last row is ragged. That is cosmetic, and it is the
+          cheapest of the four costs. */}
       <div className="flex flex-wrap gap-2">
         {FILTER_TABS.map(tab => (
           <button
@@ -237,6 +256,7 @@ export default function Ledger() {
             {txs.map((tx, i) => {
               const m = meta(tx.category);
               const credit = isCredit(tx.category);
+              const transfer = isTransfer(tx.category);
               return (
                 <div
                   key={tx.id}
@@ -266,8 +286,8 @@ export default function Ledger() {
                   </p>
 
                   {/* Amount */}
-                  <p className={`shrink-0 text-sm font-black tabular-nums ${credit ? 'text-capture-readable' : 'text-text-main'}`}>
-                    {credit ? '+' : '-'}{formatCurrency(tx.amount, privacyMode)}
+                  <p className={`shrink-0 text-sm font-black tabular-nums ${credit || transfer ? 'text-capture-readable' : 'text-text-main'}`}>
+                    {credit ? '+' : transfer ? '→ ' : '-'}{formatCurrency(tx.amount, privacyMode)}
                   </p>
 
                   {/* Delete — only in edit mode */}

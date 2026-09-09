@@ -15,8 +15,12 @@ export function userKey(base: string): string {
 // wipe iterates this list so a reset clears local data too — not just cloud rows.
 export const USER_LOCAL_BASES = [
   'pocket-cfo-fire-inputs-v1',   // FIRE calculator inputs (sessionStorage)
-  'pocket-cfo-tier-lock-v1',     // Recon tier lock
-  'pocket-cfo-tier-breaks-v1',   // Recon break count
+  // Legacy. The tier commitment moved to profiles.tier_lock (migration 021)
+  // and nothing writes these any more, but existing devices still hold rows
+  // under them. Kept so a wipe still clears them; drop once that no longer
+  // matters.
+  'pocket-cfo-tier-lock-v1',
+  'pocket-cfo-tier-breaks-v1',
   'pocket-cfo-tour-v1',          // Feature tour seen flag
   'pocket-cfo-notif-prefs-v1',   // Notification preferences + permission primer state
   'pocket-cfo-notif-log-v1',     // Notification inbox, cooldowns, rule memory

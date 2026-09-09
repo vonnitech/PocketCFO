@@ -111,13 +111,13 @@ export const TrueCost: React.FC = () => {
       )}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <p className="label-xs mb-2">Monthly Hit</p>
+          <p className="label-xs mb-2">Monthly Payment</p>
           <p className="text-2xl font-black italic text-text-main tabular-nums">
             {currencySymbol()}{m.monthlyPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
         <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-          <p className="label-xs mb-2">Total Drain</p>
+          <p className="label-xs mb-2">Total Cost</p>
           <p className="text-2xl font-black italic text-text-main tabular-nums">
             {currencySymbol()}{m.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>

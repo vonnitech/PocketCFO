@@ -345,6 +345,7 @@ export default function Dashboard() {
     ? Math.min(100, (todaySpend / safeSpendLimit) * 100)
     : 0;
   const isOverToday    = !isFirstTime && spendRemaining < 0;
+  const daysToPayday   = nextPayday ? calculateDaysUntilPayday(nextPayday) : 0;
   const hasSpentToday  = todaySpend > 0.005;
 
   // The half-width pillars carry six-figure balances. `break-all` "handled"
@@ -368,7 +369,16 @@ export default function Dashboard() {
 
   // Sized off the rendered string, so a four-figure amount steps down instead
   // of running into the edge of the card.
-  const heroAmount = maskBal(safeSpendLimit);
+  // What is LEFT, not the day's starting allowance. This read safeSpendLimit,
+  // so the number never moved: "Cleared to spend today" sat at the full figure
+  // with most of the day already spent, which is not what the label says.
+  //
+  // Clamped at zero when over, and not for aesthetics: "cleared to spend" has a
+  // floor of zero as a quantity. You have 0 cleared PLUS a separate overage, so
+  // a negative here would be a category error, the same fault at the other end
+  // of the range. No information is lost: the chip beside it reads the overage
+  // in red and the card border turns red with it.
+  const heroAmount = maskBal(Math.max(0, spendRemaining));
   const heroSize =
     heroAmount.length <= 7 ? "text-6xl md:text-7xl"
     : heroAmount.length <= 9 ? "text-5xl md:text-6xl"
@@ -420,7 +430,26 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
+          {/* Every other route's h1 names the route — "Audit Log", "Bill Splitter",
+              "Daily Review". This one used to be the greeting, which made the
+              dashboard the only screen whose top-level heading did not say where you
+              are, and the only heading on the page at all: navigating by heading
+              landed on "Good afternoon, Test" and then ran out. So the h1 names the
+              screen and stays visually hidden, because the screen has no title text
+              in the design.
+
+              The greeting is a <p> because a greeting is not a heading. That also
+              settles the italic: index.css styles the h1 *element* with
+              font-black/uppercase/italic, so this was italic automatically and no
+              className change could remove it. Demoting it stops the rule applying
+              rather than overriding it, which would have made this the sole h1 in
+              the app carrying not-italic. */}
+          <h1 className="sr-only">Dashboard</h1>
+          {/* A courtesy line, not a reading, so it sits at label size rather than in
+              the second-largest type tier on the page. At the old text-4xl it also
+              broke over three lines beside the notification bell, which takes ~56px
+              of a 393px row. */}
+          <p className="text-[13px] font-black uppercase tracking-widest text-text-main">
             {(() => {
               const h = new Date().getHours();
               const salutation =
@@ -432,7 +461,7 @@ export default function Dashboard() {
               const name = firstName.trim();
               return name ? `${salutation}, ${name}` : salutation;
             })()}
-          </h1>
+          </p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
@@ -517,11 +546,11 @@ export default function Dashboard() {
         )}
 
         {/* ── Hero Row: Safe Spend (2/3) + Payday Countdown (1/3) ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
           {/* Safe Spend Hero */}
           {widgetVisible("safe-spend") && (
             <div
-              className={`md:col-span-2 bg-surface border-4 rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden transition-colors duration-300 ${
+              className={`lg:col-span-2 bg-surface border-4 rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden transition-colors duration-300 ${
                 isOverToday ? "border-action-bleed" : "border-border"
               }`}
             >
@@ -542,9 +571,9 @@ export default function Dashboard() {
                 {heroAmount}
               </p>
 
-              {/* Before anything is spent, "left" is the same figure as the one
-                  above it and the meter is an empty grey slab. Both are noise,
-                  so the quiet state gets one line instead. */}
+              {/* Before anything is spent the headline already equals the full
+                  allowance and the meter is an empty grey slab, so the quiet
+                  state gets one line instead of a bar showing nothing. */}
               {!isFirstTime && !hasSpentToday && (
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
                   Nothing spent yet
@@ -574,14 +603,25 @@ export default function Dashboard() {
                       className={`px-2.5 py-1 border-2 border-black rounded-lg text-[11px] font-black uppercase tracking-widest shrink-0 ${
                         isOverToday
                           ? "bg-action-bleed text-white"
-                          : "bg-action-capture text-capture-contrast"
+                          : "bg-input text-text-muted"
                       }`}
                     >
                       {isOverToday
                         ? `${format(Math.abs(spendRemaining))} over`
-                        : `${format(spendRemaining)} left`}
+                        : `of ${format(safeSpendLimit)}`}
                     </span>
                   </div>
+
+                  {/* The card showed the overage and never said what happens
+                      next. The engine already absorbs it: tomorrow recomputes
+                      from what is left over the days that remain. That was only
+                      ever said in a notification, which can be blocked or off. */}
+                  {isOverToday && daysToPayday > 0 && (
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted leading-snug">
+                      Spread across the {daysToPayday} days to payday, about{' '}
+                      {format(Math.abs(spendRemaining) / daysToPayday)} off each day
+                    </p>
+                  )}
                 </div>
               )}
               {hardCapSweep > 0 && (
@@ -618,7 +658,7 @@ export default function Dashboard() {
 
               return (
                 <div
-                  className={`border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] ${days === 0 ? "bg-action-capture" : "bg-black"} ${!widgetVisible("safe-spend") ? "md:col-span-3" : ""}`}
+                  className={`border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] ${days === 0 ? "bg-action-capture" : "bg-black"} ${!widgetVisible("safe-spend") ? "lg:col-span-3" : ""}`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -634,7 +674,7 @@ export default function Dashboard() {
                           </span>
                         ) : (
                           <>
-                            <span className="text-5xl font-black italic tracking-tighter text-action-primary tabular-nums leading-none">
+                            <span className="text-3xl font-black italic tracking-tighter text-action-primary tabular-nums leading-none">
                               {days}
                             </span>
                             <span className="text-[16px] font-black uppercase text-white/60">

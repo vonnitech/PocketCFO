@@ -20,14 +20,14 @@ const STEPS = [
   {
     icon: ShieldCheck,
     color: 'bg-action-capture',
-    title: 'Impulse Tax',
-    body: 'Logging a purchase you regret? Toggle "Impulse Buy" to add a self-imposed tax. The penalty is earmarked into your first vault, a nudge to move that cash and make bad habits cost you.',
+    title: 'Offset a Spend',
+    body: 'In Daily Review you can mark unplanned spending Worth it, Neutral or Regret. Regret offers to capture a matching amount into a vault. It is optional, and the money moves to savings rather than anywhere punitive.',
   },
   {
     icon: TrendingUp,
     color: 'bg-action-primary',
     title: 'Savings Vaults',
-    body: 'Create vaults for specific goals like an emergency fund, a holiday, or a new phone. Impulse taxes and leftover surplus get earmarked into them so you can watch each goal fill up, then move the real money in your bank to match.',
+    body: 'Create vaults for specific goals like an emergency fund, a holiday, or a new phone. Captured offsets and leftover surplus get earmarked into them so you can watch each goal fill up, then move the real money in your bank to match.',
   },
   {
     icon: Scissors,

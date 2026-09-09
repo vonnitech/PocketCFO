@@ -1,11 +1,9 @@
 ﻿import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap, Lock } from 'lucide-react';
+import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { useStore } from '../store/useStore';
-import { userKey } from '../lib/userScopedStorage';
-import { BottomSheet } from '../components/BottomSheet';
 import {
   calculateTrueSafeSpend,
   calculateDailySurplus,
@@ -13,7 +11,6 @@ import {
   calculateTierLimit,
   calculateDangerProgress,
   SPEND_TIERS,
-  SpendTierId,
   toLocalDateKey,
 } from '../core/math';
 
@@ -29,9 +26,6 @@ const WORTH_IT_OPTIONS: { id: WorthIt; label: string }[] = [
   { id: 'GOOD',  label: 'Neutral' },
   { id: 'SKIP',  label: 'Regret' },
 ];
-
-const TIER_LOCK_BASE = 'pocket-cfo-tier-lock-v1';
-const BREAK_COUNT_BASE = 'pocket-cfo-tier-breaks-v1';
 
 const CATEGORIES = [
   { key: 'FOOD', label: 'Food' },
@@ -56,26 +50,6 @@ const SPEND_LOG_EXCLUDED_CATEGORIES = new Set([
   'PENALTY',
 ]);
 
-interface TierLock { tierId: SpendTierId; lockedUntil: string; }
-
-function getBreakCount(): number {
-  try { return parseInt(localStorage.getItem(userKey(BREAK_COUNT_BASE)) ?? '0', 10) || 0; }
-  catch { return 0; }
-}
-
-function getTierLock(): TierLock | null {
-  try {
-    const raw = localStorage.getItem(userKey(TIER_LOCK_BASE));
-    if (!raw) return null;
-    const lock: TierLock = JSON.parse(raw);
-    if (new Date(lock.lockedUntil) < new Date()) {
-      localStorage.removeItem(userKey(TIER_LOCK_BASE));
-      return null;
-    }
-    return lock;
-  } catch { return null; }
-}
-
 export default function DailyLog() {
   // Full-store subscription is intentional here: calculateTrueSafeSpend(state)
   // below needs the complete AppState, so a narrowed selector would not help.
@@ -90,35 +64,12 @@ export default function DailyLog() {
   // pressed, so typing a figure and backing out costs nothing.
   const [offsetAmount, setOffsetAmount] = useState(0);
   const [completed, setCompleted] = useState(false);
-  const [tierLock, setTierLock] = useState<TierLock | null>(() => getTierLock());
-  const isLocked = tierLock !== null;
-  const [_selectedTierId, setSelectedTierId] = useState<SpendTierId>(() => getTierLock()?.tierId ?? 'TIGHT');
-  const selectedTierId: SpendTierId = tierLock?.tierId ?? _selectedTierId;
-  const [showConfession, setShowConfession] = useState(false);
-  const [breakCount, setBreakCount] = useState(() => getBreakCount());
   const [catchUpCategory, setCatchUpCategory] = useState('');
 
-  const daysLeft = tierLock
-    ? Math.max(0, Math.ceil((new Date(tierLock.lockedUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0;
-
-  const lockTier = (days: number) => {
-    const lockedUntil = new Date(Date.now() + days * 86400000).toISOString();
-    const lock: TierLock = { tierId: selectedTierId, lockedUntil };
-    localStorage.setItem(userKey(TIER_LOCK_BASE), JSON.stringify(lock));
-    setTierLock(lock);
-  };
-
-  const confirmUnlock = () => {
-    const next = getBreakCount() + 1;
-    localStorage.setItem(userKey(BREAK_COUNT_BASE), String(next));
-    setBreakCount(next);
-    localStorage.removeItem(userKey(TIER_LOCK_BASE));
-    setTierLock(null);
-    setShowConfession(false);
-  };
-
-  const activeTier = SPEND_TIERS.find(t => t.id === selectedTierId)!;
+  // Tier selection and its hold moved to /velocity, which is where the other
+  // control over the daily number lives. Read-only here.
+  const selectedTierId = state.tierLock.tierId;
+  const activeTier = SPEND_TIERS.find(t => t.id === selectedTierId) ?? SPEND_TIERS[1];
 
   const todayKey = toLocalDateKey(new Date());
   const todayLabel = new Date().toLocaleDateString();
@@ -421,91 +372,7 @@ const chooseWorthIt = (id: WorthIt) => {
         {step === 'RAW_SPEND' && (
           <motion.div key="raw-spend" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
 
-            {/* Tier Selector */}
-            <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
-              <div className="inline-flex px-3 py-1 bg-black border-2 border-action-primary rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase mb-4">
-                CHOOSE YOUR CHALLENGE
-              </div>
-
-              {!isLocked ? (
-                <>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    {SPEND_TIERS.map(tier => (
-                      <button
-                        key={tier.id}
-                        type="button"
-                        onClick={() => setSelectedTierId(tier.id)}
-                        className={`flex items-center justify-center p-3 border-4 rounded-2xl transition-all
-                          ${selectedTierId === tier.id
-                            ? `${tier.color} border-black shadow-brutal-sm ${tier.textColor}`
-                            : 'bg-input border-border text-text-muted hover:border-black'
-                          }`}
-                      >
-                        <span className="font-black text-xs uppercase">{tier.label}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">Lock in for</p>
-                    <div className="flex gap-2">
-                      {[7, 14, 30].map(days => (
-                        <button
-                          key={days}
-                          type="button"
-                          onClick={() => lockTier(days)}
-                          className="flex-1 h-10 bg-input border-2 border-border rounded-xl text-[10px] font-black uppercase tracking-widest text-text-muted hover:border-black hover:text-text-main transition-all"
-                        >
-                          {days}d
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="border-4 border-black bg-black rounded-2xl p-4 mb-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Lock size={12} strokeWidth={2.5} className="text-action-primary shrink-0" />
-                      <p className="text-[10px] font-black uppercase tracking-widest text-action-primary">Active Lock</p>
-                    </div>
-                    <p className="text-2xl font-black italic uppercase text-action-primary leading-none mb-1">
-                      {activeTier.label} Mode
-                    </p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                      Until {new Date(tierLock!.lockedUntil).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </p>
-                    <div className="mt-3 pt-3 border-t-2 border-white/10 flex items-center justify-between">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Remaining</p>
-                      <p className="text-sm font-black text-white">{daysLeft} day{daysLeft !== 1 ? 's' : ''}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowConfession(true)}
-                    className="w-full h-9 border-2 border-border rounded-xl text-[10px] font-black uppercase tracking-widest text-text-muted hover:border-action-bleed hover:text-action-bleed transition-colors"
-                  >
-                    Break Lock
-                  </button>
-                </>
-              )}
-
-              {breakCount > 0 && (
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted text-center mt-3">
-                  Broke early {breakCount}×
-                </p>
-              )}
-
-              <div className="mt-4 flex justify-between items-center">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Today's Tier Limit</span>
-                <span className="font-black text-xl text-text-main">
-                  {formatCurrency(tierLimit, privacyMode)}
-                </span>
-              </div>
-            </div>
-
-            {/* Spend Input + Danger Meter */}
+            {/* Spend Input + Today's Usage */}
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
               <div className="inline-flex px-3 py-1 bg-black border-2 border-black rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
                 REVIEW TODAY'S SPENDING
@@ -536,10 +403,10 @@ const chooseWorthIt = (id: WorthIt) => {
                 </p>
               )}
 
-              {/* Danger Meter */}
+              {/* Today's usage against the tier limit */}
               <div>
                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
-                  <span className="text-text-muted">Danger Meter</span>
+                  <span className="text-text-muted">Today's Usage</span>
                   <span className={dangerProgress >= 100 ? 'text-action-bleed' : 'text-text-main'}>{dangerProgress.toFixed(0)}%</span>
                 </div>
                 <div className="h-5 bg-input border-4 border-black rounded-full overflow-hidden">
@@ -839,42 +706,6 @@ const chooseWorthIt = (id: WorthIt) => {
         )}
       </AnimatePresence>
 
-      <BottomSheet open={showConfession} onClose={() => setShowConfession(false)} title="COMMITMENT BREACH">
-        <div className="space-y-5 py-2">
-          <div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main leading-tight">
-              You committed to {activeTier.label} mode.
-            </h2>
-            <p className="text-[12px] font-bold text-text-muted mt-2 leading-relaxed uppercase tracking-wide">
-              {daysLeft} day{daysLeft !== 1 ? 's' : ''} left on your lock. You're about to break it.
-            </p>
-          </div>
-
-          {breakCount > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-action-bleed/10 border-2 border-action-bleed/30 rounded-xl">
-              <p className="text-[10px] font-black uppercase tracking-widest text-action-bleed">
-                You've broken early {breakCount}× before.
-              </p>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setShowConfession(false)}
-            className="w-full h-12 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
-          >
-            Stay strong · keep the lock
-          </button>
-
-          <button
-            type="button"
-            onClick={confirmUnlock}
-            className="w-full h-10 border-2 border-action-bleed/40 rounded-2xl text-action-bleed font-black uppercase tracking-widest text-[10px] hover:bg-action-bleed/10 transition-colors"
-          >
-            Yes, I'm giving up
-          </button>
-        </div>
-      </BottomSheet>
     </div>
   );
 }

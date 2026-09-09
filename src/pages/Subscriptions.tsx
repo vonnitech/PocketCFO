@@ -20,10 +20,11 @@ export default function Subscriptions() {
       privacyMode: s.privacyMode,
       addSubscription: s.addSubscription,
       setSubscriptionUsage: s.setSubscriptionUsage,
+      setSubscriptionContext: s.setSubscriptionContext,
       cancelSubscription: s.cancelSubscription,
     })),
   );
-  const { privacyMode, addSubscription, setSubscriptionUsage, cancelSubscription } = storeState;
+  const { privacyMode, addSubscription, setSubscriptionUsage, setSubscriptionContext, cancelSubscription } = storeState;
   const state = storeState;
   const proLocked = useProLocked();
   const subCapReached = proLocked && state.subscriptions.length >= FREE_SUB_CAP;
@@ -48,6 +49,24 @@ export default function Subscriptions() {
     parseFloat(newSubAmount) > 0 &&
     newSubBillingDate,
   );
+
+  // Which card has its context editor open. One at a time: these are notes,
+  // not a form, so a permanently visible pair of inputs on every card would
+  // bury the numbers the page exists to show.
+  const [editingContext, setEditingContext] = useState<string | null>(null);
+  const [metricDraft, setMetricDraft] = useState('');
+  const [actionDraft, setActionDraft] = useState('');
+
+  const openContext = (sub: { id: string; contextMetric?: string; suggestedAction?: string }) => {
+    setEditingContext(sub.id);
+    setMetricDraft(sub.contextMetric ?? '');
+    setActionDraft(sub.suggestedAction ?? '');
+  };
+
+  const saveContext = (id: string) => {
+    setSubscriptionContext(id, { contextMetric: metricDraft, suggestedAction: actionDraft });
+    setEditingContext(null);
+  };
 
   const setUsage = (id: string, usage: 'Active' | 'Low Use' | 'Idle') => {
     setSubscriptionUsage(id, usage);
@@ -104,7 +123,7 @@ export default function Subscriptions() {
 
       {/* Total Bleed */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden min-h-fit">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Total Monthly Bleed</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Total Monthly Commitments</p>
         {/* `break-all` split the figure mid-digit on narrow screens. Sized
             from its own length instead so it stays on one line. */}
         {(() => {
@@ -203,6 +222,72 @@ export default function Subscriptions() {
                   </button>
                 ))}
               </div>
+
+              {/* Row 4: value context. The usage buttons above already carry the
+                  colour-coded status, so this row adds the "why" rather than
+                  repeating the "what". */}
+              {editingContext === sub.id ? (
+                <div className="mt-3 pt-3 border-t-2 border-border/30 space-y-2">
+                  <input
+                    autoFocus
+                    value={metricDraft}
+                    onChange={e => setMetricDraft(e.target.value)}
+                    maxLength={32}
+                    placeholder="Value, e.g. 2.4 hrs/day"
+                    className="w-full bg-input border-2 border-border rounded-xl px-3 py-2 text-[11px] font-bold text-text-main outline-none focus:border-black transition-colors"
+                  />
+                  <input
+                    value={actionDraft}
+                    onChange={e => setActionDraft(e.target.value)}
+                    maxLength={40}
+                    placeholder="Next step, e.g. Downgrade plan"
+                    onKeyDown={e => e.key === 'Enter' && saveContext(sub.id)}
+                    className="w-full bg-input border-2 border-border rounded-xl px-3 py-2 text-[11px] font-bold text-text-main outline-none focus:border-black transition-colors"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => saveContext(sub.id)}
+                      className="flex-1 py-1.5 bg-black text-action-primary border-2 border-black rounded-full text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingContext(null)}
+                      className="px-4 py-1.5 border-2 border-border rounded-full text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main hover:border-black transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 pt-3 border-t-2 border-border/30 flex items-center gap-2 flex-wrap">
+                  {sub.contextMetric ? (
+                    <span className="text-[11px] font-black tabular-nums text-text-main">
+                      {sub.contextMetric}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                      No value logged
+                    </span>
+                  )}
+
+                  {sub.suggestedAction && (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-action-bleed">
+                      → {sub.suggestedAction}
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => openContext(sub)}
+                    className="ml-auto shrink-0 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+                  >
+                    {sub.contextMetric || sub.suggestedAction ? 'Edit' : 'Add'}
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))}
 
