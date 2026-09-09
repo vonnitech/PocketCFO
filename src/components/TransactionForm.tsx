@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "../store/useStore";
 import { useShallow } from "zustand/react/shallow";
 import { formatCurrency } from "../lib/utils";
+import { calculateDailyDrain, toLocalDateKey } from "../core/math";
 
 const CATEGORIES = [
   { key: "FOOD", label: "Food" },
@@ -21,10 +22,11 @@ interface Props {
 }
 
 export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
-  const { logSpend, safeSpendLimit } = useStore(
+  const { logSpend, safeSpendLimit, transactions } = useStore(
     useShallow((s) => ({
       logSpend: s.logSpend,
       safeSpendLimit: s.safeSpendLimit,
+      transactions: s.transactions,
     })),
   );
 
@@ -33,6 +35,10 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
   const [category, setCategory] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Whether the day was still inside the cleared number once this spend landed.
+  // Captured at submit time rather than derived on render, because the inputs
+  // reset immediately afterwards.
+  const [stillClear, setStillClear] = useState(false);
 
   const numAmt = parseFloat(amount) || 0;
   const isOver = numAmt > 0 && numAmt > safeSpendLimit;
@@ -44,6 +50,17 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
     if (!canSubmit) return;
     setLoading(true);
     await logSpend(numAmt, merchant.trim() || "GENERAL", category);
+
+    // The app has plenty of ways to say a number went the wrong way and, until
+    // now, none to say a purchase was fine. If it came out of cleared money it
+    // was fine by definition, which is the whole promise of the daily number.
+    // Said at the moment someone is bracing to be judged.
+    const todayKey = toLocalDateKey(new Date());
+    const spentToday = calculateDailyDrain(
+      transactions.filter((t) => toLocalDateKey(t.date) === todayKey),
+    );
+    setStillClear(safeSpendLimit > 0 && spentToday + numAmt <= safeSpendLimit);
+
     setSuccess(true);
     setAmount("");
     setMerchant("");
@@ -75,9 +92,9 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0 }}
-                className="text-[10px] font-black uppercase tracking-widest text-capture-readable shrink-0 ml-2"
+                className="text-[10px] font-black uppercase tracking-widest text-capture-readable shrink-0 ml-2 text-right"
               >
-                LOGGED ✓
+                {stillClear ? "Still clear · nothing owed" : "Logged ✓"}
               </motion.span>
             )}
           </AnimatePresence>
