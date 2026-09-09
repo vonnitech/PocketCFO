@@ -121,9 +121,18 @@ export function assessRisk(state: NotificationStateSlice, now: Date): RiskAssess
 
   const daysToPayday = state.nextPayday ? calculateDaysUntilPayday(state.nextPayday) : 0;
 
+  // Asked against the UNSHAPED figure. Velocity moves money between days
+  // without changing how much there is, so a deliberately thin Tuesday funding
+  // a fat Saturday is not a thin position. Reading the paced number here turned
+  // a pacing preference into a daily risk alert about a problem the user had
+  // chosen and already knew about.
+  const capacityDaily = state.flatSafeSpendLimit > 0
+    ? state.flatSafeSpendLimit
+    : state.safeSpendLimit;
+
   const criticallyLow =
     baselineDaily > 0 &&
-    state.safeSpendLimit < baselineDaily * CRITICAL_FRACTION &&
+    capacityDaily < baselineDaily * CRITICAL_FRACTION &&
     daysToPayday >= CRITICAL_MIN_DAYS_TO_PAYDAY;
 
   // Worst wins. A shortfall outranks a thin number, which outranks a single

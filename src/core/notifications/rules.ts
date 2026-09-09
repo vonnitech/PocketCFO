@@ -42,7 +42,13 @@ export interface NotificationStateSlice {
   isConfigured: boolean;
   hasCompletedOnboarding: boolean;
   monthlyTakeHome: number;
+  // Today's allowance AFTER Velocity reshapes it. Correct for "did you overspend
+  // today", wrong for "is your position dangerous".
   safeSpendLimit: number;
+  // The unshaped figure, before pacing. A weekday trimmed to fund the weekend is
+  // a deliberate reallocation, not a loss of capacity, so capacity questions must
+  // be asked against this.
+  flatSafeSpendLimit: number;
   liquidAssets: number;
   // Bills and subscriptions already reserved before payday. Needed because
   // calculateRawSafeSpend clamps at 0, which hides whether a £0 daily number
