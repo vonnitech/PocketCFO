@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-11T22:37:32Z",
-  "title": "Design System: PocketCFO",
+  "generatedAt": "2026-09-11T22:50:07Z",
+  "title": "Design System: Current Product (working name: PocketCFO)",
   "extensions": {
     "colorMeta": {
       "action-yellow": {
@@ -42,7 +42,7 @@
       "night-muted": { "role": "neutral", "displayName": "Night Muted", "canonical": "#8b8b8b", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Page titles and the safe-to-spend hero." },
+      "display": { "displayName": "Display", "purpose": "Page titles and the cleared-today hero." },
       "headline": { "displayName": "Headline", "purpose": "Section and card headings." },
       "body": { "displayName": "Body", "purpose": "Short explanations and supporting copy." },
       "label": { "displayName": "Label", "purpose": "Uppercase metadata, controls, and status text." },
@@ -126,7 +126,7 @@
   ],
   "narrative": {
     "northStar": "The Pocket Ledger",
-    "overview": "PocketCFO feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately.\n\nSignal colors carry meaning rather than decoration. Yellow marks the primary path, green marks money captured or a safe completion, red marks loss or risk, and gold marks goals. The visual system can shift between light and dark and accepts user-selected accent pairs, but the hierarchy, contrast, and semantic distinction between actions remain stable.",
+    "overview": "The product feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately. The current product name is temporary, so the visual system must remain portable through the rename.\n\nSignal colors carry meaning rather than decoration. Yellow marks the primary path, green marks money captured or a successful completion, red marks loss or risk, and gold marks goals. The visual system can shift between light and dark and accepts user-selected accent pairs, but the hierarchy, contrast, and semantic distinction between actions remain stable.",
     "keyCharacteristics": [
       "Thick, high-contrast outlines and hard offset shadows.",
       "Warm paper neutrals in light mode and charcoal layers in dark mode.",
@@ -144,7 +144,7 @@
       { "name": "The Press Completes the Shadow Rule", "body": "Interactive raised controls move into their shadow and lose it on hover, press, or active feedback.", "section": "elevation" }
     ],
     "dos": [
-      "**Do** make the safe-to-spend amount the clearest number on the dashboard.",
+      "**Do** make the amount cleared today the clearest number on the dashboard.",
       "**Do** use the same semantic color for the same financial meaning across screens.",
       "**Do** preserve the paper, ink, thick-border, and hard-shadow construction in both light and dark themes.",
       "**Do** use monospaced tabular numerals for money and comparable calculations.",

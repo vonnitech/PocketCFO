@@ -1,6 +1,6 @@
 ---
-name: PocketCFO
-description: A tactile neobrutalist ledger for clear daily money decisions.
+name: PocketCFO (working name)
+description: A tactile neobrutalist pay-cycle operating system for cleared daily spending.
 colors:
   action-yellow: "#facc15"
   capture-green: "#00C853"
@@ -97,15 +97,15 @@ components:
     padding: "20px"
 ---
 
-# Design System: PocketCFO
+# Design System: Current Product
 
 ## Overview
 
 **Creative North Star: "The Pocket Ledger"**
 
-PocketCFO feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately.
+The product feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately. The current product name is temporary, so the visual system must remain portable through the rename.
 
-Signal colors carry meaning rather than decoration. Yellow marks the primary path, green marks money captured or a safe completion, red marks loss or risk, and gold marks goals. The visual system can shift between light and dark and accepts user-selected accent pairs, but the hierarchy, contrast, and semantic distinction between actions remain stable.
+Signal colors carry meaning rather than decoration. Yellow marks the primary path, green marks money captured or a successful completion, red marks loss or risk, and gold marks goals. The visual system can shift between light and dark and accepts user-selected accent pairs, but the hierarchy, contrast, and semantic distinction between actions remain stable.
 
 **Key Characteristics:**
 
@@ -162,7 +162,7 @@ The default palette pairs warm paper and dense ink with four explicit financial 
 
 ### Hierarchy
 
-- **Display:** Black weight, usually italic and uppercase, with tight or tighter tracking. Use for page titles and the safe-to-spend hero.
+- **Display:** Black weight, usually italic and uppercase, with tight or tighter tracking. Use for page titles and the cleared-today hero.
 - **Headline:** Heavy uppercase type for card titles and major section transitions.
 - **Title:** Bold or black uppercase type for component headings and decisive states.
 - **Body:** Medium-to-bold sentence case for explanations. Keep paragraphs brief and favor direct, concrete language.
@@ -177,7 +177,7 @@ The default palette pairs warm paper and dense ink with four explicit financial 
 
 ## Layout
 
-PocketCFO is mobile-first. Route content fills the available width, while focused controls and configuration screens commonly stop at a narrow readable measure. The persistent bottom navigation is centered and capped to a phone-sized width; secondary destinations rise from the same edge in a bottom sheet.
+The product is mobile-first. Route content fills the available width, while focused controls and configuration screens commonly stop at a narrow readable measure. The persistent bottom navigation is centered and capped to a phone-sized width; secondary destinations rise from the same edge in a bottom sheet.
 
 The spacing rhythm uses 4px increments with 8px, 12px, 16px, 20px, and 24px as the recurring steps. Dense groups use 8–12px gaps; cards use 16–24px internal padding; page sections typically separate by 20–24px. Keep related controls close, then use a visibly larger break before a new decision group.
 
@@ -240,9 +240,9 @@ Borders are usually 2–4px and visually carry the component. Outer cards take t
 
 The main navigation is a floating bottom pill with five equal touch targets. Active destinations use action yellow with ink text; inactive destinations use muted text and transparent borders. The More control opens a full-width bottom sheet containing grouped destinations, display controls, account context, and sign-out. Icons keep a consistent 2px stroke so selection changes color and surface rather than icon weight.
 
-### Safe-to-Spend Hero
+### Cleared Today Hero
 
-The daily number is the primary product artifact. Give it the strongest numeric hierarchy on the dashboard, keep its explanation close, and ensure spend limits and pacing never create a competing or contradictory figure elsewhere. Privacy mode must obscure it wherever it appears.
+The amount cleared today is the primary decision artifact. Give it the strongest numeric hierarchy on the dashboard, keep its explanation close, and ensure spend limits and pacing never create a competing or contradictory figure elsewhere. “Safe-to-spend” may describe the internal calculation, but customer-facing labels use cleared language. Privacy mode must obscure the value wherever it appears.
 
 ### Bottom Sheets
 
@@ -252,7 +252,7 @@ Sheets use a dimmed backdrop, a 4px top border, rounded top corners, a drag hand
 
 ### Do:
 
-- **Do** make the safe-to-spend amount the clearest number on the dashboard.
+- **Do** make the amount cleared today the clearest number on the dashboard.
 - **Do** use the same semantic color for the same financial meaning across screens.
 - **Do** preserve the paper, ink, thick-border, and hard-shadow construction in both light and dark themes.
 - **Do** use monospaced tabular numerals for money and comparable calculations.
