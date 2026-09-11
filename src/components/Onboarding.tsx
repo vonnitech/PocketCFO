@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Wallet, TrendingUp, AlertCircle, User, Receipt, Plus, X, ArrowLeft } from 'lucide-react';
 import { supabase } from '../core/supabase';
 import { useStore } from '../store/useStore';
-import { calculateRawSafeSpend, calculateDaysUntilPayday } from '../core/math';
+import { calculateRawSafeSpend, calculateDaysUntilPayday, billKey } from '../core/math';
 import { formatCurrency } from '../lib/utils';
 import { logProductEvent } from '../core/telemetry';
 import { NotificationPrimer } from './NotificationPrimer';
@@ -20,6 +20,19 @@ interface DraftBill {
   id: string;
   name: string;
   amount: string;
+  /**
+   * Already paid this cycle.
+   *
+   * Signing up mid-month, rent and the car are usually already out of the
+   * account. Reserving them anyway deducts the same money twice: once in
+   * reality and once as a hold, which is why a new user could enter a healthy
+   * balance and be handed a daily number hundreds below the truth.
+   *
+   * These bills still go into recurringBills, because they recur. They are
+   * seeded into paidBillKeys so this cycle's queue skips them and next cycle
+   * picks them up normally.
+   */
+  paid?: boolean;
 }
 
 export function OnboardingModal() {
@@ -56,11 +69,14 @@ export function OnboardingModal() {
 
   const parsedBills = useMemo(
     () => bills
-      .map(b => ({ id: b.id, name: b.name.trim(), amount: parseFloat(b.amount) || 0 }))
+      .map(b => ({ id: b.id, name: b.name.trim(), amount: parseFloat(b.amount) || 0, paid: !!b.paid }))
       .filter(b => b.amount > 0 && b.name),
     [bills],
   );
-  const billsTotal = parsedBills.reduce((s, b) => s + b.amount, 0);
+  // Only unpaid bills are held back. The full total is still shown, so the user
+  // can see what was and was not reserved.
+  const billsTotal = parsedBills.reduce((s, b) => s + (b.paid ? 0 : b.amount), 0);
+  const billsAllTotal = parsedBills.reduce((s, b) => s + b.amount, 0);
 
   // Preview runs the same function the store uses to set safeSpendLimit, seeded
   // with the values this form is about to save. That keeps the number on screen
@@ -138,6 +154,9 @@ export function OnboardingModal() {
 
   const removeBill = (id: string) => setBills(prev => prev.filter(b => b.id !== id));
 
+  const togglePaid = (id: string) =>
+    setBills(prev => prev.map(b => (b.id === id ? { ...b, paid: !b.paid } : b)));
+
   const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
@@ -184,6 +203,16 @@ export function OnboardingModal() {
     // Properly computes safeSpendLimit, bill queue, and all derived values.
     // Bills collected on step 2 are passed straight through, so the very first
     // Safe-to-Spend figure already reserves the cash to cover them.
+    // Must land before setHorizon: it reads paidBillKeys off the store and
+    // derives this cycle's queue as recurringBills minus those keys. Safe here
+    // because there is no stored payday yet, so setHorizon does not treat this
+    // as a new cycle and does not clear them.
+    setState({
+      paidBillKeys: parsedBills
+        .filter(b => b.paid)
+        .map(b => billKey({ name: b.name, amount: b.amount })),
+    });
+
     setHorizon(numBalance, payday, 0, 0, parsedBills);
 
     logProductEvent({
@@ -375,12 +404,24 @@ export function OnboardingModal() {
                 {parsedBills.length > 0 && (
                   <ul className="border-4 border-black rounded-2xl divide-y-2 divide-black overflow-hidden">
                     {parsedBills.map(b => (
-                      <li key={b.id} className="flex items-center gap-2 px-3 py-2.5">
+                      <li key={b.id} className={`flex items-center gap-2 px-3 py-2.5 ${b.paid ? 'bg-input' : ''}`}>
                         <Receipt size={13} strokeWidth={2.5} className="text-text-muted shrink-0" />
-                        <span className="flex-1 min-w-0 truncate text-[11px] font-black uppercase tracking-wide text-text-main">
+                        <span className={`flex-1 min-w-0 truncate text-[11px] font-black uppercase tracking-wide ${b.paid ? 'text-text-muted line-through' : 'text-text-main'}`}>
                           {b.name}
                         </span>
-                        <span className="font-mono font-bold text-xs text-text-main shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => togglePaid(b.id)}
+                          aria-pressed={!!b.paid}
+                          className={`shrink-0 px-2 py-1 border-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                            b.paid
+                              ? 'bg-action-capture border-black text-capture-contrast'
+                              : 'border-border text-text-muted hover:border-black hover:text-text-main'
+                          }`}
+                        >
+                          Paid
+                        </button>
+                        <span className={`font-mono font-bold text-xs shrink-0 ${b.paid ? 'text-text-muted line-through' : 'text-text-main'}`}>
                           {formatCurrency(b.amount)}
                         </span>
                         <button
@@ -440,9 +481,14 @@ export function OnboardingModal() {
                     {formatCurrency(previewSafeSpend)}
                   </p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mt-1">
-                    {parsedBills.length > 0
-                      ? 'After holding back ' + formatCurrency(billsTotal) + ' in bills'
-                      : 'No bills added yet, so nothing is held back'}
+                    {parsedBills.length === 0
+                      ? 'No bills added yet, so nothing is held back'
+                      : billsAllTotal > billsTotal
+                        // Names both figures. Without it, entering 2,100 of bills
+                        // and seeing only part of it held back looks like a
+                        // miscalculation rather than the paid ones being skipped.
+                        ? 'Holding back ' + formatCurrency(billsTotal) + ' · ' + formatCurrency(billsAllTotal - billsTotal) + ' already paid'
+                        : 'After holding back ' + formatCurrency(billsTotal) + ' in bills'}
                   </p>
                 </div>
               </motion.div>

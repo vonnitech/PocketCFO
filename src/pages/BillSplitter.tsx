@@ -614,12 +614,12 @@ export const BillSplitter: React.FC = () => {
                     autoFocus
                     type="text"
                     placeholder="e.g. DINNER CREW"
-                    className="flex-1 bg-input border-4 border-black rounded-2xl px-4 py-2.5 font-black uppercase text-sm outline-none focus:border-action-capture transition-colors text-text-main"
+                    className="flex-1 min-w-0 bg-input border-4 border-black rounded-2xl px-4 py-2.5 font-black uppercase text-sm outline-none focus:border-action-capture transition-colors text-text-main"
                     value={presetNameInput}
                     onChange={e => setPresetNameInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSavePreset()}
                   />
-                  <button type="button" onClick={handleSavePreset} className="px-5 h-12 border-4 border-black rounded-2xl bg-action-capture text-capture-contrast font-black uppercase text-xs">SAVE</button>
+                  <button type="button" onClick={handleSavePreset} className="shrink-0 px-5 h-12 border-4 border-black rounded-2xl bg-action-capture text-capture-contrast font-black uppercase text-xs">SAVE</button>
                 </div>
                 <button type="button" onClick={() => setIsSavingPreset(false)} className="text-[10px] uppercase font-bold text-text-muted underline">CANCEL</button>
               </div>

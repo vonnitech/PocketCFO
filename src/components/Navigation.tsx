@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { CircleGauge, Receipt, LockKeyhole, PieChart, Ellipsis, Settings, ClipboardCheck, Split, Hourglass, Sun, Moon, Repeat, X, Eye, EyeOff, TrendingUp, TrendingDown, LogOut, Flame, Banknote, Lock, LifeBuoy, SlidersHorizontal } from 'lucide-react';
+import { CircleGauge, Receipt, LockKeyhole, PieChart, Ellipsis, Settings, ClipboardCheck, Split, Hourglass, Sun, Moon, Repeat, X, Eye, EyeOff, TrendingUp, TrendingDown, LogOut, Flame, Banknote, Lock, LifeBuoy, SlidersHorizontal, Percent } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -45,7 +45,8 @@ const primaryTabs = [
 // Core screens that are not one of the four tabs.
 const manageLinks = [
   { path: '/recon',         icon: ClipboardCheck,    label: 'Daily Review' },
-  { path: '/velocity',      icon: SlidersHorizontal, label: 'Velocity Controls' },
+  { path: '/limit',         icon: Percent,           label: 'Spend Limit' },
+  { path: '/pacing',        icon: SlidersHorizontal, label: 'Pacing' },
   { path: '/subscriptions', icon: Repeat,            label: 'Subscriptions' },
   { path: '/settings',      icon: Settings,          label: 'Settings' },
 ];

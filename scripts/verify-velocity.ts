@@ -94,9 +94,27 @@ const cfg = (over: Partial<VelocityConfig> = {}): VelocityConfig => ({
   const noWeekend = calculatePacedAllowance(100, 5, cfg(), monday);
   check('no weekend left falls back to flat', noWeekend.weekdayRate === 100 && noWeekend.weekendRate === 100);
 
+  // A trim larger than the allowance used to take ALL of it, leaving weekdays
+  // at zero. Reachable in practice: lowering the spend tier shrinks the baseline
+  // under a trim that was valid when it was set.
   const overTrim = calculatePacedAllowance(50, 7, cfg({ weekdayTrim: 999 }), new Date(2026, 8, 7));
   check('trim cannot drive a weekday negative', overTrim.weekdayRate >= 0, `${overTrim.weekdayRate}`);
+  check(
+    'a weekday keeps at least half the allowance',
+    overTrim.weekdayRate >= 25,
+    `${overTrim.weekdayRate} of 50`,
+  );
+  check('over-trim reports the clamp', overTrim.note !== null, overTrim.note ?? '');
   check('over-trim still budget neutral', Math.abs(pacedWindowTotal(overTrim) - 350) < 1e-9);
+
+  // The exact shape of the reported bug: a trim set against a large baseline,
+  // then the baseline cut by a tier change.
+  const shrunk = calculatePacedAllowance(470.8, 21, cfg({ weekdayTrim: 685 }), new Date(2026, 8, 9));
+  check('a shrunken baseline never zeroes the weekday', shrunk.weekdayRate > 0, `${shrunk.weekdayRate.toFixed(2)}`);
+  check(
+    'and still moves money rather than losing it',
+    Math.abs(pacedWindowTotal(shrunk) - 470.8 * 21) < 1e-6,
+  );
 
   const zero = calculatePacedAllowance(0, 7, cfg(), new Date(2026, 8, 7));
   check('zero allowance stays zero', zero.todayRate === 0 && zero.weekendRate === 0);

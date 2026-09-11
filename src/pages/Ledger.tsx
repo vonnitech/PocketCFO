@@ -275,8 +275,10 @@ export default function Ledger() {
                       ))}
                     </select>
                   ) : (
-                    <span className={`shrink-0 inline-flex items-center h-6 px-2.5 rounded-full ${m.bg} ${m.text} text-[9px] font-black uppercase tracking-widest`}>
-                      {m.label}
+                    <span className="shrink-0 w-[88px] flex items-center">
+                      <span className={`inline-flex items-center h-6 px-2.5 rounded-full ${m.bg} ${m.text} text-[9px] font-black uppercase tracking-widest whitespace-nowrap`}>
+                        {m.label}
+                      </span>
                     </span>
                   )}
 

@@ -109,6 +109,30 @@ export default function Config() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.recurringBills]);
 
+  // Pause commits on the spot instead of waiting for "Save Pay Cycle".
+  //
+  // Every other control in this card is an edit to a draft: you type a name, you
+  // correct an amount, you press Save. Pause is not an edit, it reads as a
+  // switch, so leaving it in the draft meant flipping it, navigating away and
+  // finding the bill unpaused again with nothing having said a save was owed.
+  //
+  // It commits against the bills already in the store rather than the local
+  // draft, so a half-typed name or a momentarily empty amount elsewhere in the
+  // list cannot ride along (the save path drops any bill whose amount is not
+  // above zero). A bill added but not yet saved has no stored counterpart, so
+  // there is nothing to persist and it waits for Save Pay Cycle like the rest of
+  // the draft.
+  const commitPause = (id: string, paused: boolean) => {
+    const stored = state.recurringBills || [];
+    if (!stored.some(b => b.id === id)) return;
+    const next: BillQueueItem[] = stored.map(b => {
+      if (b.id !== id) return b;
+      const { paused: _was, ...rest } = b;
+      return paused ? { ...rest, paused: true } : rest;
+    });
+    setHorizon(state.liquidAssets || 0, state.nextPayday || '', 0, state.hardDailyCap ?? 0, next);
+  };
+
   // The payday and balance fields need the same protection as configBills above:
   // both initialise once via useState, so a Config screen that mounted before the
   // store had loaded keeps them blank, and "Save Pay Cycle" then submits those
@@ -222,58 +246,69 @@ export default function Config() {
                 const vb = isNaN(db) ? 999 : db;
                 return va - vb;
               }).map(bill => (
-                <div key={bill.id} className={`flex items-center gap-2 bg-input border-4 border-black rounded-2xl px-3 py-2 ${bill.paused ? 'opacity-50' : ''}`}>
-                  <input
-                    type="text"
-                    title="Bill name"
-                    value={bill.name}
-                    onChange={e => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, name: e.target.value } : b))}
-                    className="flex-1 min-w-0 font-black uppercase text-sm text-text-main bg-transparent outline-none"
-                  />
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <span className="text-[10px] font-black uppercase text-text-muted tracking-widest">Day</span>
+                <div key={bill.id} className={`bg-input border-4 border-black rounded-2xl px-3 py-2 ${bill.paused ? 'opacity-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      title="Bill name"
+                      value={bill.name}
+                      onChange={e => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, name: e.target.value } : b))}
+                      className="flex-1 min-w-0 font-black uppercase text-sm text-text-main bg-transparent outline-none"
+                    />
                     <input
                       type="number"
-                      title="Day of month due (1-31)"
-                      min="1"
-                      max="31"
-                      placeholder="—"
-                      value={bill.dueDay}
+                      title="Bill amount"
+                      min="0"
+                      value={bill.amount}
                       onFocus={e => e.target.select()}
-                      onChange={e => {
-                        const v = e.target.value;
-                        const n = parseInt(v, 10);
-                        const clamped = v === '' ? '' : String(Math.min(31, Math.max(1, isNaN(n) ? 1 : n)));
-                        setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, dueDay: clamped } : b));
-                      }}
-                      className="w-10 font-black tabular-nums text-sm text-text-main bg-transparent outline-none text-center"
+                      onChange={e => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, amount: e.target.value } : b))}
+                      className="w-20 shrink-0 font-black tabular-nums text-sm text-text-main bg-transparent outline-none text-right"
                     />
                   </div>
-                  <input
-                    type="number"
-                    title="Bill amount"
-                    min="0"
-                    value={bill.amount}
-                    onFocus={e => e.target.select()}
-                    onChange={e => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, amount: e.target.value } : b))}
-                    className="w-20 font-black tabular-nums text-sm text-text-main bg-transparent outline-none text-right shrink-0"
-                  />
-                  <button
-                    type="button"
-                    title={bill.paused ? 'Resume bill' : 'Pause bill (hidden from dashboard, not reserved)'}
-                    onClick={() => setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, paused: !b.paused } : b))}
-                    className={`p-1 rounded-lg transition-colors shrink-0 ${bill.paused ? 'text-action-capture hover:bg-action-capture/10' : 'text-text-muted hover:bg-black/5'}`}
-                  >
-                    {bill.paused ? <Play size={14} strokeWidth={2.5} /> : <Pause size={14} strokeWidth={2.5} />}
-                  </button>
-                  <button
-                    type="button"
-                    title="Remove bill"
-                    onClick={() => setConfigBills(bills => bills.filter(b => b.id !== bill.id))}
-                    className="p-1 text-action-bleed hover:bg-action-bleed/10 rounded-lg transition-colors shrink-0"
-                  >
-                    <X size={14} strokeWidth={2.5} />
-                  </button>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                      <span className="text-[10px] font-black uppercase text-text-muted tracking-widest">Day</span>
+                      <input
+                        type="number"
+                        title="Day of month due (1-31)"
+                        min="1"
+                        max="31"
+                        placeholder="—"
+                        value={bill.dueDay}
+                        onFocus={e => e.target.select()}
+                        onChange={e => {
+                          const v = e.target.value;
+                          const n = parseInt(v, 10);
+                          const clamped = v === '' ? '' : String(Math.min(31, Math.max(1, isNaN(n) ? 1 : n)));
+                          setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, dueDay: clamped } : b));
+                        }}
+                        className="w-8 font-black tabular-nums text-xs text-text-main bg-transparent outline-none text-left"
+                      />
+                      {bill.paused && (
+                        <span className="text-[10px] font-black uppercase tracking-widest text-capture-readable truncate">Paused</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      title={bill.paused ? 'Resume bill' : 'Pause bill (hidden from dashboard, not reserved)'}
+                      onClick={() => {
+                        const next = !bill.paused;
+                        setConfigBills(bills => bills.map(b => b.id === bill.id ? { ...b, paused: next } : b));
+                        commitPause(bill.id, next);
+                      }}
+                      className={`p-1 rounded-lg transition-colors shrink-0 ${bill.paused ? 'text-capture-readable hover:bg-action-capture/10' : 'text-text-muted hover:bg-black/5'}`}
+                    >
+                      {bill.paused ? <Play size={14} strokeWidth={2.5} /> : <Pause size={14} strokeWidth={2.5} />}
+                    </button>
+                    <button
+                      type="button"
+                      title="Remove bill"
+                      onClick={() => setConfigBills(bills => bills.filter(b => b.id !== bill.id))}
+                      className="p-1 text-action-bleed hover:bg-action-bleed/10 rounded-lg transition-colors shrink-0"
+                    >
+                      <X size={14} strokeWidth={2.5} />
+                    </button>
+                  </div>
                 </div>
               ))}
               {isAddingBill ? (
@@ -373,7 +408,7 @@ export default function Config() {
               onChange={e => setHorizonCap(e.target.value)}
               className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-text-main outline-none focus:border-action-bleed transition-colors"
             />
-            <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">The absolute maximum you are allowed to burn per day. Any surplus is automatically intercepted.</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">The most you can spend in a day. Anything above it is moved into a vault automatically.</p>
           </div>
           <button
             type="button"
@@ -552,7 +587,7 @@ export default function Config() {
               <input
                 autoFocus
                 placeholder="Habit Name"
-                className="flex-1 bg-input border-4 border-black rounded-2xl p-3 text-sm font-black uppercase text-black outline-none focus:border-action-bleed transition-colors"
+                className="flex-1 min-w-0 bg-input border-4 border-black rounded-2xl p-3 text-sm font-black uppercase text-black outline-none focus:border-action-bleed transition-colors"
                 value={newConfigImpulseName}
                 onChange={e => setNewConfigImpulseName(e.target.value)}
               />

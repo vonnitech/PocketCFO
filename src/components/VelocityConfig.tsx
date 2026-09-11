@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { currencySymbol } from '../lib/currency';
@@ -8,7 +8,7 @@ import {
   SURPLUS_ROUTES,
   type VelocityConfig as VelocityConfigShape,
 } from '../core/velocity';
-import { calculateDaysUntilPayday, calculateDailyDrain, calculateFlatSafeSpend, toLocalDateKey } from '../core/math';
+import { calculateDaysUntilPayday, calculateDailyDrain, calculateTieredSafeSpend, toLocalDateKey } from '../core/math';
 import { isSinkingFund } from '../core/vaults';
 import { Link } from 'react-router-dom';
 
@@ -16,15 +16,32 @@ export function VelocityConfig() {
   const state = useStore();
   const { velocityConfig, setVelocityConfig, nextPayday, vaults, transactions, privacyMode } = state;
 
-  // The store's safeSpendLimit is already paced. Reshaping that again would
-  // trim a trimmed number, so this screen derives the baseline itself.
-  const flatBaseline = calculateFlatSafeSpend(state);
+  // The store's safeSpendLimit is already paced, so reshaping it here would
+  // trim a trimmed number. Tiered rather than flat: pacing runs on the tiered
+  // amount, so a flat baseline would preview rates the app never uses.
+  const flatBaseline = calculateTieredSafeSpend(state);
 
   // Local draft so the slider and radios stay responsive. Writing on every
   // change would fire a Supabase update per slider pixel.
   const [draft, setDraft] = useState<VelocityConfigShape>(velocityConfig);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // useState seeds once, at first render. Reloading the browser directly onto
+  // this screen mounts it before the profile has come back from Supabase, so
+  // the draft captured the defaults (FLAT, no trim) and never heard about the
+  // real config arriving a moment later. The page then reported a flat
+  // allowance while the dashboard showed the paced one, and the two screens
+  // disagreed about the same day's number until you navigated away and back.
+  //
+  // Re-sync only when the STORE's value actually changes, tracked against what
+  // was last synced. Watching `draft` instead would fight the user's own edits.
+  const syncedFrom = useRef(velocityConfig);
+  useEffect(() => {
+    if (JSON.stringify(syncedFrom.current) === JSON.stringify(velocityConfig)) return;
+    syncedFrom.current = velocityConfig;
+    setDraft(velocityConfig);
+  }, [velocityConfig]);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(velocityConfig);
 
@@ -57,7 +74,12 @@ export function VelocityConfig() {
 
   const save = async () => {
     setSaving(true);
-    await setVelocityConfig(draft);
+    // Write the trim the engine will actually honour, not the one that happens
+    // to be stored. A trim set against a bigger baseline survives a spend-tier
+    // cut: 685 was still on file here against a ceiling of 155, so the slider
+    // sat pinned at maximum on every load and the daily number sat at its
+    // floor no matter which way the slider was nudged. Saving repairs it.
+    await setVelocityConfig({ ...draft, weekdayTrim: Math.min(draft.weekdayTrim, trimMax) });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
@@ -65,11 +87,18 @@ export function VelocityConfig() {
 
   const patch = (p: Partial<VelocityConfigShape>) => setDraft(d => ({ ...d, ...p }));
 
-  const cells = [
-    { k: 'Flat', v: paced.currentDailyBaseline },
-    { k: 'Weekday', v: paced.weekdayRate },
-    { k: 'Weekend', v: paced.weekendRate },
-  ];
+  // With no trim applied all three of these are the same number, and printing
+  // it three times under three different headings invites the reader to hunt for
+  // a difference that is not there. Split days only get their own cells once the
+  // days are actually split.
+  const split = paced.weekdayRate !== paced.weekendRate;
+  const cells = split
+    ? [
+        { k: 'Flat', v: paced.currentDailyBaseline },
+        { k: 'Weekday', v: paced.weekdayRate },
+        { k: 'Weekend', v: paced.weekendRate },
+      ]
+    : [{ k: 'Every day', v: paced.currentDailyBaseline }];
 
   return (
     <div className="space-y-5">
@@ -84,7 +113,7 @@ export function VelocityConfig() {
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className={`grid gap-3 ${split ? 'grid-cols-3' : 'grid-cols-1'}`}>
           {cells.map(cell => (
             <div key={cell.k} className="bg-input border-2 border-border rounded-2xl px-3 py-2.5 min-w-0">
               <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">{cell.k}</p>
@@ -114,7 +143,7 @@ export function VelocityConfig() {
             </span>
             <span
               className={`px-2.5 py-1 border-2 border-black rounded-lg text-[11px] font-black uppercase tracking-widest shrink-0 ${
-                over ? 'bg-action-bleed text-white' : 'bg-action-capture text-capture-contrast'
+                over ? 'bg-action-bleed text-white' : 'bg-input text-text-muted'
               }`}
             >
               {over ? `${fmt(spentToday - cap)} over` : `${fmt(cap - spentToday)} left`}
@@ -154,7 +183,7 @@ export function VelocityConfig() {
         </div>
 
         <div className={draft.paceModel === 'FLAT' ? 'opacity-40 pointer-events-none' : ''}>
-          <div className="flex justify-between items-baseline gap-2 mb-2">
+          <div className="flex justify-between items-baseline gap-2 mb-3">
             <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
               Weekday Trim
             </span>
@@ -171,7 +200,7 @@ export function VelocityConfig() {
             value={Math.min(draft.weekdayTrim, trimMax)}
             onChange={e => patch({ weekdayTrim: Number(e.target.value) })}
             aria-label="Weekday capital trim"
-            className="w-full accent-[var(--color-action-primary)]"
+            className="brutal-range"
           />
           {draft.paceModel === 'WEEKEND_LOADED' && paced.appliedTrim > 0 && (
             <div className="mt-3 space-y-2">

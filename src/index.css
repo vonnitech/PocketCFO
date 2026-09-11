@@ -139,6 +139,60 @@
     background-size: 28px 28px;
   }
 
+  .brutal-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 20px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .brutal-range::-webkit-slider-runnable-track {
+    height: 14px;
+    border: 3px solid var(--color-border);
+    border-radius: 9999px;
+    background: var(--color-input);
+  }
+
+  .brutal-range::-moz-range-track {
+    height: 14px;
+    border: 3px solid var(--color-border);
+    border-radius: 9999px;
+    background: var(--color-input);
+  }
+
+  /* Centring is manual on webkit: the thumb is positioned against the top of
+     the track box, so half the height difference has to be taken back. */
+  .brutal-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 26px;
+    height: 26px;
+    margin-top: -9px;
+    border: 3px solid #000;
+    border-radius: 8px;
+    background: var(--color-action-primary);
+  }
+
+  .brutal-range::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+    border: 3px solid #000;
+    border-radius: 8px;
+    background: var(--color-action-primary);
+  }
+
+  .brutal-range:focus-visible::-webkit-slider-thumb {
+    outline: 3px solid var(--color-action-capture);
+    outline-offset: 2px;
+  }
+
+  .brutal-range:focus-visible::-moz-range-thumb {
+    outline: 3px solid var(--color-action-capture);
+    outline-offset: 2px;
+  }
+
   .label-xs {
     @apply text-[10px] font-bold uppercase tracking-wider text-text-muted;
   }

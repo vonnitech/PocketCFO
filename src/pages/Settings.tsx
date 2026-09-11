@@ -477,12 +477,12 @@ export default function Settings() {
             value={firstName}
             onChange={e => setFirstName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && saveFirstName()}
-            className="flex-1 bg-input border-4 border-black rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none focus:border-action-capture transition-colors"
+            className="flex-1 min-w-0 bg-input border-4 border-black rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none focus:border-action-capture transition-colors"
           />
           <button
             type="button"
             onClick={saveFirstName}
-            className="h-12 px-6 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase text-xs tracking-widest flex items-center gap-2 shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            className="h-12 shrink-0 px-5 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase text-xs tracking-widest flex items-center gap-2 whitespace-nowrap shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
           >
             {firstNameSaved ? <><Check size={13} /> Saved</> : 'Save'}
           </button>
@@ -878,7 +878,7 @@ export default function Settings() {
                         onChange={e => { setPrimaryColor(e.target.value); setState({ themeColors: { ...state.themeColors, primary: e.target.value } }); }}
                         className="w-12 h-10 p-1 rounded-xl bg-input border-4 border-black cursor-pointer" />
                       <input type="text" title="Primary Color Hex"
-                        className="flex-1 bg-input border-4 border-black rounded-xl p-2 font-black text-sm uppercase text-text-main outline-none"
+                        className="flex-1 min-w-0 bg-input border-4 border-black rounded-xl p-2 font-black text-sm uppercase text-text-main outline-none"
                         value={primaryColor}
                         onChange={e => setPrimaryColor(e.target.value)}
                         onBlur={e => {
@@ -896,7 +896,7 @@ export default function Settings() {
                         onChange={e => { setCaptureColor(e.target.value); setState({ themeColors: { ...state.themeColors, secondary: e.target.value } }); }}
                         className="w-12 h-10 p-1 rounded-xl bg-input border-4 border-black cursor-pointer" />
                       <input type="text" title="Capture Color Hex"
-                        className="flex-1 bg-input border-4 border-black rounded-xl p-2 font-black text-sm uppercase text-text-main outline-none"
+                        className="flex-1 min-w-0 bg-input border-4 border-black rounded-xl p-2 font-black text-sm uppercase text-text-main outline-none"
                         value={captureColor}
                         onChange={e => setCaptureColor(e.target.value)}
                         onBlur={e => {

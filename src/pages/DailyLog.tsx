@@ -8,7 +8,6 @@ import {
   calculateTrueSafeSpend,
   calculateDailySurplus,
   calculateDailyDrain,
-  calculateTierLimit,
   calculateDangerProgress,
   SPEND_TIERS,
   toLocalDateKey,
@@ -69,14 +68,16 @@ export default function DailyLog() {
   // Tier selection and its hold moved to /velocity, which is where the other
   // control over the daily number lives. Read-only here.
   const selectedTierId = state.tierLock.tierId;
-  const activeTier = SPEND_TIERS.find(t => t.id === selectedTierId) ?? SPEND_TIERS[1];
+  const activeTier = SPEND_TIERS.find(t => t.id === selectedTierId) ?? SPEND_TIERS[0];
 
   const todayKey = toLocalDateKey(new Date());
   const todayLabel = new Date().toLocaleDateString();
   const alreadyDoneToday = reconHistory.some(entry => toLocalDateKey(entry.date) === todayKey);
 
   const safeSpendLimit = useMemo(() => calculateTrueSafeSpend(state), [state]);
-  const tierLimit = useMemo(() => calculateTierLimit(safeSpendLimit, activeTier.multiplier), [safeSpendLimit, activeTier]);
+  // Already tiered upstream. This was multiplying a tiered figure by the tier
+  // again, which is why the review and the dashboard disagreed.
+  const tierLimit = safeSpendLimit;
 
   const transactionsToday = useMemo(() => {
     return state.transactions.filter(t => toLocalDateKey(t.date) === todayKey);
@@ -255,7 +256,8 @@ const chooseWorthIt = (id: WorthIt) => {
               <h2 className="text-2xl font-black italic tracking-tighter uppercase text-text-main">Review Complete</h2>
               {todayEntry && (
                 <div className={`inline-flex px-3 py-1 mt-1 ${SPEND_TIERS.find(t => t.id === todayEntry.tier)?.color || 'bg-gray-200'} border-[3px] border-black rounded-full text-[11px] font-black uppercase tracking-widest`}>
-                  {todayEntry.tier} MODE · {(todayEntry.tierMultiplier * 100).toFixed(0)}%
+                  {SPEND_TIERS.find(t => t.id === todayEntry.tier)?.label ?? todayEntry.tier}
+                  {' · '}{(todayEntry.tierMultiplier * 100).toFixed(0)}%
                 </div>
               )}
             </div>

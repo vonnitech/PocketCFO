@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
-import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey, billKey, DEFAULT_TIER_LOCK, normalizeTierLock, type TierLockState } from '../core/math';
+import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey, billKey, DEFAULT_TIER_LOCK, normalizeTierLock, isTierLocked, tierLockDaysLeft, calculateFlatSafeSpend, calculateTieredSafeSpend, type TierLockState } from '../core/math';
 import { supabase } from '../core/supabase';
 import { DEFAULT_VELOCITY_CONFIG, normalizeVelocityConfig, type VelocityConfig } from '../core/velocity';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
@@ -115,7 +115,7 @@ export interface IncomeEntry {
 
 // Shared persistence for the tier commitment. Kept out of the actions so all
 // three write the same shape through the same error handling.
-async function pushTierLock(userId: string | null, next: { tierId: string; lockedUntil: string | null; breakCount: number }): Promise<void> {
+async function pushTierLock(userId: string | null, next: TierLockState): Promise<void> {
   if (!userId) return;
   try {
     const { error } = await (supabase.from('profiles') as any)
@@ -394,6 +394,8 @@ interface StoreActions {
   setCurrency: (code: string) => Promise<void>;
   setVelocityConfig: (config: VelocityConfig) => Promise<void>;
   setSpendTier: (tierId: SpendTierId) => Promise<void>;
+  /** Acknowledge a finished hold so its record stops being announced. */
+  clearPendingOutcome: () => Promise<void>;
   lockSpendTier: (days: number) => Promise<void>;
   breakSpendTier: () => Promise<void>;
   updateDashboardWidgets: (widgets: { id: string; visible: boolean }[]) => void;
@@ -684,6 +686,17 @@ export const useStore = create<StoreState>()(
           pushProfileUpdate(userId, { upcoming_bills: obligationTotal }).catch(() => {});
         }
 
+        // A hold that reached its end is noticed here, on the first load after
+        // the date passed, because nothing else is watching the clock. Writing it
+        // back immediately is what stops the count climbing: once the row has
+        // lockedUntil null there is no expiry left to detect, so a second load
+        // adds nothing. Until that write lands, re-reading the same row keeps
+        // producing the same number rather than accumulating.
+        const rawLock = (profile?.tier_lock ?? null) as Record<string, unknown> | null;
+        if (nextState.tierLock.pending && !rawLock?.pending) {
+          pushTierLock(userId, nextState.tierLock).catch(() => {});
+        }
+
         return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
       });
     },
@@ -802,23 +815,88 @@ export const useStore = create<StoreState>()(
     setSpendTier: async (tierId) => {
       const { userId, tierLock } = get() as StoreState;
       // Changing tier mid-lock would defeat the lock.
-      if (tierLock.lockedUntil) return;
+      //
+      // isTierLocked, not a truthiness check on lockedUntil. The stored date is
+      // only cleared when the profile is next normalised, so a hold that ran out
+      // while the app sat open on a phone left this returning early against a
+      // date already in the past: the card showed itself unlocked and every tap
+      // did nothing.
+      if (isTierLocked(tierLock)) return;
       const next = { ...tierLock, tierId };
-      set((state: any) => ({ ...state, tierLock: next }));
+      // safeSpendLimit is a cached derived value and the tier now feeds into it,
+      // so changing the tier without recomputing left every screen showing the
+      // old number under a new label. Same omission as setVelocityConfig had.
+      set((state: any) => {
+        const nextState = { ...state, tierLock: next };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
       await pushTierLock(userId, next);
     },
 
     lockSpendTier: async (days) => {
       const { userId, tierLock } = get() as StoreState;
-      if (tierLock.lockedUntil || !Number.isFinite(days) || days <= 0) return;
-      const next = { ...tierLock, lockedUntil: new Date(Date.now() + days * 86400000).toISOString() };
-      set((state: any) => ({ ...state, tierLock: next }));
+      if (isTierLocked(tierLock) || !Number.isFinite(days) || days <= 0) return;
+      // The duration is recorded, not just the end date. "6 days left" cannot be
+      // turned into "day 8 of 14" after the fact, and a finished hold has to be
+      // able to say what it was.
+      //
+      // The daily holdback is captured here for the same reason. It is the gap
+      // between the untiered allowance and the tiered one, which is exactly what
+      // the tier is taking off you per day. Both halves move with the balance
+      // and the days to payday, so this figure only exists while the hold is
+      // being set: afterwards there is nothing left to subtract from what.
+      const snapshot = get() as StoreState;
+      const next: TierLockState = {
+        ...tierLock,
+        lockedUntil: new Date(Date.now() + days * 86400000).toISOString(),
+        lockedDays: Math.floor(days),
+        dailyHoldback: Math.max(
+          0,
+          calculateFlatSafeSpend(snapshot) - calculateTieredSafeSpend(snapshot),
+        ),
+      };
+      // safeSpendLimit is a cached derived value and the tier now feeds into it,
+      // so changing the tier without recomputing left every screen showing the
+      // old number under a new label. Same omission as setVelocityConfig had.
+      set((state: any) => {
+        const nextState = { ...state, tierLock: next };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
       await pushTierLock(userId, next);
     },
 
     breakSpendTier: async () => {
       const { userId, tierLock } = get() as StoreState;
-      const next = { ...tierLock, lockedUntil: null, breakCount: tierLock.breakCount + 1 };
+      // Ending early leaves the same kind of trace finishing does. Not to break
+      // the news, the confirmation sheet already did that, but so the record
+      // covers both halves instead of only counting one of them. Days served is
+      // what was actually done, so a hold abandoned on day six says six.
+      const served = Math.max(0, tierLock.lockedDays - tierLockDaysLeft(tierLock));
+      const next: TierLockState = {
+        ...tierLock,
+        lockedUntil: null,
+        broken: tierLock.broken + 1,
+        pending: {
+          result: 'broken',
+          tierId: tierLock.tierId,
+          days: served,
+          heldBack: tierLock.dailyHoldback * served,
+        },
+      };
+      // safeSpendLimit is a cached derived value and the tier now feeds into it,
+      // so changing the tier without recomputing left every screen showing the
+      // old number under a new label. Same omission as setVelocityConfig had.
+      set((state: any) => {
+        const nextState = { ...state, tierLock: next };
+        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
+      });
+      await pushTierLock(userId, next);
+    },
+
+    clearPendingOutcome: async () => {
+      const { userId, tierLock } = get() as StoreState;
+      if (!tierLock.pending) return;
+      const next: TierLockState = { ...tierLock, pending: null };
       set((state: any) => ({ ...state, tierLock: next }));
       await pushTierLock(userId, next);
     },

@@ -170,10 +170,24 @@ export const calculatePacedAllowance = (
 
   if (config.paceModel === 'FLAT' || requested <= 0) return flatResult;
 
-  // A trim can never drive a day below zero.
-  const appliedTrim = Math.min(requested, safeFlat);
+  // A weekday keeps at least half the allowance.
+  //
+  // This used to clamp at 100%, which let a trim take the entire weekday amount
+  // and leave nothing for Monday to Friday. The slider capped itself at half,
+  // but that was a UI rule the engine did not share, so a stored trim could
+  // outgrow its ceiling whenever the baseline shrank underneath it.
+  //
+  // Switching to a lower spend tier does exactly that. A 685 trim, valid when
+  // the baseline was 1883, became larger than the whole 471 allowance at the
+  // 25% tier, so calculatePacedAllowance took all of it and every weekday read
+  // zero while the Velocity screen previewed a healthy number.
+  //
+  // Enforcing it here means no writer has to remember to re-clamp when the
+  // baseline moves.
+  const maxTrim = safeFlat * 0.5;
+  const appliedTrim = Math.min(requested, maxTrim);
   const clampNote = appliedTrim < requested
-    ? 'Trim capped at the daily allowance'
+    ? 'Trim capped at half the daily allowance'
     : null;
 
   // WEEKEND_LOADED. Needs both kinds of day left, or there is nowhere to move

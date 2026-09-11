@@ -225,11 +225,36 @@ export const calculateAllowanceDrift = (state: AppState): number => {
   return Math.max(0, dailyFromBudget - dailyFromCash);
 };
 
-export const calculateTrueSafeSpend = (state: AppState): number => {
+/**
+ * The flat figure after the chosen spend tier, before Velocity reshapes it.
+ *
+ * The tier is a self-imposed ceiling (90/75/50/25%), so it belongs between
+ * capacity and pacing: capacity is what you could spend, the tier is what you
+ * decided to allow, and pacing decides how that lands across the days.
+ *
+ * Exposed separately because the screens that let you change the tier have to
+ * show its effect without reading a number the tier has already been applied to.
+ */
+export const calculateTieredSafeSpend = (state: AppState): number => {
   const flat = calculateFlatSafeSpend(state);
-  if (!state.nextPayday) return flat;
+  const tierId = state.tierLock?.tierId;
+  const tier = SPEND_TIERS.find(t => t.id === tierId);
+  return tier ? flat * tier.multiplier : flat;
+};
+
+/**
+ * Today's number, everything applied: capacity, then the tier, then pacing.
+ *
+ * The tier used to be applied only by the screens that displayed it, so picking
+ * 75% changed Daily Review and Velocity while the dashboard hero carried on
+ * showing the untiered figure. The number the app tells you to obey ignored the
+ * limit you had chosen, and the two screens disagreed by exactly the multiplier.
+ */
+export const calculateTrueSafeSpend = (state: AppState): number => {
+  const tiered = calculateTieredSafeSpend(state);
+  if (!state.nextPayday) return tiered;
   return calculatePacedAllowance(
-    flat,
+    tiered,
     calculateDaysUntilPayday(state.nextPayday),
     state.velocityConfig ?? DEFAULT_VELOCITY_CONFIG,
   ).todayRate;
@@ -259,11 +284,20 @@ export const calculateImpulseDeduction = (amount: number, penaltyRate: number): 
 /**
  * 3. The Spend Challenge
  */
+// FULL is the off switch, and it is first because it is the honest default:
+// the app shows what the arithmetic says you can spend. Every other entry is a
+// voluntary handicap, so nobody should be sitting on one without having chosen
+// it. The default used to be TIGHT, which quietly took 25% off the headline
+// number of every user who never opened this screen, including on day one.
+//
+// Deliberately neutral in colour. The others earn a signal colour because they
+// are a commitment being kept; "no reduction" is not an achievement.
 export const SPEND_TIERS = [
-  { id: 'EASY',   label: '90% LIMIT', multiplier: 0.90, color: 'bg-action-capture', textColor: 'text-capture-contrast',  accent: '#00CC55' },
-  { id: 'TIGHT',  label: '75% LIMIT', multiplier: 0.75, color: 'bg-[#facc15]',      textColor: 'text-black',  accent: '#facc15' },
-  { id: 'STRICT', label: '50% LIMIT', multiplier: 0.50, color: 'bg-orange-400',     textColor: 'text-black',  accent: '#fb923c' },
-  { id: 'BARE',   label: '25% LIMIT', multiplier: 0.25, color: 'bg-action-bleed',   textColor: 'text-white',  accent: '#FF4D4D' },
+  { id: 'FULL',   label: 'FULL AMOUNT', multiplier: 1.00, color: 'bg-input',      textColor: 'text-text-main', accent: '#9CA3AF' },
+  { id: 'EASY',   label: '90% LIMIT',   multiplier: 0.90, color: 'bg-[#86EFAC]',  textColor: 'text-black',     accent: '#86EFAC' },
+  { id: 'TIGHT',  label: '75% LIMIT',   multiplier: 0.75, color: 'bg-[#4ADE80]',  textColor: 'text-black',     accent: '#4ADE80' },
+  { id: 'STRICT', label: '50% LIMIT',   multiplier: 0.50, color: 'bg-[#16A34A]',  textColor: 'text-white',     accent: '#16A34A' },
+  { id: 'BARE',   label: '25% LIMIT',   multiplier: 0.25, color: 'bg-[#14532D]',  textColor: 'text-white',     accent: '#14532D' },
 ] as const;
 
 export type SpendTierId = typeof SPEND_TIERS[number]['id'];
@@ -278,13 +312,61 @@ export interface TierLockState {
   tierId: SpendTierId;
   /** ISO timestamp, or null when no lock is running. */
   lockedUntil: string | null;
-  breakCount: number;
+  /**
+   * Days the current, or most recently finished, hold was set for. Without it
+   * a running hold can only say how many days are left, never where you are in
+   * it, and a finished one cannot say what it was.
+   */
+  lockedDays: number;
+  /**
+   * What the tier was taking off the daily allowance when the hold started.
+   *
+   * Captured at lock time because it cannot be recovered afterwards: the daily
+   * figure moves with the balance and the days left, so by the time a hold
+   * finishes there is no way to reconstruct what it withheld. Stored as a daily
+   * rate rather than a total so it survives a hold being cut short.
+   */
+  dailyHoldback: number;
+  /** Holds that ran to their end. */
+  completed: number;
+  /** Holds ended early. Was breakCount, which only ever counted this half. */
+  broken: number;
+  /**
+   * A hold that has just finished and has not been acknowledged yet.
+   *
+   * Expiry used to be detected on load and thrown away in the same breath, so
+   * the one moment the app could have noticed you finishing was also the moment
+   * it erased the evidence. Failure, meanwhile, ran through an explicit action
+   * that counted and persisted it. The app kept score of one thing only, which
+   * is the difference between a record and a verdict.
+   *
+   * Both outcomes, stated the same way. Breaking already has its own
+   * confirmation step, so this is not there to break the news; it is there so
+   * the record covers both halves rather than only the one the app used to
+   * count. The copy stays factual for both, with no praise on one side and no
+   * reproach on the other.
+   */
+  pending: {
+    result: 'completed' | 'broken';
+    tierId: SpendTierId;
+    /** Days actually served: the full term when completed, days elapsed when broken. */
+    days: number;
+    /** days x dailyHoldback. An estimate, and worded as one wherever it is shown. */
+    heldBack: number;
+  } | null;
 }
 
 export const DEFAULT_TIER_LOCK: TierLockState = {
-  tierId: 'TIGHT',
+  // Applies to anyone whose tier_lock column is still null, which is everyone
+  // who has not deliberately picked a tier. An explicit choice writes a real
+  // row, so this cannot overwrite one.
+  tierId: 'FULL',
   lockedUntil: null,
-  breakCount: 0,
+  lockedDays: 0,
+  dailyHoldback: 0,
+  completed: 0,
+  broken: 0,
+  pending: null,
 };
 
 /**
@@ -301,18 +383,62 @@ export const normalizeTierLock = (raw: unknown, now: Date = new Date()): TierLoc
     ? (r.tierId as SpendTierId)
     : DEFAULT_TIER_LOCK.tierId;
 
+  const whole = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  };
+
+  // A hold in the future is still running. One in the past ran to its end
+  // without being broken, because breaking clears lockedUntil outright, so the
+  // two can never be confused for one another.
   let lockedUntil: string | null = null;
+  let justFinished = false;
   if (typeof r.lockedUntil === 'string' && r.lockedUntil) {
     const when = new Date(r.lockedUntil);
-    if (!Number.isNaN(when.getTime()) && when.getTime() > now.getTime()) {
-      lockedUntil = r.lockedUntil;
+    if (!Number.isNaN(when.getTime())) {
+      if (when.getTime() > now.getTime()) lockedUntil = r.lockedUntil;
+      else justFinished = true;
     }
   }
 
-  const countRaw = Number(r.breakCount);
-  const breakCount = Number.isFinite(countRaw) && countRaw > 0 ? Math.floor(countRaw) : 0;
+  const lockedDays = whole(r.lockedDays);
+  const holdbackRaw = Number(r.dailyHoldback);
+  const dailyHoldback = Number.isFinite(holdbackRaw) && holdbackRaw > 0 ? holdbackRaw : 0;
+  // breakCount is the old name for the same figure. Read both so rows written
+  // before the rename carry over without a migration.
+  const broken = whole(r.broken ?? r.breakCount);
 
-  return { tierId, lockedUntil, breakCount };
+  let pending: TierLockState['pending'] = null;
+  const rawPending = r.pending;
+  if (rawPending && typeof rawPending === 'object') {
+    const p = rawPending as Record<string, unknown>;
+    if (typeof p.tierId === 'string' && TIER_IDS.has(p.tierId)) {
+      const heldRaw = Number(p.heldBack);
+      pending = {
+        result: p.result === 'broken' ? 'broken' : 'completed',
+        tierId: p.tierId as SpendTierId,
+        days: whole(p.days),
+        heldBack: Number.isFinite(heldRaw) && heldRaw > 0 ? heldRaw : 0,
+      };
+    }
+  }
+
+  // Deriving the increment from the STORED count rather than adding to a running
+  // one keeps this idempotent: reading the same row twice yields the same
+  // number, not two. The caller persists it once, after which lockedUntil is
+  // null and there is nothing left to detect.
+  let completed = whole(r.completed);
+  if (justFinished) {
+    completed += 1;
+    pending = {
+      result: 'completed',
+      tierId,
+      days: lockedDays,
+      heldBack: dailyHoldback * lockedDays,
+    };
+  }
+
+  return { tierId, lockedUntil, lockedDays, dailyHoldback, completed, broken, pending };
 };
 
 export const isTierLocked = (lock: TierLockState, now: Date = new Date()): boolean =>

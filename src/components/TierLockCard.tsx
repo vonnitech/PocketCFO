@@ -7,7 +7,6 @@ import { formatCurrency } from '../lib/utils';
 import { BottomSheet } from './BottomSheet';
 import {
   SPEND_TIERS,
-  calculateTierLimit,
   isTierLocked,
   tierLockDaysLeft,
 } from '../core/math';
@@ -17,13 +16,14 @@ import {
 // the dashboard and the review showed two different daily figures with only one
 // of them explaining why.
 export function TierLockCard() {
-  const { tierLock, setSpendTier, lockSpendTier, breakSpendTier, safeSpendLimit, privacyMode } =
+  const { tierLock, setSpendTier, lockSpendTier, breakSpendTier, clearPendingOutcome, safeSpendLimit, privacyMode } =
     useStore(
       useShallow(s => ({
         tierLock: s.tierLock,
         setSpendTier: s.setSpendTier,
         lockSpendTier: s.lockSpendTier,
         breakSpendTier: s.breakSpendTier,
+        clearPendingOutcome: s.clearPendingOutcome,
         safeSpendLimit: s.safeSpendLimit,
         privacyMode: s.privacyMode,
       })),
@@ -33,8 +33,26 @@ export function TierLockCard() {
 
   const locked = isTierLocked(tierLock);
   const daysLeft = tierLockDaysLeft(tierLock);
-  const activeTier = SPEND_TIERS.find(t => t.id === tierLock.tierId) ?? SPEND_TIERS[1];
-  const tierLimit = calculateTierLimit(safeSpendLimit, activeTier.multiplier);
+  const activeTier = SPEND_TIERS.find(t => t.id === tierLock.tierId) ?? SPEND_TIERS[0];
+  // FULL is the absence of a tier, so it gets its own row rather than a cell in
+  // the grid of handicaps, and there is nothing to hold yourself to while it is
+  // selected.
+  const atFull = tierLock.tierId === 'FULL';
+  const challengeTiers = SPEND_TIERS.filter(t => t.id !== 'FULL');
+
+  // Where you are, not just what is left. A hold that can only count down tells
+  // you about the part you have not done yet; this is the half that helps while
+  // it is still running.
+  const dayOf = locked && tierLock.lockedDays > 0
+    ? Math.min(tierLock.lockedDays, tierLock.lockedDays - daysLeft + 1)
+    : 0;
+
+  const done = tierLock.pending;
+  const doneTier = done ? SPEND_TIERS.find(t => t.id === done.tierId) : undefined;
+  const hasRecord = tierLock.completed > 0 || tierLock.broken > 0;
+  // safeSpendLimit already carries the tier AND the pacing, so this is the
+  // number the dashboard shows. Multiplying again would give 75% of 75%.
+  const tierLimit = safeSpendLimit;
 
   const endLock = async () => {
     await breakSpendTier();
@@ -48,10 +66,70 @@ export function TierLockCard() {
           Spend Tier
         </div>
 
+        {/* Finishing a hold used to produce nothing at all: the date passed, the
+            lock was quietly dropped on the next load, and the app carried on as
+            though it had never happened. Ending one early, by contrast, fired an
+            action and wrote a number down. This is the missing half.
+
+            Stated plainly, with no praise language. A figure for what the hold
+            actually held back would be better, but it cannot be computed after
+            the fact: the daily allowance moves with the balance and the days
+            left, so the only honest version needs a value captured when the hold
+            starts. That is a small addition if it is wanted. */}
+        {done && (
+          <div className="border-4 border-black bg-black rounded-2xl p-4 space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-action-primary">
+              {done.result === 'completed' ? 'Hold finished' : 'Hold ended early'}
+            </p>
+            <p className="text-2xl font-black italic uppercase text-white leading-none">
+              {done.days > 0 ? `${done.days} day${done.days === 1 ? '' : 's'} at ` : ''}
+              {doneTier?.label ?? done.tierId}
+            </p>
+            {/* "About", and it is not decoration. This is days served times the
+                gap between the untiered and tiered allowance at the moment the
+                hold started. The real allowance drifts with the balance and the
+                days to payday, so the figure is a fair account of what the tier
+                withheld, not a measured one. It is also not a claim about what
+                was saved: whether the money stayed put depends on spending, and
+                the app does not know that from this number alone. */}
+            {done.heldBack > 0 && (
+              <p className="text-[11px] font-bold uppercase tracking-wide text-white/60 leading-snug">
+                About {formatCurrency(done.heldBack, privacyMode)} held back from your allowance
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => { void clearPendingOutcome(); }}
+              className="w-full h-10 bg-action-primary border-2 border-black rounded-xl text-primary-contrast font-black uppercase tracking-widest text-[10px]"
+            >
+              Got it
+            </button>
+          </div>
+        )}
+
         {!locked ? (
           <>
+            <button
+              type="button"
+              onClick={() => setSpendTier('FULL')}
+              className={`w-full flex items-center justify-between gap-3 p-3 border-4 rounded-2xl transition-all ${
+                atFull
+                  ? 'bg-black border-black text-action-primary shadow-[4px_4px_0px_0px_var(--color-action-primary)]'
+                  : 'bg-input border-border text-text-muted hover:border-black'
+              }`}
+            >
+              <span className="font-black text-xs uppercase tracking-widest">Full Amount</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wide ${atFull ? 'text-action-primary/60' : 'text-text-muted'}`}>
+                No reduction
+              </span>
+            </button>
+
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              Or hold yourself to less
+            </p>
+
             <div className="grid grid-cols-2 gap-2">
-              {SPEND_TIERS.map(tier => (
+              {challengeTiers.map(tier => (
                 <button
                   key={tier.id}
                   type="button"
@@ -67,7 +145,7 @@ export function TierLockCard() {
               ))}
             </div>
 
-            <div>
+            <div className={atFull ? 'hidden' : ''}>
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
                 Hold this tier for
               </p>
@@ -101,10 +179,20 @@ export function TierLockCard() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
                 Until {new Date(tierLock.lockedUntil!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
-              <div className="mt-3 pt-3 border-t-2 border-white/10 flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Remaining</p>
-                <p className="text-sm font-black text-white">{daysLeft} day{daysLeft !== 1 ? 's' : ''}</p>
+              <div className="mt-3 pt-3 border-t-2 border-white/10 flex items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                  {dayOf > 0 ? `Day ${dayOf} of ${tierLock.lockedDays}` : 'Remaining'}
+                </p>
+                <p className="text-sm font-black text-white shrink-0">{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</p>
               </div>
+              {dayOf > 0 && (
+                <div className="mt-2 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-action-primary"
+                    style={{ width: `${Math.round((dayOf / tierLock.lockedDays) * 100)}%` }}
+                  />
+                </div>
+              )}
             </div>
 
             <button
@@ -117,9 +205,28 @@ export function TierLockCard() {
           </>
         )}
 
+        {/* Both halves or neither. A lone count of the times you gave up is a
+            verdict; the same number beside what you finished is a record. */}
+        {hasRecord && (
+          <div className="flex items-center gap-4 border-t-2 border-border/30 pt-3">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              Finished <span className="text-text-main font-black">{tierLock.completed}</span>
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              Ended early <span className="text-text-main font-black">{tierLock.broken}</span>
+            </span>
+          </div>
+        )}
+
         <div className="flex justify-between items-center border-t-2 border-border/30 pt-3 gap-3">
+          {/* Not "Today at {tier}": this figure has the weekday trim in it as
+              well, so labelling it with the tier alone made the tier look like
+              it had taken far more than its own percentage. On a 90% tier with
+              a weekend-loaded pace it read "today at easy: $155" when easy on
+              its own was $311. It matches the dashboard, so it is named the
+              same thing the dashboard names it. */}
           <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-            Today at {activeTier.label}
+            Cleared today
           </span>
           <span className="font-black text-xl text-text-main tabular-nums">
             {formatCurrency(tierLimit, privacyMode)}
