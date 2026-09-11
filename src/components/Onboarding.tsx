@@ -278,7 +278,7 @@ export function OnboardingModal() {
               {step === 'basics'
                 ? 'You can update these any time in Settings.'
                 : step === 'bills'
-                  ? 'Bills due before your next payday. Add them so your daily number holds back enough to cover them.'
+                  ? "Bills due before your next payday. Add them so they are committed before today's amount is cleared."
                   : 'One last thing, and it is optional.'}
             </p>
           </div>
@@ -475,7 +475,7 @@ export function OnboardingModal() {
                 {/* Safe-to-Spend preview */}
                 <div className="bg-action-primary border-4 border-black rounded-2xl px-4 py-3 overflow-hidden">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-black/50">
-                    Your cleared daily allowance
+                    Cleared Today
                   </p>
                   <p className="text-4xl font-black italic tracking-tighter text-black leading-none mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
@@ -505,7 +505,7 @@ export function OnboardingModal() {
                     next to the thing it protects than next to a form. */}
                 <div className="bg-action-capture border-4 border-black rounded-2xl px-4 py-3 overflow-hidden">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-capture-contrast/60">
-                    Your cleared daily allowance
+                    Cleared Today
                   </p>
                   <p className="text-3xl font-black italic tracking-tighter text-capture-contrast leading-none mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
@@ -514,8 +514,8 @@ export function OnboardingModal() {
 
                 <NotificationPrimer
                   onDone={finishOnboarding}
-                  headline="Want payday-safe reminders?"
-                  subline="We can tell you when a bill is about to land, when your pay arrives, and when a day has gone over your number."
+                  headline="Want pay-cycle reminders?"
+                  subline="We can tell you when a bill is about to land, when your pay arrives, and when spending goes past what's cleared."
                   dismissLabel="No thanks, take me in"
                 />
               </motion.div>

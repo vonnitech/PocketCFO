@@ -210,7 +210,7 @@ const chooseWorthIt = (id: WorthIt) => {
             </div>
             <div className="flex items-end gap-4 mb-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Daily Limit</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Cleared Today</p>
                 <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(effectiveLimit, privacyMode)}</p>
               </div>
               <div className="flex-1 text-right">
@@ -343,7 +343,7 @@ const chooseWorthIt = (id: WorthIt) => {
           </div>
             <div className="flex items-end gap-4 mb-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Daily Limit</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Cleared Today</p>
                 <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(safeSpendLimit, privacyMode)}</p>
               </div>
               <div className="flex-1 text-right">
@@ -572,7 +572,7 @@ const chooseWorthIt = (id: WorthIt) => {
               {/* Numbers */}
               <div className="bg-surface border-4 border-border rounded-3xl p-4 space-y-2">
                 <div className="flex justify-between items-center border-b-2 border-border pb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Daily Budget</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Cleared Today</span>
                   <span className="font-black text-text-main">{formatCurrency(safeSpendLimit, privacyMode)}</span>
                 </div>
                 <div className="flex justify-between items-center border-b-2 border-border pb-2">

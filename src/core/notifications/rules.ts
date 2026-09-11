@@ -181,7 +181,7 @@ const overspendToday: NotificationRule = {
 
     return {
       dedupeKey: esc.dedupeKey,
-      title: "You are past today's number",
+      title: "You are past what's cleared today",
       body,
       actionPath: '/recon',
       memoryWrites: writeRiskMemory('overspend-today', {
@@ -223,10 +223,10 @@ const safeSpendLow: NotificationRule = {
       dedupeKey: esc.dedupeKey,
       title: shortfallCase
         ? 'Your bills need more than your balance'
-        : 'Your daily number is running thin',
+        : 'Your Cleared Today amount is running low',
       body: shortfallCase
         ? `You have ${shortfallLine(a)}${worseningLine(a.shortfall, esc.escalated ? lastShortfall : 0)} Moving a bill or topping up closes the gap.`
-        : `${money(state.safeSpendLimit)} a day with ${days} day${days === 1 ? '' : 's'} to payday, after bills are held back.`,
+        : `${money(state.safeSpendLimit)} cleared per day with ${days} day${days === 1 ? '' : 's'} to payday, after bills are committed.`,
       actionPath: '/',
       memoryWrites: writeRiskMemory('safe-spend-low', {
         level: a.level,
@@ -292,7 +292,7 @@ const billDueSoon: NotificationRule = {
     return {
       dedupeKey: `bill-due:${identity}`,
       title: count === 1 ? `${name} is due ${when}` : `${count} bills due ${when}`,
-      body: `${money(total)} due ${when}. It is already held back from your daily number.`,
+      body: `${money(total)} due ${when}. It is already committed before today's amount is cleared.`,
       actionPath: '/',
     };
   },
@@ -314,7 +314,7 @@ const paydayLanded: NotificationRule = {
       // Scoped to the cycle it opened, so next month is a new nudge.
       dedupeKey: `payday-landed:${todayKey}`,
       title: 'Your pay landed',
-      body: `${money(credited)} added. Your new daily number is ${money(state.safeSpendLimit)}.`,
+      body: `${money(credited)} added. ${money(state.safeSpendLimit)} is now cleared for today.`,
       actionPath: '/vaults',
     };
   },
@@ -362,8 +362,8 @@ const safeSpendShift: NotificationRule = {
     const up = delta > 0;
     return {
       dedupeKey: 'safe-spend-shift',
-      title: up ? 'Your daily number went up' : 'Your daily number went down',
-      body: `${money(previous)} to ${money(current)} a day${up ? '.' : ', after bills and savings are held back.'}`,
+      title: up ? 'More is cleared today' : 'Less is cleared today',
+      body: `Today's cleared amount moved from ${money(previous)} to ${money(current)}${up ? '.' : ', after bills and savings were committed.'}`,
       actionPath: '/',
       memoryWrites: { [SAFE_SPEND_MEMORY_KEY]: current },
     };

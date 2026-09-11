@@ -94,7 +94,7 @@ export function TierLockCard() {
                 the app does not know that from this number alone. */}
             {done.heldBack > 0 && (
               <p className="text-[11px] font-bold uppercase tracking-wide text-white/60 leading-snug">
-                About {formatCurrency(done.heldBack, privacyMode)} held back from your allowance
+                About {formatCurrency(done.heldBack, privacyMode)} held back during this hold
               </p>
             )}
             <button
@@ -246,7 +246,7 @@ export function TierLockCard() {
               End {activeTier.label} mode early?
             </h2>
             <p className="text-[12px] font-bold text-text-muted mt-2 leading-relaxed uppercase tracking-wide">
-              {daysLeft} day{daysLeft !== 1 ? 's' : ''} left. Your daily number goes back to the
+              {daysLeft} day{daysLeft !== 1 ? 's' : ''} left. Your Cleared Today amount goes back to the
               full amount, and you can pick a new tier whenever you want.
             </p>
           </div>

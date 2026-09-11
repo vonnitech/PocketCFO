@@ -8,8 +8,8 @@ const STEPS = [
   {
     icon: Wallet,
     color: 'bg-action-capture',
-    title: 'Your Daily Limit',
-    body: 'Your dashboard shows one number: your cleared daily allowance. It sets your bills and savings aside first, then spreads the rest across the days until payday. Spend less today and the leftover rolls into tomorrow.',
+    title: 'Cleared Today',
+    body: "Your dashboard shows what's cleared for today. Bills and savings are set aside first, then the rest is spread across the days until payday. Spend less today and the leftover rolls into tomorrow.",
   },
   {
     icon: Zap,

@@ -11,7 +11,11 @@ import {
   pacedWindowTotal,
   type VelocityConfig,
 } from '../src/core/velocity';
-import { calculateFlatSafeSpend, calculateTrueSafeSpend } from '../src/core/math';
+import {
+  calculateDaysUntilPayday,
+  calculateFlatSafeSpend,
+  calculateTrueSafeSpend,
+} from '../src/core/math';
 
 let failures = 0;
 const check = (name: string, pass: boolean, detail = '') => {
@@ -146,7 +150,11 @@ const cfg = (over: Partial<VelocityConfig> = {}): VelocityConfig => ({
   // A weekday far enough out that the window always holds both day types.
   const payday = new Date();
   payday.setDate(payday.getDate() + 21);
-  const nextPayday = payday.toISOString().slice(0, 10);
+  const nextPayday = [
+    payday.getFullYear(),
+    String(payday.getMonth() + 1).padStart(2, '0'),
+    String(payday.getDate()).padStart(2, '0'),
+  ].join('-');
 
   const base = {
     nextPayday,
@@ -168,7 +176,11 @@ const cfg = (over: Partial<VelocityConfig> = {}): VelocityConfig => ({
   const pacedState = { ...base, velocityConfig: pacedConfig } as never;
 
   const today = calculateTrueSafeSpend(pacedState);
-  const expected = calculatePacedAllowance(flat, 21, pacedConfig).todayRate;
+  const expected = calculatePacedAllowance(
+    flat,
+    calculateDaysUntilPayday(nextPayday),
+    pacedConfig,
+  ).todayRate;
 
   check(
     'calculateTrueSafeSpend applies the pacing',

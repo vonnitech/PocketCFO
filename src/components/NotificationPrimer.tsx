@@ -27,8 +27,8 @@ interface Props {
 
 export function NotificationPrimer({
   onDone,
-  headline = 'Want payday-safe reminders?',
-  subline = 'Pocket CFO can tell you when a bill is about to land, when your pay arrives, and when today has gone over. Nothing else.',
+  headline = 'Want pay-cycle reminders?',
+  subline = "Pocket CFO can tell you when a bill is about to land, when your pay arrives, and when spending goes past what's cleared. Nothing else.",
   dismissLabel = 'Not now',
 }: Props) {
   const { askPermission, answerPrimer } = useNotifications();

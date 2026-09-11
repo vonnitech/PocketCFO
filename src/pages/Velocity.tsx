@@ -9,7 +9,7 @@ export default function Velocity() {
           Pacing
         </h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
-          Sets when the allowance is available, not how much there is
+          Sets when your cleared amount is available, not how much there is
         </p>
       </div>
 

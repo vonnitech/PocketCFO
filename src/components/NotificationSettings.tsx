@@ -17,7 +17,7 @@ import { NotificationPrimer } from './NotificationPrimer';
 const MODES: { id: NotificationMode; label: string; hint: string }[] = [
   { id: 'off',       label: 'Off',            hint: 'Nothing is sent and nothing is recorded. Your existing inbox is kept.' },
   { id: 'important', label: 'Important only', hint: 'Bills, payday, overspend and shortfall risk, account problems.' },
-  { id: 'all',       label: 'Helpful too',    hint: 'Adds Daily Review and safe-spend change reminders.' },
+  { id: 'all',       label: 'Helpful too',    hint: 'Adds Daily Review and Cleared Today change reminders.' },
 ];
 
 const hour12 = (h: number): string => {

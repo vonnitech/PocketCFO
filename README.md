@@ -1,28 +1,32 @@
-# Pocket CFO
+# Pocket CFO (working name)
 
-A neobrutalist personal-finance app that tells you one thing the rest don't: **exactly how much you can safely spend today** without blowing your pay cycle.
+> Working name: PocketCFO. Rename pending clearance.
 
-Most budgeting apps show you where money *went*. Pocket CFO is forward-looking — it reserves your bills, savings, and debt obligations off the top, then divides what's genuinely left across the days until your next payday. The number on the dashboard is the only one you have to obey.
+A pay-cycle operating system for people who live between paydays: clear today's spend, protect future obligations, and keep debt, savings, and vaults moving without judgment.
+
+**Pay future-you first. Spend what's cleared.**
+
+Most budgeting apps show you where money *went*. This product is forward-looking — it reserves bills, savings, and debt obligations first, then divides what's genuinely left across the days until the next payday. The Cleared Today amount is the one daily decision number.
 
 ---
 
 ## Core idea — the Horizon engine
 
-Pocket CFO models your money as **pay-cycle liquidity** rather than a static monthly budget:
+The internal Horizon engine models money as **pay-cycle liquidity** rather than a static monthly budget:
 
 ```
-Safe-to-spend today  =  (liquid cash − committed obligations − savings goal)
-                         ÷ days remaining until next payday
+Cleared today  =  (liquid cash − committed obligations − savings goal)
+                  ÷ days remaining until next payday
 ```
 
-"Committed obligations" (recurring bills, debt minimums, vault deposits) are **pre-reserved** and never counted as discretionary spend. Everything in the app — the dashboard hero number, the analytics, the month-over-month comparison — respects that separation. The math lives in [`src/core/math.ts`](src/core/math.ts) (`calculateTrueSafeSpend`, `calculateDaysUntilPayday`, spend tiers).
+"Committed obligations" (recurring bills, debt minimums, vault deposits) are **pre-reserved** and never counted as discretionary spend. Everything in the app — the dashboard hero number, analytics, and month-over-month comparison — respects that separation. The code retains `safe-spend` terminology internally; the customer-facing result is Cleared Today. The math lives in [`src/core/math.ts`](src/core/math.ts) (`calculateTrueSafeSpend`, `calculateDaysUntilPayday`, spend tiers).
 
 ---
 
 ## Features
 
 **Core**
-- **Dashboard** — safe-to-spend hero, quick log-spend with category chips, recent activity feed, 7-day trend, monthly budget progress.
+- **Dashboard** — Cleared Today hero, quick log-spend with category chips, recent activity feed, 7-day trend, monthly budget progress.
 - **Daily Log / Transactions** — full ledger with search, category filters, infinite scroll, inline category editing, and delete.
 - **Vaults** — goal-based savings buckets typed by asset class (Investment / Sinking Fund / Cash Reserve), with funding, transfers, and milestone badges.
 - **Ledger & Audit (Breakdown)** — spend-by-category donut chart, pivot analytics (monthly/weekly), wealth captured, capital allocated (debt payoff) and committed (bills) cards kept distinct.

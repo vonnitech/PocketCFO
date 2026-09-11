@@ -20,7 +20,7 @@ export default function SpendLimit() {
           Spend Limit
         </h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
-          Sets how much of the daily allowance you let yourself use
+          Sets the share of your cleared amount you can spend each day
         </p>
       </div>
 

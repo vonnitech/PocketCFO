@@ -411,7 +411,7 @@ export default function Dashboard() {
             </div>
             <p className="text-white font-black uppercase text-sm leading-relaxed">
               Add your balance, take-home pay, payday, and fixed bills to
-              calculate your first daily limit.
+              calculate what is cleared for today.
             </p>
           </div>
         </motion.div>
@@ -534,7 +534,7 @@ export default function Dashboard() {
                 Set your bank balance & next payday →
               </p>
               <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mt-1">
-                Your daily limit can't calculate without it
+                Your Cleared Today amount can't calculate without it
               </p>
             </div>
             <ChevronRight
@@ -561,7 +561,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 mb-1.5">
                 <Wallet size={13} strokeWidth={3} className="text-text-muted shrink-0" />
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                  Cleared to spend today
+                  Cleared Today
                 </p>
               </div>
 
@@ -653,7 +653,7 @@ export default function Dashboard() {
                     : days <= 3
                       ? "Finish line in sight · stay sharp"
                       : days <= 7
-                        ? "Midpoint · watch your daily limit"
+                        ? "Midpoint · watch what's cleared today"
                         : "Long stretch · trust the system";
 
               return (
@@ -1143,7 +1143,7 @@ export default function Dashboard() {
                 YOUR FIRST MOVE
               </div>
               <p className="text-white text-sm font-black uppercase leading-relaxed mb-5">
-                Your daily limit is live. Now build the habit · log purchases
+                Your Cleared Today amount is live. Now build the habit · log purchases
                 from the dashboard, then close the day with Daily Review.
               </p>
               <div className="space-y-2">
@@ -1421,7 +1421,7 @@ export default function Dashboard() {
               </div>
 
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">
-                Adds to your liquid capital · raises your daily limit
+                Adds to your liquid capital · raises your Cleared Today amount
                 immediately
               </p>
 

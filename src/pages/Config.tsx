@@ -199,7 +199,7 @@ export default function Config() {
       {/* Pay Cycle */}
       <Card badge="PAY CYCLE" badgeColor="bg-action-capture" badgeTextColor={captureTxt}>
         <div className="space-y-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Your real bank balance, next payday, and upcoming bills drive your daily limit</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Your real bank balance, next payday, and upcoming bills determine what is cleared today</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Current Bank Balance ($)</label>
@@ -633,5 +633,4 @@ export default function Config() {
     </motion.div>
   );
 }
-
 

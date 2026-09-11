@@ -187,7 +187,7 @@ export const calculatePacedAllowance = (
   const maxTrim = safeFlat * 0.5;
   const appliedTrim = Math.min(requested, maxTrim);
   const clampNote = appliedTrim < requested
-    ? 'Trim capped at half the daily allowance'
+    ? "Trim capped at half of what's cleared per day"
     : null;
 
   // WEEKEND_LOADED. Needs both kinds of day left, or there is nowhere to move
