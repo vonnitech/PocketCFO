@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-11T22:37:32Z",
+  "title": "Design System: PocketCFO",
+  "extensions": {
+    "colorMeta": {
+      "action-yellow": {
+        "role": "primary",
+        "displayName": "Action Yellow",
+        "canonical": "#facc15",
+        "tonalRamp": ["oklch(15% 0.05 90)", "oklch(27% 0.09 90)", "oklch(39% 0.13 90)", "oklch(51% 0.17 90)", "oklch(63% 0.18 90)", "oklch(75% 0.18 90)", "oklch(87% 0.15 90)", "oklch(95% 0.07 90)"]
+      },
+      "capture-green": {
+        "role": "secondary",
+        "displayName": "Capture Green",
+        "canonical": "#00C853",
+        "tonalRamp": ["oklch(15% 0.06 145)", "oklch(27% 0.11 145)", "oklch(39% 0.16 145)", "oklch(51% 0.19 145)", "oklch(63% 0.20 145)", "oklch(75% 0.18 145)", "oklch(87% 0.12 145)", "oklch(95% 0.05 145)"]
+      },
+      "risk-red": {
+        "role": "secondary",
+        "displayName": "Risk Red",
+        "canonical": "#E8174B",
+        "tonalRamp": ["oklch(15% 0.07 18)", "oklch(27% 0.13 18)", "oklch(39% 0.19 18)", "oklch(51% 0.23 18)", "oklch(63% 0.22 18)", "oklch(75% 0.17 18)", "oklch(87% 0.10 18)", "oklch(95% 0.04 18)"]
+      },
+      "target-gold": {
+        "role": "tertiary",
+        "displayName": "Target Gold",
+        "canonical": "#F5C518",
+        "tonalRamp": ["oklch(15% 0.05 86)", "oklch(27% 0.09 86)", "oklch(39% 0.13 86)", "oklch(51% 0.16 86)", "oklch(63% 0.17 86)", "oklch(75% 0.16 86)", "oklch(87% 0.12 86)", "oklch(95% 0.05 86)"]
+      },
+      "paper-base": { "role": "neutral", "displayName": "Paper Base", "canonical": "#F2F1EE", "tonalRamp": ["oklch(15% 0.005 85)", "oklch(27% 0.005 85)", "oklch(39% 0.005 85)", "oklch(51% 0.005 85)", "oklch(63% 0.005 85)", "oklch(75% 0.005 85)", "oklch(87% 0.005 85)", "oklch(95% 0.005 85)"] },
+      "paper-surface": { "role": "neutral", "displayName": "Paper Surface", "canonical": "#FAFAF9", "tonalRamp": ["oklch(15% 0.003 85)", "oklch(27% 0.003 85)", "oklch(39% 0.003 85)", "oklch(51% 0.003 85)", "oklch(63% 0.003 85)", "oklch(75% 0.003 85)", "oklch(87% 0.003 85)", "oklch(95% 0.003 85)"] },
+      "paper-input": { "role": "neutral", "displayName": "Paper Input", "canonical": "#E5E3DE", "tonalRamp": ["oklch(15% 0.008 85)", "oklch(27% 0.008 85)", "oklch(39% 0.008 85)", "oklch(51% 0.008 85)", "oklch(63% 0.008 85)", "oklch(75% 0.008 85)", "oklch(87% 0.008 85)", "oklch(95% 0.006 85)"] },
+      "ink-border": { "role": "neutral", "displayName": "Ink Border", "canonical": "#1A1A1A", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "ink-text": { "role": "neutral", "displayName": "Ink Text", "canonical": "#111111", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "ink-muted": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#656565", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "night-base": { "role": "neutral", "displayName": "Night Base", "canonical": "#0F0F0F", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "night-surface": { "role": "neutral", "displayName": "Night Surface", "canonical": "#1A1A1A", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "night-input": { "role": "neutral", "displayName": "Night Input", "canonical": "#242424", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "night-border": { "role": "neutral", "displayName": "Night Border", "canonical": "#4A4A4A", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "night-text": { "role": "neutral", "displayName": "Night Text", "canonical": "#F0F0F0", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "night-muted": { "role": "neutral", "displayName": "Night Muted", "canonical": "#8b8b8b", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles and the safe-to-spend hero." },
+      "headline": { "displayName": "Headline", "purpose": "Section and card headings." },
+      "body": { "displayName": "Body", "purpose": "Short explanations and supporting copy." },
+      "label": { "displayName": "Label", "purpose": "Uppercase metadata, controls, and status text." },
+      "numeric": { "displayName": "Ledger Numeric", "purpose": "Currency, percentages, and comparable calculations." }
+    },
+    "shadows": [
+      { "name": "standard-lift", "value": "5px 5px 0 0 rgba(0, 0, 0, 1)", "purpose": "Default emphatic card or control elevation." },
+      { "name": "compact-lift", "value": "3px 3px 0 0 rgba(0, 0, 0, 1)", "purpose": "Buttons, chips, and compact interactive elements." },
+      { "name": "feature-lift", "value": "8px 8px 0 0 var(--shadow-color)", "purpose": "Large signature cards." },
+      { "name": "capture-lift", "value": "5px 5px 0 0 #00C853", "purpose": "Captured-value emphasis." },
+      { "name": "target-lift", "value": "5px 5px 0 0 #F5C518", "purpose": "Goal and target emphasis." },
+      { "name": "risk-lift", "value": "5px 5px 0 0 #E8174B", "purpose": "Risk emphasis when a raised treatment is appropriate." }
+    ],
+    "motion": [
+      { "name": "page-enter", "value": "opacity 0 to 1 and scale 0.98 to 1 over 150ms linear", "purpose": "Short route transition without delaying interaction." },
+      { "name": "sheet-enter", "value": "spring stiffness 380, damping 40", "purpose": "Bottom sheets rise from their trigger edge." },
+      { "name": "press", "value": "translate 2px and remove offset shadow", "purpose": "Makes raised controls feel physically pressed." },
+      { "name": "reduced-motion", "value": "0.01ms duration, one iteration", "purpose": "Near-instant fallback for reduced-motion preferences." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The strongest next action, rendered as ink with yellow type and a tactile yellow shadow.",
+      "html": "<button class=\"ds-btn-primary\">SAVE CHANGES</button>",
+      "css": ".ds-btn-primary { height: 48px; padding: 0 20px; border: 4px solid #1A1A1A; border-radius: 16px; background: #1A1A1A; color: var(--color-action-primary, #facc15); box-shadow: 3px 3px 0 0 var(--color-action-primary, #facc15); font: 900 10px/1.2 Inter, system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; transition: transform 150ms, box-shadow 150ms; cursor: pointer; } .ds-btn-primary:hover, .ds-btn-primary:active { transform: translate(2px, 2px); box-shadow: none; } .ds-btn-primary:focus-visible { outline: 3px solid var(--color-action-capture, #00C853); outline-offset: 3px; }"
+    },
+    {
+      "name": "Capture Button",
+      "kind": "button",
+      "refersTo": "button-capture",
+      "description": "A positive action that protects, confirms, or captures money.",
+      "html": "<button class=\"ds-btn-capture\">MOVE TO VAULT</button>",
+      "css": ".ds-btn-capture { height: 48px; padding: 0 20px; border: 4px solid #1A1A1A; border-radius: 16px; background: var(--color-action-capture, #00C853); color: var(--capture-contrast, #000); box-shadow: 3px 3px 0 0 #1A1A1A; font: 900 10px/1.2 Inter, system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; transition: transform 150ms, box-shadow 150ms; cursor: pointer; } .ds-btn-capture:hover, .ds-btn-capture:active { transform: translate(2px, 2px); box-shadow: none; } .ds-btn-capture:focus-visible { outline: 3px solid var(--color-action-primary, #facc15); outline-offset: 3px; }"
+    },
+    {
+      "name": "Amount Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A heavy outlined monetary field with a ledger-like numeric voice.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">AMOUNT</span><span class=\"ds-field-box\"><span>$</span><input value=\"245.00\" aria-label=\"Amount\"></span></label>",
+      "css": ".ds-field { display: grid; gap: 8px; color: var(--text-primary, #111); font-family: Inter, system-ui, sans-serif; } .ds-field-label { color: var(--text-secondary, #656565); font-size: 10px; font-weight: 900; letter-spacing: .1em; } .ds-field-box { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border: 4px solid var(--border-primary, #1A1A1A); border-radius: 16px; background: var(--bg-input, #E5E3DE); font: 700 18px/1.2 'Space Mono', monospace; } .ds-field-box input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; } .ds-field-box:focus-within { background: var(--bg-secondary, #FAFAF9); outline: 3px solid var(--color-action-primary, #facc15); outline-offset: 2px; }"
+    },
+    {
+      "name": "Choice Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Compact categorical choice with a clear raised selected state.",
+      "html": "<div class=\"ds-chip-row\"><button class=\"ds-chip\">FOOD</button><button class=\"ds-chip ds-chip-selected\">TRANSPORT</button></div>",
+      "css": ".ds-chip-row { display: flex; gap: 8px; } .ds-chip { padding: 6px 12px; border: 2px solid var(--border-primary, #1A1A1A); border-radius: 9999px; background: var(--bg-input, #E5E3DE); color: var(--text-secondary, #656565); font: 900 10px/1.2 Inter, system-ui, sans-serif; letter-spacing: .1em; cursor: pointer; } .ds-chip:hover { color: var(--text-primary, #111); border-color: #000; } .ds-chip:focus-visible { outline: 3px solid var(--color-action-capture, #00C853); outline-offset: 2px; } .ds-chip-selected { background: #1A1A1A; color: var(--color-action-primary, #facc15); border-color: #1A1A1A; box-shadow: 2px 2px 0 0 var(--color-action-primary, #facc15); }"
+    },
+    {
+      "name": "Ledger Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A surfaced financial grouping with thick structure and hard feature depth.",
+      "html": "<section class=\"ds-card\"><span class=\"ds-card-label\">CLEARED TODAY</span><strong class=\"ds-card-value\">$1,248</strong><p>After committed bills and savings.</p></section>",
+      "css": ".ds-card { width: 280px; padding: 24px; border: 4px solid var(--border-primary, #1A1A1A); border-radius: 24px; background: var(--bg-secondary, #FAFAF9); color: var(--text-primary, #111); box-shadow: 8px 8px 0 0 var(--shadow-color, rgba(0,0,0,.88)); font-family: Inter, system-ui, sans-serif; } .ds-card-label { display: block; color: var(--text-secondary, #656565); font-size: 10px; font-weight: 900; letter-spacing: .1em; } .ds-card-value { display: block; margin-top: 8px; font: 700 32px/1 'Space Mono', monospace; } .ds-card p { margin: 12px 0 0; color: var(--text-secondary, #656565); font-size: 12px; font-weight: 700; line-height: 1.4; }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "description": "A phone-width bottom pill with equal touch targets and a yellow active destination.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Primary\"><button class=\"ds-nav-item ds-nav-active\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 12l9-9 9 9v9H3z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg><span>HOME</span></button><button class=\"ds-nav-item\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 7h16M4 12h16M4 17h10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg><span>LEDGER</span></button><button class=\"ds-nav-item\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg><span>MORE</span></button></nav>",
+      "css": ".ds-nav { display: flex; gap: 2px; width: min(100%, 420px); padding: 6px; border: 3px solid var(--border-primary, #1A1A1A); border-radius: 24px; background: var(--bg-secondary, #FAFAF9); box-shadow: 4px 4px 0 0 var(--shadow-color, rgba(0,0,0,.88)); } .ds-nav-item { flex: 1; min-width: 0; height: 56px; display: grid; place-items: center; align-content: center; gap: 4px; border: 2px solid transparent; border-radius: 16px; background: transparent; color: var(--text-secondary, #656565); font: 900 9px/1.1 Inter, system-ui, sans-serif; letter-spacing: .05em; cursor: pointer; } .ds-nav-item svg { width: 22px; height: 22px; } .ds-nav-item:hover { color: var(--text-primary, #111); } .ds-nav-item:focus-visible { outline: 3px solid var(--color-action-capture, #00C853); outline-offset: 1px; } .ds-nav-active { background: var(--color-action-primary, #facc15); color: var(--primary-contrast, #000); border-color: #1A1A1A; }"
+    },
+    {
+      "name": "Risk Callout",
+      "kind": "custom",
+      "description": "A factual financial warning using a red tint and compact high-contrast copy.",
+      "html": "<div class=\"ds-risk\"><strong>OVER BY $42</strong><span>$8.40 penalty to savings</span></div>",
+      "css": ".ds-risk { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border: 2px solid var(--color-action-bleed, #E8174B); border-radius: 12px; background: color-mix(in srgb, var(--color-action-bleed, #E8174B) 10%, transparent); color: var(--color-action-bleed, #E8174B); font: 900 10px/1.3 Inter, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; } .ds-risk span { font-weight: 700; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Pocket Ledger",
+    "overview": "PocketCFO feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately.\n\nSignal colors carry meaning rather than decoration. Yellow marks the primary path, green marks money captured or a safe completion, red marks loss or risk, and gold marks goals. The visual system can shift between light and dark and accepts user-selected accent pairs, but the hierarchy, contrast, and semantic distinction between actions remain stable.",
+    "keyCharacteristics": [
+      "Thick, high-contrast outlines and hard offset shadows.",
+      "Warm paper neutrals in light mode and charcoal layers in dark mode.",
+      "Black, italic, tightly tracked display type paired with small uppercase labels.",
+      "Monospaced, tabular figures for money and calculated values.",
+      "Compact mobile layouts with generous touch targets and bottom-sheet interactions.",
+      "Bright signal colors reserved for actions, outcomes, targets, and risk."
+    ],
+    "rules": [
+      { "name": "The Signal Has a Job Rule", "body": "Yellow means primary or selected, green means captured or successfully completed, red means risk or destructive action, and gold means a target. Do not use these colors as interchangeable decoration.", "section": "colors" },
+      { "name": "The Theme Keeps the Hierarchy Rule", "body": "Custom accent pairs may change brand expression, but they must preserve foreground contrast and the distinction between primary action, capture, and risk.", "section": "colors" },
+      { "name": "The Ledger Number Rule", "body": "Money and comparable calculations use the monospaced numeric voice; prose and actions use the sans-serif voice.", "section": "typography" },
+      { "name": "The Label Earns Its Volume Rule", "body": "Uppercase tracked labels stay short. Explanations use sentence case rather than forcing whole paragraphs into display styling.", "section": "typography" },
+      { "name": "The Shadow Is Structure Rule", "body": "Use zero-blur offset shadows to establish importance or interaction. Do not add ambient blur, glass, or decorative glow as a default material.", "section": "elevation" },
+      { "name": "The Press Completes the Shadow Rule", "body": "Interactive raised controls move into their shadow and lose it on hover, press, or active feedback.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** make the safe-to-spend amount the clearest number on the dashboard.",
+      "**Do** use the same semantic color for the same financial meaning across screens.",
+      "**Do** preserve the paper, ink, thick-border, and hard-shadow construction in both light and dark themes.",
+      "**Do** use monospaced tabular numerals for money and comparable calculations.",
+      "**Do** keep touch targets generous and layout rows resilient to long labels and localized values.",
+      "**Do** treat user-selected themes as controlled substitutions for primary and capture accents while retaining contrast.",
+      "**Do** honor reduced-motion preferences and visible keyboard focus."
+    ],
+    "donts": [
+      "**Don't** introduce soft glass panels, diffuse SaaS shadows, gradient text, or low-contrast gray-on-color copy.",
+      "**Don't** use yellow, green, red, or gold decoratively when it would weaken their financial meaning.",
+      "**Don't** multiply card containers without a grouping reason or nest equally heavy cards inside one another.",
+      "**Don't** present two daily-availability numbers that apply different calculations or unexplained modifiers.",
+      "**Don't** change icon weight, border thickness, or corner scale arbitrarily between selected and unselected states.",
+      "**Don't** use moralizing success or failure language for spending behavior."
+    ]
+  }
+}
