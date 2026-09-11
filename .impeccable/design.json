@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-11T22:50:07Z",
-  "title": "Design System: Current Product (working name: PocketCFO)",
+  "generatedAt": "2026-09-11T22:55:08Z",
+  "title": "Product Design System (rename pending)",
   "extensions": {
     "colorMeta": {
       "action-yellow": {
@@ -39,11 +39,14 @@
       "night-input": { "role": "neutral", "displayName": "Night Input", "canonical": "#242424", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
       "night-border": { "role": "neutral", "displayName": "Night Border", "canonical": "#4A4A4A", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
       "night-text": { "role": "neutral", "displayName": "Night Text", "canonical": "#F0F0F0", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
-      "night-muted": { "role": "neutral", "displayName": "Night Muted", "canonical": "#8b8b8b", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] }
+      "night-muted": { "role": "neutral", "displayName": "Night Muted", "canonical": "#8b8b8b", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "shadow-light": { "role": "neutral", "displayName": "Light Structural Shadow", "canonical": "rgba(0, 0, 0, 0.88)", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "shadow-dark": { "role": "neutral", "displayName": "Dark Structural Shadow", "canonical": "rgba(0, 200, 80, 0.22)", "tonalRamp": ["oklch(15% 0.04 145)", "oklch(27% 0.07 145)", "oklch(39% 0.10 145)", "oklch(51% 0.13 145)", "oklch(63% 0.14 145)", "oklch(75% 0.12 145)", "oklch(87% 0.08 145)", "oklch(95% 0.03 145)"] }
     },
     "typographyMeta": {
       "display": { "displayName": "Display", "purpose": "Page titles and the cleared-today hero." },
       "headline": { "displayName": "Headline", "purpose": "Section and card headings." },
+      "title": { "displayName": "Title", "purpose": "Component headings and decisive states." },
       "body": { "displayName": "Body", "purpose": "Short explanations and supporting copy." },
       "label": { "displayName": "Label", "purpose": "Uppercase metadata, controls, and status text." },
       "numeric": { "displayName": "Ledger Numeric", "purpose": "Currency, percentages, and comparable calculations." }
@@ -51,7 +54,7 @@
     "shadows": [
       { "name": "standard-lift", "value": "5px 5px 0 0 rgba(0, 0, 0, 1)", "purpose": "Default emphatic card or control elevation." },
       { "name": "compact-lift", "value": "3px 3px 0 0 rgba(0, 0, 0, 1)", "purpose": "Buttons, chips, and compact interactive elements." },
-      { "name": "feature-lift", "value": "8px 8px 0 0 var(--shadow-color)", "purpose": "Large signature cards." },
+      { "name": "feature-lift", "value": "8px 8px 0 0 var(--shadow-color)", "purpose": "Large signature cards; --shadow-color maps to shadow-light or shadow-dark by theme." },
       { "name": "capture-lift", "value": "5px 5px 0 0 #00C853", "purpose": "Captured-value emphasis." },
       { "name": "target-lift", "value": "5px 5px 0 0 #F5C518", "purpose": "Goal and target emphasis." },
       { "name": "risk-lift", "value": "5px 5px 0 0 #E8174B", "purpose": "Risk emphasis when a raised treatment is appropriate." }
@@ -102,10 +105,10 @@
       "css": ".ds-chip-row { display: flex; gap: 8px; } .ds-chip { padding: 6px 12px; border: 2px solid var(--border-primary, #1A1A1A); border-radius: 9999px; background: var(--bg-input, #E5E3DE); color: var(--text-secondary, #656565); font: 900 10px/1.2 Inter, system-ui, sans-serif; letter-spacing: .1em; cursor: pointer; } .ds-chip:hover { color: var(--text-primary, #111); border-color: #000; } .ds-chip:focus-visible { outline: 3px solid var(--color-action-capture, #00C853); outline-offset: 2px; } .ds-chip-selected { background: #1A1A1A; color: var(--color-action-primary, #facc15); border-color: #1A1A1A; box-shadow: 2px 2px 0 0 var(--color-action-primary, #facc15); }"
     },
     {
-      "name": "Ledger Card",
+      "name": "Signature Ledger Card",
       "kind": "card",
-      "refersTo": "card",
-      "description": "A surfaced financial grouping with thick structure and hard feature depth.",
+      "refersTo": "card-signature",
+      "description": "A signature surfaced grouping with thick structure, a 24px silhouette, and hard feature depth.",
       "html": "<section class=\"ds-card\"><span class=\"ds-card-label\">CLEARED TODAY</span><strong class=\"ds-card-value\">$1,248</strong><p>After committed bills and savings.</p></section>",
       "css": ".ds-card { width: 280px; padding: 24px; border: 4px solid var(--border-primary, #1A1A1A); border-radius: 24px; background: var(--bg-secondary, #FAFAF9); color: var(--text-primary, #111); box-shadow: 8px 8px 0 0 var(--shadow-color, rgba(0,0,0,.88)); font-family: Inter, system-ui, sans-serif; } .ds-card-label { display: block; color: var(--text-secondary, #656565); font-size: 10px; font-weight: 900; letter-spacing: .1em; } .ds-card-value { display: block; margin-top: 8px; font: 700 32px/1 'Space Mono', monospace; } .ds-card p { margin: 12px 0 0; color: var(--text-secondary, #656565); font-size: 12px; font-weight: 700; line-height: 1.4; }"
     },
@@ -125,23 +128,25 @@
     }
   ],
   "narrative": {
-    "northStar": "The Pocket Ledger",
-    "overview": "The product feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately. The current product name is temporary, so the visual system must remain portable through the rename.\n\nSignal colors carry meaning rather than decoration. Yellow marks the primary path, green marks money captured or a successful completion, red marks loss or risk, and gold marks goals. The visual system can shift between light and dark and accepts user-selected accent pairs, but the hierarchy, contrast, and semantic distinction between actions remain stable.",
+    "northStar": "A tactile pay-cycle ledger that shows what's cleared for today.",
+    "overview": "The product feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately. Its current name is temporary, so the visual system must remain portable through the rename.\n\nSignal colors carry meaning rather than decoration. Yellow marks the primary path, green marks money captured or a successful completion, red marks loss or risk, and gold marks goals. The visual system can shift between light and dark and accepts user-selected accent pairs, but the hierarchy, contrast, and semantic distinction between actions remain stable.",
     "keyCharacteristics": [
       "Thick, high-contrast outlines and hard offset shadows.",
       "Warm paper neutrals in light mode and charcoal layers in dark mode.",
-      "Black, italic, tightly tracked display type paired with small uppercase labels.",
+      "Heavy display type with tight tracking reserved for short, high-impact headings.",
       "Monospaced, tabular figures for money and calculated values.",
       "Compact mobile layouts with generous touch targets and bottom-sheet interactions.",
       "Bright signal colors reserved for actions, outcomes, targets, and risk."
     ],
     "rules": [
       { "name": "The Signal Has a Job Rule", "body": "Yellow means primary or selected, green means captured or successfully completed, red means risk or destructive action, and gold means a target. Do not use these colors as interchangeable decoration.", "section": "colors" },
-      { "name": "The Theme Keeps the Hierarchy Rule", "body": "Custom accent pairs may change brand expression, but they must preserve foreground contrast and the distinction between primary action, capture, and risk.", "section": "colors" },
+      { "name": "The Theme Keeps the Hierarchy Rule", "body": "Custom themes may replace primary and capture colors only. Each generated foreground must reach 4.5:1 contrast for text, risk and target colors remain semantic constants, and labels or icons must carry meaning when colors converge or cannot be distinguished.", "section": "colors" },
       { "name": "The Ledger Number Rule", "body": "Money and comparable calculations use the monospaced numeric voice; prose and actions use the sans-serif voice.", "section": "typography" },
       { "name": "The Label Earns Its Volume Rule", "body": "Uppercase tracked labels stay short. Explanations use sentence case rather than forcing whole paragraphs into display styling.", "section": "typography" },
+      { "name": "The Tight Type Is Earned Rule", "body": "Negative letter spacing is reserved for short display text that has been checked on a narrow phone. It is never the default for headings or body copy.", "section": "typography" },
       { "name": "The Shadow Is Structure Rule", "body": "Use zero-blur offset shadows to establish importance or interaction. Do not add ambient blur, glass, or decorative glow as a default material.", "section": "elevation" },
-      { "name": "The Press Completes the Shadow Rule", "body": "Interactive raised controls move into their shadow and lose it on hover, press, or active feedback.", "section": "elevation" }
+      { "name": "The Press Completes the Shadow Rule", "body": "Interactive raised controls move into their shadow and lose it on hover, press, or active feedback.", "section": "elevation" },
+      { "name": "The Soft Corner Is Signature Rule", "body": "Use 24px and 32px corners only where the silhouette carries product identity or mobile-edge behavior. Routine cards stay at 16px.", "section": "shapes" }
     ],
     "dos": [
       "**Do** make the amount cleared today the clearest number on the dashboard.",
@@ -150,13 +155,14 @@
       "**Do** use monospaced tabular numerals for money and comparable calculations.",
       "**Do** keep touch targets generous and layout rows resilient to long labels and localized values.",
       "**Do** treat user-selected themes as controlled substitutions for primary and capture accents while retaining contrast.",
+      "**Do** keep risk and target semantics fixed when a user changes the primary and capture accents.",
       "**Do** honor reduced-motion preferences and visible keyboard focus."
     ],
     "donts": [
       "**Don't** introduce soft glass panels, diffuse SaaS shadows, gradient text, or low-contrast gray-on-color copy.",
       "**Don't** use yellow, green, red, or gold decoratively when it would weaken their financial meaning.",
       "**Don't** multiply card containers without a grouping reason or nest equally heavy cards inside one another.",
-      "**Don't** present two daily-availability numbers that apply different calculations or unexplained modifiers.",
+      "**Don't** present two cleared-today numbers that apply different calculations or unexplained modifiers.",
       "**Don't** change icon weight, border thickness, or corner scale arbitrarily between selected and unselected states.",
       "**Don't** use moralizing success or failure language for spending behavior."
     ]

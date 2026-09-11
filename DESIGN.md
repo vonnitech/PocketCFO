@@ -1,6 +1,6 @@
 ---
-name: PocketCFO (working name)
-description: A tactile neobrutalist pay-cycle operating system for cleared daily spending.
+name: Product Design System (rename pending)
+description: A tactile pay-cycle ledger that shows what's cleared for today.
 colors:
   action-yellow: "#facc15"
   capture-green: "#00C853"
@@ -18,19 +18,27 @@ colors:
   night-border: "#4A4A4A"
   night-text: "#F0F0F0"
   night-muted: "#8b8b8b"
+  shadow-light: "rgba(0, 0, 0, 0.88)"
+  shadow-dark: "rgba(0, 200, 80, 0.22)"
 typography:
   display:
     fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "2.25rem"
     fontWeight: 900
     lineHeight: 1
-    letterSpacing: "-0.05em"
+    letterSpacing: "normal"
   headline:
     fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 900
     lineHeight: 1.1
-    letterSpacing: "-0.025em"
+    letterSpacing: "normal"
+  title:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 800
+    lineHeight: 1.2
+    letterSpacing: "normal"
   body:
     fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "0.875rem"
@@ -52,8 +60,9 @@ typography:
 rounded:
   control: "8px"
   field: "16px"
-  panel: "24px"
-  feature-card: "32px"
+  card: "16px"
+  signature-panel: "24px"
+  signature-card: "32px"
   pill: "9999px"
 spacing:
   xs: "4px"
@@ -93,17 +102,24 @@ components:
   card:
     backgroundColor: "{colors.paper-surface}"
     textColor: "{colors.ink-text}"
-    rounded: "{rounded.panel}"
+    rounded: "{rounded.card}"
     padding: "20px"
+  card-signature:
+    backgroundColor: "{colors.paper-surface}"
+    textColor: "{colors.ink-text}"
+    rounded: "{rounded.signature-panel}"
+    padding: "24px"
 ---
 
-# Design System: Current Product
+# Product Design System
+
+**Working name: PocketCFO. Rename pending clearance.**
 
 ## Overview
 
-**Creative North Star: "The Pocket Ledger"**
+**Creative North Star: "A tactile pay-cycle ledger that shows what's cleared for today."**
 
-The product feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately. The current product name is temporary, so the visual system must remain portable through the rename.
+The product feels like a compact physical ledger rebuilt for quick decisions on a phone. Heavy outlines, offset shadows, dense labels, and paper-toned surfaces give financial information weight without making it formal or distant. The system is candid and tactile: controls look pressable, states look deliberate, and the most important number reads immediately. Its current name is temporary, so the visual system must remain portable through the rename.
 
 Signal colors carry meaning rather than decoration. Yellow marks the primary path, green marks money captured or a successful completion, red marks loss or risk, and gold marks goals. The visual system can shift between light and dark and accepts user-selected accent pairs, but the hierarchy, contrast, and semantic distinction between actions remain stable.
 
@@ -111,14 +127,14 @@ Signal colors carry meaning rather than decoration. Yellow marks the primary pat
 
 - Thick, high-contrast outlines and hard offset shadows.
 - Warm paper neutrals in light mode and charcoal layers in dark mode.
-- Black, italic, tightly tracked display type paired with small uppercase labels.
+- Heavy display type with tight tracking reserved for short, high-impact headings.
 - Monospaced, tabular figures for money and calculated values.
 - Compact mobile layouts with generous touch targets and bottom-sheet interactions.
 - Bright signal colors reserved for actions, outcomes, targets, and risk.
 
 ## Colors
 
-The default palette pairs warm paper and dense ink with four explicit financial signals. Theme customization may replace the primary and capture accents, but generated foreground colors must remain readable.
+The default palette pairs warm paper and dense ink with four explicit financial signals. Theme customization may replace only the primary and capture accents. Risk red and target gold keep their semantic roles.
 
 ### Primary
 
@@ -143,12 +159,13 @@ The default palette pairs warm paper and dense ink with four explicit financial 
 - **Ink Muted:** Secondary copy that still meets the intended contrast floor.
 - **Night Base, Surface, and Input:** Three distinct dark-mode layers that preserve the same page, card, and field hierarchy.
 - **Night Border, Text, and Muted:** Dark-mode structure and type roles.
+- **Shadow Light and Shadow Dark:** Theme-specific values behind the runtime `--shadow-color` alias. They are formal depth tokens, not ad hoc opacity choices.
 
 ### Named Rules
 
 **The Signal Has a Job Rule.** Yellow means primary or selected, green means captured or successfully completed, red means risk or destructive action, and gold means a target. Do not use these colors as interchangeable decoration.
 
-**The Theme Keeps the Hierarchy Rule.** Custom accent pairs may change brand expression, but they must preserve foreground contrast and the distinction between primary action, capture, and risk.
+**The Theme Keeps the Hierarchy Rule.** Custom themes may replace primary and capture colors only. Each generated foreground must reach 4.5:1 contrast for text, risk and target colors remain semantic constants, and labels or icons must carry meaning when colors converge or cannot be distinguished.
 
 ## Typography
 
@@ -158,13 +175,13 @@ The default palette pairs warm paper and dense ink with four explicit financial 
 
 **Label/Mono Font:** Space Mono (with JetBrains Mono and monospace fallbacks)
 
-**Character:** Inter becomes forceful through black weights, italic display styling, tight tracking, and uppercase structure. Space Mono gives monetary figures the fixed rhythm of a receipt or ledger and keeps columns of values easy to compare.
+**Character:** Inter becomes forceful through heavy weights, selective italic display styling, and uppercase structure. Space Mono gives monetary figures the fixed rhythm of a receipt or ledger and keeps columns of values easy to compare. Tight negative tracking is an exception for short display lines, not a system default.
 
 ### Hierarchy
 
-- **Display:** Black weight, usually italic and uppercase, with tight or tighter tracking. Use for page titles and the cleared-today hero.
-- **Headline:** Heavy uppercase type for card titles and major section transitions.
-- **Title:** Bold or black uppercase type for component headings and decisive states.
+- **Display:** Black weight, often italic and uppercase. Use for page titles and the cleared-today hero; negative tracking may tighten a short line only after checking it at mobile width.
+- **Headline:** Heavy uppercase type for card titles and major section transitions. Keep default tracking normal.
+- **Title:** Extra-bold type for component headings and decisive states, backed by the title token in the frontmatter.
 - **Body:** Medium-to-bold sentence case for explanations. Keep paragraphs brief and favor direct, concrete language.
 - **Label:** Extra-bold uppercase type at 9–11px with wide tracking for metadata, categories, controls, and status labels.
 - **Numeric:** Bold Space Mono with tabular numerals for currency, percentages, dates when aligned, and calculated outputs.
@@ -174,6 +191,8 @@ The default palette pairs warm paper and dense ink with four explicit financial 
 **The Ledger Number Rule.** Money and comparable calculations use the monospaced numeric voice; prose and actions use the sans-serif voice.
 
 **The Label Earns Its Volume Rule.** Uppercase tracked labels stay short. Explanations use sentence case rather than forcing whole paragraphs into display styling.
+
+**The Tight Type Is Earned Rule.** Negative letter spacing is reserved for short display text that has been checked on a narrow phone. It is never the default for headings or body copy.
 
 ## Layout
 
@@ -185,7 +204,7 @@ Responsive layouts collapse to one column first. Add columns only when each item
 
 ## Elevation & Depth
 
-Depth is structural and deliberately graphic. Resting surfaces use thick borders; important cards and primary controls add hard, zero-blur offset shadows. A press or hover removes the shadow and translates the element toward it, making the control feel physically depressed. Dark mode may tint large structural shadows with the capture color while keeping small control shadows tied to their semantic accent.
+Depth is structural and deliberately graphic. Resting surfaces use thick borders; important cards and primary controls add hard, zero-blur offset shadows. A press or hover removes the shadow and translates the element toward it, making the control feel physically depressed. The runtime `--shadow-color` alias maps to the formal shadow-light and shadow-dark color tokens. Dark mode may tint large structural shadows with the capture color while keeping small control shadows tied to their semantic accent.
 
 ### Shadow Vocabulary
 
@@ -202,9 +221,11 @@ Depth is structural and deliberately graphic. Resting surfaces use thick borders
 
 ## Shapes
 
-The system combines thick rectilinear construction with generous corners. Small controls use 8px corners, fields and buttons use 16px, sheets and navigation use 24px, and signature cards may reach 32px. Pills are reserved for categories, compact choices, badges, and progress tracks.
+The system combines thick rectilinear construction with controlled softening. Small controls use 8px corners; fields, buttons, and default cards use 16px. The 24px and 32px radii belong to signature mobile forms such as bottom sheets, navigation shells, hero panels, and feature cards. They are not default card radii. Pills are reserved for categories, compact choices, badges, and progress tracks.
 
 Borders are usually 2–4px and visually carry the component. Outer cards take the heaviest strokes; internal dividers and secondary controls step down. Bottom sheets round only their top edge, reinforcing that they rise from below. Circular forms are reserved for icon actions, avatars, indicators, and true progress rings.
+
+**The Soft Corner Is Signature Rule.** Use 24px and 32px corners only where the silhouette carries product identity or mobile-edge behavior. Routine cards stay at 16px.
 
 ## Components
 
@@ -224,7 +245,7 @@ Borders are usually 2–4px and visually carry the component. Outer cards take t
 
 ### Cards / Containers
 
-- **Corner Style:** 24px for common panels; 32px for signature feature cards.
+- **Corner Style:** 16px for routine cards; 24px for signature panels and mobile shells; 32px only for feature cards that need the strongest silhouette.
 - **Background:** Surface color over the page base. Recessed sections use the input color.
 - **Shadow Strategy:** Flat for routine grouping, standard lift for emphasis, and feature lift for the most important content.
 - **Border:** 3–4px on primary structures, 2px on nested controls and dividers.
@@ -242,7 +263,7 @@ The main navigation is a floating bottom pill with five equal touch targets. Act
 
 ### Cleared Today Hero
 
-The amount cleared today is the primary decision artifact. Give it the strongest numeric hierarchy on the dashboard, keep its explanation close, and ensure spend limits and pacing never create a competing or contradictory figure elsewhere. “Safe-to-spend” may describe the internal calculation, but customer-facing labels use cleared language. Privacy mode must obscure the value wherever it appears.
+The amount cleared today is the primary decision artifact. Give it the strongest numeric hierarchy on the dashboard, keep its explanation close, and ensure spend limits and pacing never create a competing or contradictory version of today's cleared spend. “Safe-to-spend” may describe the internal calculation, but customer-facing labels use cleared language. Privacy mode must obscure the value wherever it appears.
 
 ### Bottom Sheets
 
@@ -258,6 +279,7 @@ Sheets use a dimmed backdrop, a 4px top border, rounded top corners, a drag hand
 - **Do** use monospaced tabular numerals for money and comparable calculations.
 - **Do** keep touch targets generous and layout rows resilient to long labels and localized values.
 - **Do** treat user-selected themes as controlled substitutions for primary and capture accents while retaining contrast.
+- **Do** keep risk and target semantics fixed when a user changes the primary and capture accents.
 - **Do** honor reduced-motion preferences and visible keyboard focus.
 
 ### Don't:
@@ -265,6 +287,6 @@ Sheets use a dimmed backdrop, a 4px top border, rounded top corners, a drag hand
 - **Don't** introduce soft glass panels, diffuse SaaS shadows, gradient text, or low-contrast gray-on-color copy.
 - **Don't** use yellow, green, red, or gold decoratively when it would weaken their financial meaning.
 - **Don't** multiply card containers without a grouping reason or nest equally heavy cards inside one another.
-- **Don't** present two daily-availability numbers that apply different calculations or unexplained modifiers.
+- **Don't** present two cleared-today numbers that apply different calculations or unexplained modifiers.
 - **Don't** change icon weight, border thickness, or corner scale arbitrarily between selected and unselected states.
 - **Don't** use moralizing success or failure language for spending behavior.

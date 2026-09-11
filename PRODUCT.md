@@ -26,7 +26,7 @@ The internal Horizon engine starts with liquid cash, protects committed obligati
 
 The daily number remains the product's primary decision aid, but the external position must not rely on owning “safe to spend.” That territory is crowded by adjacent products such as PocketGuard and Pace. The broader promise is: **Pay future-you first. Spend what's cleared.**
 
-Every screen that presents or changes daily availability must agree with the same calculation and clearly explain any spend limit or pacing effect.
+Every screen that presents or changes today's cleared spend must agree with the same calculation and clearly explain any spend limit or pacing effect.
 
 ## Operating Context
 
@@ -54,7 +54,7 @@ Privacy matters in shared or public environments, so the app includes a privacy 
 
 ## Brand Commitments
 
-The product is currently named PocketCFO pending a rename. Treat PocketCFO as a working name, not a final brand commitment. New naming, identity, domains, and customer-facing assets must remain portable until the rename is decided.
+**Working name: PocketCFO. Rename pending clearance.** Treat PocketCFO as a working name, not a final brand commitment. New naming, identity, domains, and customer-facing assets must remain portable until the rename is decided.
 
 The voice is direct, candid, concise, and nonjudgmental. It treats the user as capable, explains consequences plainly, and avoids shame, moral scoring, or paternalistic language. Terms should describe what the money is doing: “committed” for obligations, “captured” or “vaulted” for deliberate reserves, “cleared today” for spendable money, and “ended early” rather than language that labels the user a failure.
 
@@ -72,7 +72,7 @@ The central external promise is: **Pay future-you first. Spend what's cleared.**
 ## Product Principles
 
 1. **Protect committed money first.** Bills, debt obligations, savings, and transfers keep their intended meaning throughout calculations and reporting.
-2. **One decision number, one source of truth.** Any surface showing daily availability must use the same underlying calculation and explain modifiers consistently.
+2. **One decision number, one source of truth.** Any surface showing today's cleared spend must use the same underlying calculation and explain modifiers consistently.
 3. **Make the next action obvious.** Prioritize what is cleared for the user to do today over retrospective complexity.
 4. **State facts without judgment.** Confirm responsible behavior, describe risk clearly, and never turn a financial event into a verdict on the user.
 5. **Progressive depth.** Keep the daily loop fast while allowing deeper planning and analysis when the user asks for it.
