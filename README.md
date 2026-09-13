@@ -73,7 +73,9 @@ For Android, iPhone and the Cleared Today home-screen widgets, see
 assets with `npm run native:sync`; the normal `npm run build` remains the web build.
 
 File-import, XSS-header, and payment-webhook controls and deployment requirements
-are documented in [the security checks guide](docs/security-checks.md).
+are documented in [the security checks guide](docs/security-checks.md). The
+[release security review](docs/security-readiness.md) maps the supplied 50-item
+checklist to implemented controls and remaining deployment work.
 
 **Prerequisites:** Node.js 22+ and a [Supabase](https://supabase.com) project.
 

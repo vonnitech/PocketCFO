@@ -11,8 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if ('error' in result) return res.status(result.status).json({ error: result.error });
     return res.status(200).json({ ok: true });
-  } catch (e) {
-    console.error('[delete-account]', e);
+  } catch {
+    console.error('[delete-account] request failed');
     return res.status(500).json({ error: 'Could not delete account' });
   }
 }

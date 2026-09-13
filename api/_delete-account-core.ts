@@ -18,7 +18,7 @@ async function cancelLemonSqueezySubscription(env: Env, subscriptionId: string):
     };
   }
 
-  const resp = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
+  const resp = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${encodeURIComponent(subscriptionId)}`, {
     method: 'DELETE',
     headers: {
       Accept: 'application/vnd.api+json',
@@ -29,8 +29,7 @@ async function cancelLemonSqueezySubscription(env: Env, subscriptionId: string):
 
   if (resp.ok || resp.status === 404) return null;
 
-  const body = await resp.text().catch(() => '');
-  console.error('[delete-account] lemonsqueezy cancel failed', resp.status, body);
+  console.error('[delete-account] billing cancellation failed', { status: resp.status });
   return { ok: false, status: 502, error: 'Could not cancel active subscription' };
 }
 
@@ -66,11 +65,11 @@ export async function deleteAccountForToken(env: Env, accessToken: string): Prom
     .eq('id', userId)
     .maybeSingle() as {
       data: { ls_subscription_id?: string | null } | null;
-      error: { message?: string } | null;
+      error: { message?: string; code?: string } | null;
     };
 
   if (profileError) {
-    console.error('[delete-account] billing lookup failed', profileError);
+    console.error('[delete-account] billing lookup failed', { code: profileError.code ?? 'unknown' });
     return {
       ok: false,
       status: 502,
@@ -86,7 +85,7 @@ export async function deleteAccountForToken(env: Env, accessToken: string): Prom
 
   const { error } = await supabase.auth.admin.deleteUser(userId);
   if (error) {
-    console.error('[delete-account] supabase admin error', error);
+    console.error('[delete-account] auth deletion failed', { code: error.code ?? 'unknown' });
     return { ok: false, status: 502, error: 'Could not delete account' };
   }
 

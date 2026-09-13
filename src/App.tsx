@@ -10,7 +10,6 @@ import { DEFAULT_THEME, shouldRevertProTheme } from './core/themes';
 import { initDB } from './db';
 import { queueSnapshotSave, cancelQueuedSnapshotSave, clearSnapshot } from './db/storage';
 import { supabase, isSupabaseConfigured } from './core/supabase';
-import { setTelemetryUser } from './core/telemetry';
 import { useIdleLock } from './hooks/useIdleLock';
 import { AuthGate } from './components/AuthGate';
 import { ScreenLock } from './components/ScreenLock';
@@ -225,7 +224,6 @@ function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      setTelemetryUser(s?.user?.id ?? null);
       if (!s) setSessionLoaded(true);
       // Only wipe on an explicit sign-out — not on INITIAL_SESSION or TOKEN_REFRESHED
       // events that may fire with null before Supabase loads the stored session.

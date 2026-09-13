@@ -10,6 +10,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
 );
 
+function isLemonSqueezyUrl(url: URL): boolean {
+  return url.hostname === 'lemonsqueezy.com' || url.hostname.endsWith('.lemonsqueezy.com');
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -19,18 +23,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const caller = await requireUser(req);
     if (!caller) return res.status(401).json({ error: 'Not signed in' });
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('ls_customer_id')
       .eq('id', caller.id)
-      .maybeSingle() as { data: { ls_customer_id?: string | null } | null };
+      .maybeSingle() as {
+        data: { ls_customer_id?: string | null } | null;
+        error: { code?: string } | null;
+      };
+
+    if (error) {
+      console.error('[portal] billing lookup failed', { code: error.code ?? 'unknown' });
+      return res.status(502).json({ error: 'Could not open billing portal' });
+    }
 
     const customerId = data?.ls_customer_id;
     if (!customerId) return res.status(400).json({ error: 'No billing account found' });
 
     // The portal link lives on the customer resource as a short-lived signed URL,
     // so we fetch it fresh on each request.
-    const resp = await fetch(`https://api.lemonsqueezy.com/v1/customers/${customerId}`, {
+    const resp = await fetch(`https://api.lemonsqueezy.com/v1/customers/${encodeURIComponent(customerId)}`, {
       headers: {
         Accept: 'application/vnd.api+json',
         Authorization: `Bearer ${process.env.LEMONSQUEEZY_API_KEY ?? ''}`,
@@ -40,14 +52,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const url = json?.data?.attributes?.urls?.customer_portal;
     let secureUrl: URL | null = null;
     try { if (url) secureUrl = new URL(url); } catch { /* handled below */ }
-    if (!resp.ok || !secureUrl || secureUrl.protocol !== 'https:' || secureUrl.username || secureUrl.password) {
-      console.error('[portal] lemonsqueezy error', resp.status, json);
+    if (!resp.ok || !secureUrl || secureUrl.protocol !== 'https:' || secureUrl.username || secureUrl.password || !isLemonSqueezyUrl(secureUrl)) {
+      console.error('[portal] upstream request failed', { status: resp.status });
       return res.status(502).json({ error: 'Could not open billing portal' });
     }
 
     return res.status(200).json({ url: secureUrl.href });
-  } catch (e) {
-    console.error('[portal]', e);
+  } catch {
+    console.error('[portal] request failed');
     return res.status(500).json({ error: 'Could not open billing portal' });
   }
 }

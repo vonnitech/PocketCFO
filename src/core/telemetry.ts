@@ -1,7 +1,7 @@
-// Lightweight security/observability event sink. Today it writes to console.warn
-// so the events surface in DevTools and Sentry breadcrumbs once Sentry is wired.
-// Swap the implementation when you adopt PostHog / Sentry / a custom endpoint
-// without touching the call sites.
+// Local development event sink. Production does not emit these events until a
+// privacy-reviewed telemetry provider is configured. Financial values are
+// removed even in development so DevTools and captured console logs cannot expose
+// account balances or reserved bill amounts.
 
 export type SecurityEvent =
   | { type: 'pin.lockout';      attempts: number; cooldownSec: number }
@@ -14,11 +14,9 @@ export type SecurityEvent =
   | { type: 'webauthn.unlock_fail'; reason: string }
   | { type: 'idle.locked'; idleMs: number };
 
-let userIdRef: string | null = null;
-export function setTelemetryUser(userId: string | null): void { userIdRef = userId; }
-
 export function logSecurityEvent(event: SecurityEvent): void {
-  const payload = { ...event, userId: userIdRef, ts: new Date().toISOString() };
+  if (!import.meta.env.DEV) return;
+  const payload = { ...event, ts: new Date().toISOString() };
   // eslint-disable-next-line no-console
   console.warn('[security]', payload);
   // TODO when Sentry/PostHog is wired:
@@ -61,7 +59,11 @@ export type ProductEvent =
   | { type: 'payment_intent';      plan: 'monthly' | 'annual' | 'lifetime' };
 
 export function logProductEvent(event: ProductEvent): void {
-  const payload = { ...event, userId: userIdRef, ts: new Date().toISOString() };
+  if (!import.meta.env.DEV) return;
+  const payload: Record<string, unknown> = { ts: new Date().toISOString() };
+  for (const [key, value] of Object.entries(event)) {
+    if (key !== 'safeSpend' && key !== 'billsReserved') payload[key] = value;
+  }
   // eslint-disable-next-line no-console
   console.warn('[product]', payload);
   // TODO when PostHog is wired: posthog.capture(`product:${event.type}`, payload);

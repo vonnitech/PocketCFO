@@ -10,8 +10,25 @@ const VARIANT_IDS: Record<string, string | undefined> = {
   lifetime: process.env.LEMONSQUEEZY_VARIANT_LIFETIME,
 };
 
+function appOrigin(): string | null {
+  try {
+    const url = new URL(process.env.APP_ORIGIN ?? '');
+    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function isLemonSqueezyUrl(url: URL): boolean {
+  return url.hostname === 'lemonsqueezy.com' || url.hostname.endsWith('.lemonsqueezy.com');
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) {
+    return res.status(415).json({ error: 'Expected application/json' });
+  }
 
   try {
     // user_id is echoed back by every webhook and decides which profile gets
@@ -29,7 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Unknown or unconfigured plan' });
     }
 
-    const origin = (req.headers.origin as string) ?? `https://${req.headers.host}`;
+    const origin = appOrigin();
+    if (!origin) return res.status(500).json({ error: 'Checkout is not configured' });
 
     const resp = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
@@ -65,14 +83,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const url = json?.data?.attributes?.url;
     let secureUrl: URL | null = null;
     try { if (url) secureUrl = new URL(url); } catch { /* handled below */ }
-    if (!resp.ok || !secureUrl || secureUrl.protocol !== 'https:' || secureUrl.username || secureUrl.password) {
-      console.error('[checkout] lemonsqueezy error', resp.status, json);
+    if (!resp.ok || !secureUrl || secureUrl.protocol !== 'https:' || secureUrl.username || secureUrl.password || !isLemonSqueezyUrl(secureUrl)) {
+      console.error('[checkout] upstream request failed', { status: resp.status });
       return res.status(502).json({ error: 'Checkout failed' });
     }
 
     return res.status(200).json({ url: secureUrl.href });
-  } catch (e) {
-    console.error('[checkout]', e);
+  } catch {
+    console.error('[checkout] request failed');
     return res.status(500).json({ error: 'Checkout failed' });
   }
 }

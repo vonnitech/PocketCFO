@@ -30,8 +30,9 @@ styles. It does not permit inline JavaScript.
 
 ## LemonSqueezy webhooks
 
-Deploy `supabase/migrations/022_billing_webhook_order.sql` before deploying the
-updated webhook. Configure these server-only variables in Vercel:
+Deploy `supabase/migrations/022_billing_webhook_order.sql` and
+`supabase/migrations/023_free_tier_cap_hardening.sql` before deploying the
+updated API. Configure these server-only variables in Vercel:
 
 ```text
 LEMONSQUEEZY_WEBHOOK_SECRET
@@ -41,6 +42,7 @@ LEMONSQUEEZY_VARIANT_ANNUAL
 LEMONSQUEEZY_VARIANT_LIFETIME
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
+APP_ORIGIN
 ```
 
 Never prefix secrets with `VITE_`. In LemonSqueezy, point the webhook to
@@ -54,6 +56,25 @@ The database update cursor makes retries idempotent and ignores delayed older
 events. An expiry for an old subscription cannot revoke a replacement one.
 Database errors return a failure response so LemonSqueezy retries instead of the
 endpoint acknowledging a lost update.
+
+Checkout return URLs use the fixed HTTPS `APP_ORIGIN`; request headers cannot
+choose the destination. Customer and subscription identifiers are URL-encoded,
+and API logs contain only operational status/code fields rather than provider
+response bodies. LemonSqueezy-returned checkout and portal URLs must remain on a
+`lemonsqueezy.com` host.
+
+Migration 023 repairs the database free-tier cap. The earlier trigger was a
+`SECURITY DEFINER` function that checked `current_user`; PostgreSQL changes that
+identity to the function owner, which accidentally bypassed the cap. The repaired
+function has no identity bypass and serializes inserts per user to prevent two
+concurrent requests from both passing the count check.
+
+## Logging and source maps
+
+Production builds do not emit the placeholder product/security telemetry.
+Development telemetry omits user identifiers, balances, safe-spend values and
+reserved bill totals. Server errors return generic messages and log only status or
+error codes. Vite production source maps remain disabled.
 
 Before enabling live payments, use LemonSqueezy test mode to exercise monthly,
 annual and lifetime purchases, cancellation, resumption, failed-payment recovery

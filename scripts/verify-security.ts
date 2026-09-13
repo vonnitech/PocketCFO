@@ -26,6 +26,31 @@ assert.match(source, /LEMONSQUEEZY_STORE_ID/);
 assert.match(source, /ls_event_updated_at/);
 assert.match(source, /throw new Error\(`Supabase entitlement update failed/);
 
+const checkout = readFileSync('api/checkout.ts', 'utf8');
+const portal = readFileSync('api/portal.ts', 'utf8');
+const deletion = readFileSync('api/_delete-account-core.ts', 'utf8');
+assert.match(checkout, /process\.env\.APP_ORIGIN/);
+assert.doesNotMatch(checkout, /req\.headers\.origin/);
+assert.doesNotMatch(checkout, /resp\.status, json/);
+assert.match(portal, /encodeURIComponent\(customerId\)/);
+assert.doesNotMatch(portal, /resp\.status, json/);
+assert.match(deletion, /encodeURIComponent\(subscriptionId\)/);
+assert.doesNotMatch(deletion, /resp\.text\(\)/);
+
+const capMigration = readFileSync('supabase/migrations/023_free_tier_cap_hardening.sql', 'utf8');
+assert.match(capMigration, /security definer/);
+assert.match(capMigration, /set search_path = ''/);
+assert.match(capMigration, /pg_advisory_xact_lock/);
+assert.doesNotMatch(capMigration, /if current_user/);
+
+const telemetry = readFileSync('src/core/telemetry.ts', 'utf8');
+assert.match(telemetry, /import\.meta\.env\.DEV/);
+assert.doesNotMatch(telemetry, /userIdRef|userId:/);
+assert.match(telemetry, /key !== 'safeSpend' && key !== 'billsReserved'/);
+
+const viteConfig = readFileSync('vite.config.ts', 'utf8');
+assert.doesNotMatch(viteConfig, /sourcemap\s*:\s*true/);
+
 const headers = JSON.parse(readFileSync('vercel.json', 'utf8')).headers[0].headers as { key: string; value: string }[];
 const csp = headers.find(header => header.key === 'Content-Security-Policy')?.value ?? '';
 assert.match(csp, /script-src 'self'/);
@@ -34,4 +59,4 @@ assert.match(csp, /object-src 'none'/);
 assert.match(csp, /frame-ancestors 'none'/);
 assert.equal(headers.find(header => header.key === 'X-Content-Type-Options')?.value, 'nosniff');
 
-console.log('Security checks passed: bounded file imports, file signatures, webhook verification/order guards, and XSS response headers.');
+console.log('Security checks passed: bounded imports, spreadsheet/XSS defenses, signed ordered webhooks, trusted billing URLs, redacted telemetry, and race-safe plan caps.');
