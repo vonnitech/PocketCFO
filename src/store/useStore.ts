@@ -507,6 +507,7 @@ export const useStore = create<StoreState>()(
     },
 
     fetchUserData: async (userId) => {
+      const initialUserId = get().userId;
       // Initial transaction load is limited to the last 60 days. That's enough for
       // the safe-spend engine (which only looks at the current pay cycle) without
       // dragging in years of history. The Transactions/Ledger page paginates older
@@ -522,6 +523,10 @@ export const useStore = create<StoreState>()(
         supabase.from('subscriptions').select('*').eq('user_id', userId),
         supabase.from('recon_history').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(90),
       ]);
+
+      // A native refresh can finish after sign-out or an account switch.
+      // Guard the offline fallback as well as the successful response.
+      if (initialUserId === userId && get().userId !== userId) return;
 
       // A transport failure (offline, DNS, CORS) does NOT reject — postgrest
       // resolves with status 0 and null data, which further down is

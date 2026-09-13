@@ -1,3 +1,5 @@
+import { authRedirectUrl, isNative } from '../native/platform';
+import { Browser } from '@capacitor/browser';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, User, UserPlus, LogIn, AlertOctagon, CheckCircle, KeyRound, ArrowLeft, Eye, EyeOff } from 'lucide-react';
@@ -70,7 +72,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { data: { first_name: firstName.trim() } },
+          options: { data: { first_name: firstName.trim() }, emailRedirectTo: authRedirectUrl() },
         });
         if (authError) throw authError;
         // If email confirmation is disabled, Supabase returns a live session.
@@ -101,7 +103,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         if (!email.trim()) return;
         // The redirect URL must be allow-listed under Supabase Auth → URL Configuration.
         const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: window.location.origin,
+          redirectTo: authRedirectUrl(),
         });
         if (authError) throw authError;
         // Always show the same generic message regardless of whether the email
@@ -139,11 +141,15 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
       // Intent only: after the redirect a Google signup is indistinguishable from
       // a Google login, so this is recorded when the user is on the signup tab.
       if (mode === 'signup') logProductEvent({ type: 'signup_submitted', method: 'google' });
-      const { error: authError } = await supabase.auth.signInWithOAuth({
+      const { data, error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: authRedirectUrl(), skipBrowserRedirect: isNative },
       });
       if (authError) throw authError;
+      if (isNative && data.url) {
+        await Browser.open({ url: data.url });
+        setLoading(false);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign-in failed';
       setError(msg.toUpperCase());

@@ -51,19 +51,58 @@
 .dark {
   /* So native controls (scrollbars, number spinners, etc.) follow the theme. */
   color-scheme: dark;
-  --bg-primary: #0F0F0F;
-  --bg-secondary: #1A1A1A;
-  --bg-input: #242424;
-  --border-primary: #4A4A4A;
-  --text-primary: #F0F0F0;
-  /* #888888 measured 4.38:1 on the dark bg-input. */
-  --text-secondary: #8b8b8b;
-  --shadow-color: rgba(0, 200, 80, 0.22);
-  --dot-color: rgba(255, 255, 255, 0.10);
+  --bg-primary: #101214;
+  --bg-secondary: #1B1E22;
+  --bg-input: #282C31;
+  --border-primary: #41474F;
+  --text-primary: #F5F5F2;
+  --text-secondary: #ABB1BA;
+  --shadow-color: rgba(0, 0, 0, 0.32);
+  --dot-color: rgba(255, 255, 255, 0.025);
   /* App.tsx overwrites these once it runs. Without a dark-mode default the
      first paint renders the :root #000000 on a #1A1A1A card. */
   --capture-readable: #00CC55;
   --primary-readable: #facc15;
+}
+
+/* The dashboard's dark surfaces carry depth without colored offset shadows.
+   Explicit roles keep status colors and filled action buttons independent. */
+.dark .dashboard-panel {
+  border-width: 1px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.dark .dashboard-hero {
+  background: #24282D;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.dark .dashboard-welcome {
+  background: var(--bg-secondary);
+}
+
+.dark .dashboard-copy {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+}
+
+.dark a.dashboard-panel:hover {
+  border-color: var(--text-secondary);
+  translate: none;
+}
+
+.dark .dashboard-secondary-amount {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.dark .app-navigation {
+  background: #24282D;
+  border-width: 1px;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 40%);
 }
 
 @layer base {
@@ -253,7 +292,8 @@
   padding-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
 }
 .main-pb-safe {
-  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
 }
 .bottom-sheet-scroll {
   padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));

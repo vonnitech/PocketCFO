@@ -12,7 +12,7 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({ children }) => {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.15, ease: "linear" }}
-      className="w-full"
+      className="w-full min-w-0"
     >
       {children}
     </motion.div>

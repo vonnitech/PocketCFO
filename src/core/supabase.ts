@@ -1,3 +1,4 @@
+import { isNative } from '../native/platform';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
 
@@ -20,7 +21,8 @@ export const supabase = createClient<Database>(
     auth: {
       persistSession:    true,
       autoRefreshToken:  true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: !isNative,
+      ...(isNative ? { flowType: 'pkce' as const } : {}),
     },
   },
 );

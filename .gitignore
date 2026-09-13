@@ -1,6 +1,11 @@
 node_modules/
 build/
 dist/
+dist-native/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
 coverage/
 .DS_Store
 *.log

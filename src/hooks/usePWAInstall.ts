@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isNative } from '../native/platform';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -8,9 +9,10 @@ interface BeforeInstallPromptEvent extends Event {
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(isNative);
 
   useEffect(() => {
+    if (isNative) return;
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
       return;

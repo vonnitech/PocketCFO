@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:background="@drawable/widget_background">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/widget_title" android:textColor="#ABB1BA" android:textSize="12sp" />
+    <TextView android:id="@+id/widget_amount" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:gravity="center_vertical" android:text="—"
+        android:textColor="#F5F5F2" android:textStyle="bold" android:textSize="30sp"
+        android:maxLines="1" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="30sp" android:autoSizeStepGranularity="1sp" />
+    <TextView android:id="@+id/widget_detail" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/widget_open" android:textColor="#ABB1BA" android:textSize="11sp" android:maxLines="2" />
+    <TextView android:id="@+id/widget_log_spend" android:layout_width="match_parent" android:layout_height="40dp"
+        android:layout_marginTop="10dp" android:gravity="center" android:background="@drawable/widget_button"
+        android:text="@string/widget_log_spend" android:textColor="#101214" android:textSize="13sp" android:textStyle="bold" />
+</LinearLayout>

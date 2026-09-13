@@ -38,12 +38,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     const json = await resp.json() as { data?: { attributes?: { urls?: { customer_portal?: string } } } };
     const url = json?.data?.attributes?.urls?.customer_portal;
-    if (!resp.ok || !url) {
+    let secureUrl: URL | null = null;
+    try { if (url) secureUrl = new URL(url); } catch { /* handled below */ }
+    if (!resp.ok || !secureUrl || secureUrl.protocol !== 'https:' || secureUrl.username || secureUrl.password) {
       console.error('[portal] lemonsqueezy error', resp.status, json);
       return res.status(502).json({ error: 'Could not open billing portal' });
     }
 
-    return res.status(200).json({ url });
+    return res.status(200).json({ url: secureUrl.href });
   } catch (e) {
     console.error('[portal]', e);
     return res.status(500).json({ error: 'Could not open billing portal' });

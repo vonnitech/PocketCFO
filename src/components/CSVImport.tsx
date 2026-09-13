@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../core/supabase';
 import { currencySymbol } from '../lib/currency';
+import { MAX_IMPORT_CELL_CHARS, MAX_IMPORT_COLUMNS, MAX_IMPORT_ROWS, validateStatementFile } from '../core/fileValidation';
 
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
@@ -92,14 +93,20 @@ export function CSVImport({ onClose }: Props) {
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = useCallback((file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     setError('');
-    setFileName(file.name);
+    try { await validateStatementFile(file); }
+    catch (e) { setError((e as Error).message); return; }
+    if (!file.name.toLowerCase().endsWith('.csv')) { setError('Choose a CSV statement file.'); return; }
+    setFileName(file.name.slice(0, 200));
     const reader = new FileReader();
     reader.onload = e => {
       const text = e.target?.result as string;
       const parsed = parseCSV(text);
       if (parsed.length < 2) { setError('CSV appears empty or unreadable.'); return; }
+      if (parsed.length - 1 > MAX_IMPORT_ROWS) { setError(`Statements may contain at most ${MAX_IMPORT_ROWS.toLocaleString()} rows.`); return; }
+      if (parsed.some(row => row.length > MAX_IMPORT_COLUMNS)) { setError(`Statements may contain at most ${MAX_IMPORT_COLUMNS} columns.`); return; }
+      if (parsed.some(row => row.some(cell => cell.length > MAX_IMPORT_CELL_CHARS))) { setError(`Individual statement values may contain at most ${MAX_IMPORT_CELL_CHARS} characters.`); return; }
       const h = parsed[0];
       const dataRows = parsed.slice(1).filter(r => r.some(c => c.trim()));
       setHeaders(h);

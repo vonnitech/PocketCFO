@@ -68,7 +68,14 @@ Cleared today  =  (liquid cash − committed obligations − savings goal)
 
 ## Getting started
 
-**Prerequisites:** Node.js 18+ and a [Supabase](https://supabase.com) project.
+For Android, iPhone and the Cleared Today home-screen widgets, see
+[the native mobile setup guide](docs/native-mobile.md). Build bundled mobile
+assets with `npm run native:sync`; the normal `npm run build` remains the web build.
+
+File-import, XSS-header, and payment-webhook controls and deployment requirements
+are documented in [the security checks guide](docs/security-checks.md).
+
+**Prerequisites:** Node.js 22+ and a [Supabase](https://supabase.com) project.
 
 1. **Install dependencies**
    ```bash

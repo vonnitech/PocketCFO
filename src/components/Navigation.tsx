@@ -92,7 +92,7 @@ function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick, locked }: {
       to={path}
       onClick={onClick}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-4 py-3 rounded-2xl border-4 transition-all ${
+        `flex items-center gap-3 px-4 py-3 rounded-2xl border-4 dark:border transition-all ${
           isActive
             ? 'bg-action-primary border-black'
             : 'bg-input border-transparent hover:border-border'
@@ -101,16 +101,8 @@ function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick, locked }: {
     >
       {({ isActive }) => (
         <>
-          {/* Weight 2, not 2.5: these sit on light cards, where a heavy stroke
-              bloats hardest and the glyph stops reading as a shape.
-
-              The idle colour is theme-split because yellow only works on one of
-              the two card backgrounds. #facc15 on the light card (#E5E3DE) is
-              1.2:1 — effectively invisible — while on the dark card (#242424) it
-              is 10.4:1. So light mode uses text-main (14.8:1) and dark mode keeps
-              the brand yellow. Either way yellow now means "selected" rather than
-              being the default state. */}
-          <Icon size={18} strokeWidth={2} className={`shrink-0 ${isActive ? 'text-primary-contrast' : 'text-text-main dark:text-action-primary'}`} />
+          {/* Neutral idle icons keep the yellow fill reserved for selection. */}
+          <Icon size={18} strokeWidth={2} className={`shrink-0 ${isActive ? 'text-primary-contrast' : 'text-text-main'}`} />
           <div className="flex-1 min-w-0">
             <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${isActive ? 'text-primary-contrast' : 'text-text-main'}`}>{label}</p>
             <p className={`text-[10px] font-bold mt-1 leading-snug ${isActive ? 'text-primary-contrast/60' : 'text-text-muted'}`}>
@@ -159,7 +151,7 @@ export default function Navigation() {
       : 'border-transparent text-text-muted hover:text-text-main'
     }`;
 
-  const tabLabel = 'w-full truncate text-[9px] font-black uppercase tracking-wide sm:tracking-wider leading-tight text-center px-0.5';
+  const tabLabel = 'w-full truncate text-[9px] font-black uppercase tracking-wide sm:tracking-wider leading-tight text-center px-0.5 dark:text-[11px] dark:normal-case dark:font-semibold dark:tracking-normal';
 
   return (
     <>
@@ -167,7 +159,7 @@ export default function Navigation() {
           not swallow taps on the page behind it, hence pointer-events-none here
           and pointer-events-auto on the pill itself. */}
       <nav className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 nav-pb-safe pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-md flex items-stretch gap-0.5 bg-surface border-[3px] border-border rounded-3xl shadow-[4px_4px_0px_0px_var(--shadow-color)] px-1.5 py-1.5 transition-colors duration-300">
+        <div className="app-navigation pointer-events-auto w-full max-w-md flex items-stretch gap-0.5 bg-surface border-[3px] border-border rounded-3xl shadow-[4px_4px_0px_0px_var(--shadow-color)] px-1.5 py-1.5 transition-colors duration-300">
           {primaryTabs.map(tab => (
             <NavLink
               key={tab.path}
@@ -219,7 +211,7 @@ export default function Navigation() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-              className="fixed bottom-0 left-0 right-0 z-70 bg-surface border-t-[3px] border-border rounded-t-3xl px-5 pt-4 sheet-pb-safe max-h-[90vh] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 z-70 bg-surface border-t-[3px] border-border dark:border-t rounded-t-3xl px-5 pt-4 sheet-pb-safe max-h-[90vh] overflow-y-auto"
             >
               {/* Drag handle */}
               <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />

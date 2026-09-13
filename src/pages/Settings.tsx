@@ -1,3 +1,4 @@
+import { isNative, postAccountApi } from '../native/platform';
 import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -27,6 +28,7 @@ import { CURRENCIES } from '../lib/currency';
 import { useIsPro, useProLocked, refreshProStatus } from '../lib/pro';
 import { PRICING } from '../lib/pricing';
 import { ProAction } from '../components/ProAction';
+import { validateBackupFile } from '../core/fileValidation';
 
 // The importer statically pulls in xlsx + papaparse. Lazy-load it so those
 // libraries only download when the user actually opens the import flow, not on
@@ -39,12 +41,27 @@ const DEFAULT_PRIMARY = '#facc15';
 const DEFAULT_CAPTURE = '#00CC55';
 const isValidHex = (v: string) => /^#[0-9A-Fa-f]{6}$/.test(v);
 const safeHex = (v: string | undefined, fallback: string) => v && isValidHex(v) ? v : fallback;
+const navigateToSecureUrl = (value: unknown) => {
+  if (typeof value !== 'string') throw new Error('Missing destination URL.');
+  const destination = new URL(value);
+  if (destination.protocol !== 'https:' || destination.username || destination.password) {
+    throw new Error('Unsafe destination URL.');
+  }
+  window.location.assign(destination.href);
+};
 
 const buildImportedState = (payload: unknown) => {
   const json = (payload && typeof payload === 'object') ? payload as Record<string, any> : {};
+  const runtimeKeys = new Set(['userId', 'dataLoaded', 'dataFresh', 'allTransactionsLoaded',
+    'isLocked', 'lockEnabled', 'pinHash', 'pinSalt', 'safeSpendLimit', 'paydayBanner']);
+  // A backup is data, never executable store shape. Only known state keys cross
+  // this boundary, which prevents a crafted JSON file replacing action methods.
+  const allowed = Object.fromEntries(Object.keys(INITIAL_STATE)
+    .filter(key => !runtimeKeys.has(key) && Object.prototype.hasOwnProperty.call(json, key))
+    .map(key => [key, json[key]]));
   const built = {
     ...INITIAL_STATE,
-    ...json,
+    ...allowed,
     salary: { ...INITIAL_STATE.salary, ...(json.salary && typeof json.salary === 'object' ? json.salary : {}) },
     stats: { ...INITIAL_STATE.stats, ...(json.stats && typeof json.stats === 'object' ? json.stats : {}) },
     transactions: Array.isArray(json.transactions) ? json.transactions : INITIAL_STATE.transactions,
@@ -78,6 +95,7 @@ export default function Settings() {
   // Kick off LemonSqueezy Checkout for a plan (the /api/checkout function builds
   // the hosted checkout; we just redirect to it).
   const startCheckout = async (plan: 'monthly' | 'annual' | 'lifetime') => {
+    if (isNative) { alert('Purchases are not available in this mobile preview.'); return; }
     // Logged before the network call so the funnel captures intent even when
     // checkout creation fails or the user abandons the LemonSqueezy page.
     logProductEvent({ type: 'payment_intent', plan });
@@ -94,7 +112,7 @@ export default function Settings() {
         body: JSON.stringify({ plan }),
       });
       const { url, error } = await res.json();
-      if (url) window.location.href = url;
+      if (url) navigateToSecureUrl(url);
       else alert(error || 'Could not start checkout. Billing may not be configured yet.');
     } catch {
       alert('Could not start checkout. Billing may not be configured yet.');
@@ -112,6 +130,7 @@ export default function Settings() {
 
   // Open the LemonSqueezy Customer Portal (manage / cancel / receipts).
   const openBillingPortal = async () => {
+    if (isNative) { alert('Billing management is not available in this mobile preview.'); return; }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/portal', {
@@ -122,7 +141,7 @@ export default function Settings() {
         },
       });
       const { url, error } = await res.json();
-      if (url) window.location.href = url;
+      if (url) navigateToSecureUrl(url);
       else alert(error || 'No billing account found.');
     } catch {
       alert('Could not open the billing portal.');
@@ -374,27 +393,8 @@ export default function Settings() {
     setDeletingAccount(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/delete-account', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token ?? ''}`,
-        },
-      });
-      const raw = await res.text();
-      const body = (() => {
-        try {
-          return raw ? JSON.parse(raw) as { error?: string } : {};
-        } catch {
-          return {};
-        }
-      })();
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error('Account deletion API is not running. Restart the dev server or use the deployed app.');
-        }
-        throw new Error(body.error || 'Could not delete account');
-      }
+      const result = await postAccountApi('/api/delete-account', session?.access_token ?? '');
+      if (!result.ok) throw new Error(result.error || 'Could not delete account');
 
       clearUserLocalData(userId);
       cancelQueuedSnapshotSave();
@@ -424,13 +424,27 @@ export default function Settings() {
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    try { validateBackupFile(file); }
+    catch (err) { alert((err as Error).message); event.target.value = ''; return; }
     const reader = new FileReader();
     reader.onload = e => {
       try {
         const json = JSON.parse(e.target?.result as string);
-        setState(buildImportedState(json));
+        const current = useStore.getState();
+        setState({
+          ...buildImportedState(json),
+          userId: current.userId,
+          dataLoaded: current.dataLoaded,
+          dataFresh: current.dataFresh,
+          allTransactionsLoaded: current.allTransactionsLoaded,
+          isLocked: current.isLocked,
+          lockEnabled: current.lockEnabled,
+          pinHash: current.pinHash,
+          pinSalt: current.pinSalt,
+        });
         alert('Data Restored Successfully.');
       } catch { alert('Invalid Data Payload.'); }
+      event.target.value = '';
     };
     reader.readAsText(file);
   };
@@ -597,7 +611,15 @@ export default function Settings() {
             <Lock size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">Pocket CFO Pro</p>
           </div>
-          {!isPro ? (
+          {isNative ? (
+            <div className="space-y-2">
+              <p className="text-sm font-bold text-text-main">{isPro ? 'Pro is active' : 'Mobile preview'}</p>
+              <p className="text-xs leading-relaxed text-text-muted">
+                {isPro ? 'Your existing Pro features are available.' : 'Explore the free features and tool previews.'}
+                {' '}Purchases and billing management are not available in this build.
+              </p>
+            </div>
+          ) : !isPro ? (
             <>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3">
                 FIRE, Income Tracker, and Debt Payoff are free previews. Pro unlocks saving and full actions.

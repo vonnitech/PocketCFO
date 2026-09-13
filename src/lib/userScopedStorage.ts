@@ -22,6 +22,7 @@ export const USER_LOCAL_BASES = [
   'pocket-cfo-tier-lock-v1',
   'pocket-cfo-tier-breaks-v1',
   'pocket-cfo-tour-v1',          // Feature tour seen flag
+  'pocket-cfo-first-move-v1',    // First-move card completed or skipped
   'pocket-cfo-notif-prefs-v1',   // Notification preferences + permission primer state
   'pocket-cfo-notif-log-v1',     // Notification inbox, cooldowns, rule memory
 ];

@@ -398,7 +398,7 @@ export function FireCalculator() {
   // ── Setup prompt ─────────────────────────────────────────────────────────
   if (!isConfigured || (totalVaulted === 0 && monthlySavingsGoal === 0)) {
     return (
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <div>
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
             FIRE CALCULATOR
@@ -431,10 +431,10 @@ export function FireCalculator() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0">
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
             FIRE CALCULATOR
           </h1>
@@ -485,13 +485,13 @@ export function FireCalculator() {
 
       {/* Hero */}
       {calc && (
-        <div className="bg-black border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
+        <div className="relative bg-black border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
+            <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-1">
                 {calc.isCoast ? 'Your Coast Number' : 'Your FIRE Number'}
               </p>
-              <p className="text-5xl md:text-6xl font-black italic tracking-tighter text-action-primary leading-none tabular-nums">
+              <p className="text-4xl sm:text-5xl md:text-6xl font-black italic tracking-tighter text-action-primary leading-none tabular-nums break-words">
                 {fmtFull(calc.isCoast ? calc.coastNumber : calc.fireNumber)}
               </p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-2">
@@ -500,7 +500,8 @@ export function FireCalculator() {
                   : `Annual expenses × 25 · retire at ${calc.targetAge}`}
               </p>
             </div>
-            <div className="w-12 h-12 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center shrink-0 shadow-brutal-sm">
+
+            <div className="w-12 h-12 mt-0.5 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center shadow-brutal-sm">
               {strategy === 'COAST'
                 ? <Anchor size={22} strokeWidth={3} className="text-black" />
                 : <Flame size={22} strokeWidth={3} className="text-black" />
@@ -571,8 +572,8 @@ export function FireCalculator() {
           <LiveBadge />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-input border-4 border-black rounded-2xl p-4">
+        <div className="grid min-w-0 grid-cols-2 gap-3">
+          <div className="min-w-0 bg-input border-4 border-black rounded-2xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
               <ShieldCheck size={12} strokeWidth={2.5} className="text-capture-readable shrink-0" />
               <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Investments</p>
@@ -583,7 +584,7 @@ export function FireCalculator() {
             </p>
           </div>
 
-          <div className="bg-input border-4 border-black rounded-2xl p-4">
+          <div className="min-w-0 bg-input border-4 border-black rounded-2xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Zap size={12} strokeWidth={2.5} className="text-action-primary shrink-0" />
               <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">
@@ -649,7 +650,7 @@ export function FireCalculator() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid min-w-0 grid-cols-2 gap-3">
           <Field label="Current Age" value={ca} onChange={setCa} integer />
           {strategy === 'COAST' ? (
             <div className="flex flex-col justify-center items-center bg-input border-4 border-black/20 rounded-2xl px-3 py-2 gap-0.5">
@@ -796,7 +797,7 @@ export function FireCalculator() {
 
       {/* Stats Row */}
       {calc && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid min-w-0 grid-cols-3 gap-3">
           {(calc.isCoast ? [
             {
               label: 'Coast #',
@@ -840,7 +841,7 @@ export function FireCalculator() {
               accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
           ]).map(s => (
-            <div key={s.label} className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+            <div key={s.label} className="min-w-0 bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1">{s.label}</p>
               <p className={`text-xl font-black italic tracking-tighter tabular-nums ${s.accent}`}>{s.value}</p>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-0.5 leading-tight">{s.sub}</p>

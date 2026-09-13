@@ -63,12 +63,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const json = await resp.json() as { data?: { attributes?: { url?: string } } };
     const url = json?.data?.attributes?.url;
-    if (!resp.ok || !url) {
+    let secureUrl: URL | null = null;
+    try { if (url) secureUrl = new URL(url); } catch { /* handled below */ }
+    if (!resp.ok || !secureUrl || secureUrl.protocol !== 'https:' || secureUrl.username || secureUrl.password) {
       console.error('[checkout] lemonsqueezy error', resp.status, json);
       return res.status(502).json({ error: 'Checkout failed' });
     }
 
-    return res.status(200).json({ url });
+    return res.status(200).json({ url: secureUrl.href });
   } catch (e) {
     console.error('[checkout]', e);
     return res.status(500).json({ error: 'Checkout failed' });

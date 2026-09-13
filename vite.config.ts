@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => {
     react(),
     tailwindcss(),
     VitePWA({
+      disable: mode === 'native',
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'icon-mark.svg', 'favicon.svg', 'favicon-32x32.png', 'icon-192x192.png', 'icon-512x512.png'],
       manifest: {
@@ -120,6 +121,7 @@ export default defineConfig(({ mode }) => {
     },
   },
   build: {
+    outDir: mode === 'native' ? 'dist-native' : 'dist',
     modulePreload: {
       polyfill: false, // Eliminates the inline script block so CSP can drop 'unsafe-inline'
     },

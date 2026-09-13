@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { MAX_IMPORT_ROWS, validateParsedTable, validateStatementFile } from './fileValidation';
 // jspdf + jspdf-autotable are imported dynamically inside exportReportPDF so the
 // PDF libraries (~250KB) stay out of the import/CSV/XLSX path and only load when
 // someone actually generates a PDF.
@@ -17,6 +18,12 @@ function fmtDate(iso: string): string {
 
 function fmtMoney(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Spreadsheet programs may execute cells beginning with formula markers. Text
+// imported from a bank must stay text when exported again.
+export function spreadsheetSafe(value: string): string {
+  return /^[\t\r ]*[=+@-]/.test(value) ? `'${value}` : value;
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
@@ -58,7 +65,7 @@ export function exportLedgerCSV(transactions: Transaction[]): void {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map(t => ({
       Date:     fmtDate(t.date),
-      Merchant: t.merchant,
+      Merchant: spreadsheetSafe(t.merchant),
       Category: t.category,
       Amount:   t.amount.toFixed(2),
       Type:     txType(t.category),
@@ -82,7 +89,7 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
   const summaryRows: (string | number)[][] = [
     ['POCKET CFO · FINANCIAL SUMMARY'],
     ['Generated', new Date().toLocaleString()],
-    ['User', snap.firstName || '—'],
+    ['User', spreadsheetSafe(snap.firstName || '—')],
     [],
     ['Net Worth', netWorth],
     ['Liquid Assets', snap.liquidAssets],
@@ -93,15 +100,15 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
     [],
     ['VAULTS'],
     ['Name', 'Current', 'Target', '% Funded'],
-    ...snap.vaults.map(v => [v.name, v.current || 0, v.target || 0, v.target ? Number(((v.current / v.target) * 100).toFixed(1)) : 0]),
+    ...snap.vaults.map(v => [spreadsheetSafe(v.name), v.current || 0, v.target || 0, v.target ? Number(((v.current / v.target) * 100).toFixed(1)) : 0]),
     [],
     ['DEBTS'],
     ['Name', 'Balance', 'Interest Rate', 'Min Payment'],
-    ...snap.debts.map(d => [d.name, d.balance || 0, d.interestRate || 0, d.minPayment || 0]),
+    ...snap.debts.map(d => [spreadsheetSafe(d.name), d.balance || 0, d.interestRate || 0, d.minPayment || 0]),
     [],
     ['SUBSCRIPTIONS'],
     ['Name', 'Amount', 'Cycle', 'Usage'],
-    ...snap.subscriptions.map(s => [s.name, s.amount || 0, s.billingCycle, s.usage]),
+    ...snap.subscriptions.map(s => [spreadsheetSafe(s.name), s.amount || 0, s.billingCycle, s.usage]),
   ];
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
   summarySheet['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 14 }];
@@ -112,7 +119,7 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map(t => ({
       Date:     fmtDate(t.date),
-      Merchant: t.merchant,
+      Merchant: spreadsheetSafe(t.merchant),
       Category: t.category,
       Amount:   t.amount,
       Flip:     t.isFlip ? 'YES' : 'NO',
@@ -269,14 +276,16 @@ export interface ParsedFile {
 }
 
 export async function parseImportFile(file: File): Promise<ParsedFile> {
-  const name = file.name.toLowerCase();
-  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+  const type = await validateStatementFile(file);
+  if (type === 'xlsx' || type === 'xls') {
     const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array' });
+    // sheetRows bounds decompressed worksheet processing as well as returned rows.
+    const wb = XLSX.read(buf, { type: 'array', sheetRows: MAX_IMPORT_ROWS + 2 });
+    if (wb.SheetNames.length === 0) throw new Error('Workbook contains no sheets.');
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
     const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
-    return {
+    const parsed = {
       headers,
       rows: rows.map(r => {
         const out: Record<string, string> = {};
@@ -284,11 +293,14 @@ export async function parseImportFile(file: File): Promise<ParsedFile> {
         return out;
       }),
     };
+    validateParsedTable(parsed.headers, parsed.rows);
+    return parsed;
   }
   // CSV
   const text = await file.text();
   const result = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true });
-  return {
+  if (result.errors.length) throw new Error(`CSV could not be parsed: ${result.errors[0].message}`);
+  const parsed = {
     headers: (result.meta.fields || []).filter(Boolean) as string[],
     rows: (result.data || []).map(r => {
       const out: Record<string, string> = {};
@@ -296,6 +308,8 @@ export async function parseImportFile(file: File): Promise<ParsedFile> {
       return out;
     }),
   };
+  validateParsedTable(parsed.headers, parsed.rows);
+  return parsed;
 }
 
 export interface ImportMapping {

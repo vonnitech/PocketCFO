@@ -1,3 +1,4 @@
+import { useNativeBridge } from './native/useNativeBridge';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
@@ -92,7 +93,7 @@ function RouteFallback() {
 
 function TopHeaderFallback() {
   return (
-    <div className="shrink-0 z-50 w-full flex items-center gap-2.5 px-4 pb-3 header-pt-safe bg-base border-b-[3px] border-border">
+    <div className="shrink-0 z-50 w-full flex items-center gap-2.5 px-4 pb-3 header-pt-safe bg-base border-b-[3px] border-border dark:border-b dark:border-border/50">
       <div className="w-10 h-10 rounded-xl bg-input/60" />
       <div className="h-4 w-24 rounded bg-input/60" />
     </div>
@@ -134,6 +135,7 @@ function withPageWrapper(element: React.ReactNode) {
 }
 
 function App() {
+  useNativeBridge();
   const dataLoaded            = useStore(s => s.dataLoaded);
   const dataFresh             = useStore(s => s.dataFresh);
   const fetchUserData         = useStore(s => s.fetchUserData);
@@ -313,7 +315,8 @@ function App() {
         const toLinear = (c: number) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
         const wcag = (rr: number, gg: number, bb: number) =>
           0.2126 * toLinear(rr) + 0.7152 * toLinear(gg) + 0.0722 * toLinear(bb);
-        const NEEDED = 4.5 * (0.0109 + 0.05) - 0.05; // #1A1A1A card, ~0.224
+        // Target the lightest dark surface (#282C31), covering cards and inputs.
+        const NEEDED = 4.5 * (wcag(40, 44, 49) + 0.05) - 0.05;
         let scale = 1;
         while (
           scale < 6 &&
@@ -413,8 +416,8 @@ function App() {
         <Router>
           <ScrollToTop />
           <div className="h-screen bg-base dot-bg text-text-main font-sans overflow-y-auto overflow-x-hidden relative">
-            <main id="main-scroll" className="min-h-screen p-4 pt-4 md:p-8 relative">
-              <div className="max-w-4xl mx-auto">
+            <main id="main-scroll" className="min-h-screen min-w-0 p-4 pt-4 md:p-8 relative">
+              <div className="max-w-4xl min-w-0 mx-auto">
                 <Routes>
                   <Route path="/" element={withPageWrapper(<Dashboard />)} />
                   <Route path="*" element={<Navigate to="/" replace />} />
@@ -450,8 +453,8 @@ function App() {
             <Navigation />
           </Suspense>
 
-          <main id="main-scroll" className="w-full flex-1 overflow-y-auto overflow-x-hidden main-pb-safe p-4 pt-4 md:p-8 relative">
-            <div className="max-w-4xl mx-auto">
+          <main id="main-scroll" className="w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden main-pb-safe p-4 pt-4 md:p-8 relative">
+            <div className="max-w-4xl min-w-0 mx-auto">
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />
                 <Route path="/audit"           element={withPageWrapper(<AuditLog />)} />

@@ -1,4 +1,6 @@
-﻿import { useState, useMemo } from "react";
+import { dailyDiscretionarySpend, RESERVED_CATEGORIES as HIDDEN_CATEGORIES } from '../core/clearedToday';
+import { NATIVE_SPEND_INTENT } from '../native/useNativeBridge';
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Wallet,
@@ -24,20 +26,7 @@ import { NotificationBell } from "../components/NotificationCenter";
 import { BottomSheet } from "../components/BottomSheet";
 import { TransactionForm } from "../components/TransactionForm";
 import { dueSubscriptionsBeforePayday } from "../store/useStore";
-
-// Categories excluded from "discretionary spend" tallies. Bills + debt payments come from
-// pre-reserved money (upcomingBills / debt minimums) — counting them as today's spend
-// would double-deduct against the safe-spend allowance.
-const HIDDEN_CATEGORIES = new Set([
-  "SAVINGS",
-  "VAULT_DEPOSIT",
-  "PENALTY",
-  "VAULT_TRANSFER",
-  "VAULT_WITHDRAWAL",
-  "BILL_PAYMENT",
-  "SUBSCRIPTION_PAYMENT",
-  "DEBT_PAYMENT",
-]);
+import { useFirstMove } from "../hooks/useFirstMove";
 
 // Categories excluded from the Recent Activity feed — purely internal moves only.
 // Bills and debt payments should remain visible so users have a paper trail.
@@ -86,6 +75,7 @@ const POT_COLORS = [
 ];
 
 export default function Dashboard() {
+  const { visible: showFirstMove, dismiss: dismissFirstMove } = useFirstMove();
   const {
     safeSpendLimit,
     liquidAssets,
@@ -180,15 +170,7 @@ export default function Dashboard() {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
       const key = toLocalDateKey(d);
-      const spend = transactions
-        .filter(
-          (tx) =>
-            toLocalDateKey(tx.date) === key &&
-            !HIDDEN_CATEGORIES.has(tx.category) &&
-            tx.category !== "INCOME" &&
-            tx.category !== "DEBT_PAYMENT",
-        )
-        .reduce((sum, tx) => sum + tx.amount, 0);
+      const spend = dailyDiscretionarySpend(transactions, d);
       return {
         key,
         spend,
@@ -303,6 +285,17 @@ export default function Dashboard() {
   }, [transactions, monthlyTakeHome, monthlySavingsGoal]);
 
   const [logSheetOpen, setLogSheetOpen] = useState(false);
+  useEffect(() => {
+    const openPendingSpend = () => {
+      if (!hasCompletedOnboarding || sessionStorage.getItem(NATIVE_SPEND_INTENT) !== '1') return;
+      sessionStorage.removeItem(NATIVE_SPEND_INTENT);
+      setLogSheetOpen(true);
+    };
+    openPendingSpend();
+    window.addEventListener(NATIVE_SPEND_INTENT, openPendingSpend);
+    return () => window.removeEventListener(NATIVE_SPEND_INTENT, openPendingSpend);
+  }, [hasCompletedOnboarding]);
+
   const [isIncomeMode, setIsIncomeMode] = useState(false);
   const [incomeAmount, setIncomeAmount] = useState("");
   const [incomeSource, setIncomeSource] = useState("");
@@ -401,11 +394,11 @@ export default function Dashboard() {
             <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
               Finish Setup
             </h1>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
+            <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
               Your dashboard unlocks after onboarding
             </p>
           </div>
-          <div className="bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]">
+          <div className="dashboard-panel dashboard-welcome bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]">
             <div className="inline-flex px-3 py-1 bg-action-primary border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
               Setup Required
             </div>
@@ -449,7 +442,7 @@ export default function Dashboard() {
               the second-largest type tier on the page. At the old text-4xl it also
               broke over three lines beside the notification bell, which takes ~56px
               of a 393px row. */}
-          <p className="text-[13px] font-black uppercase tracking-widest text-text-main">
+          <p className="dark:normal-case dark:font-medium dark:tracking-normal text-[13px] font-black uppercase tracking-widest text-text-main">
             {(() => {
               const h = new Date().getHours();
               const salutation =
@@ -462,7 +455,7 @@ export default function Dashboard() {
               return name ? `${salutation}, ${name}` : salutation;
             })()}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
+          <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
               month: "long",
@@ -479,7 +472,7 @@ export default function Dashboard() {
             type="button"
             whileTap={{ scale: 0.97 }}
             onClick={() => setLogSheetOpen(true)}
-            className="w-full h-12 flex items-center justify-center gap-2 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none dark:hover:translate-x-0 dark:hover:translate-y-0 dark:hover:brightness-110 cursor-pointer w-full h-12 flex items-center justify-center gap-2 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
           >
             + LOG SPEND
           </motion.button>
@@ -491,7 +484,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
+            className="dashboard-panel dashboard-welcome bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
           >
             <div className="inline-flex px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase mb-4">
               Welcome
@@ -499,7 +492,7 @@ export default function Dashboard() {
             <p className="text-white font-black uppercase text-sm leading-relaxed mb-1">
               Everything is set up.
             </p>
-            <p className="text-white/60 text-[11px] font-bold uppercase tracking-wide leading-relaxed">
+            <p className="text-white/60 dark:text-text-muted dashboard-copy text-[11px] font-bold uppercase tracking-wide leading-relaxed">
               Let's start by logging your current balance or creating your first
               savings vault.
             </p>
@@ -524,7 +517,7 @@ export default function Dashboard() {
         {!nextPayday && (
           <Link
             to="/config"
-            className="flex items-center gap-4 bg-black border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all group"
+            className="flex items-center gap-4 dashboard-panel dashboard-welcome bg-black border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all group"
           >
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black uppercase tracking-widest text-action-primary mb-0.5">
@@ -533,7 +526,7 @@ export default function Dashboard() {
               <p className="text-white font-black uppercase text-sm">
                 Set your bank balance & next payday →
               </p>
-              <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mt-1">
+              <p className="text-white/50 dark:text-text-muted dashboard-copy text-[10px] font-bold uppercase tracking-widest mt-1">
                 Your Cleared Today amount can't calculate without it
               </p>
             </div>
@@ -550,7 +543,7 @@ export default function Dashboard() {
           {/* Safe Spend Hero */}
           {widgetVisible("safe-spend") && (
             <div
-              className={`lg:col-span-2 bg-surface border-4 rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden transition-colors duration-300 ${
+              className={`lg:col-span-2 dashboard-hero dashboard-panel bg-surface border-4 rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden transition-colors duration-300 ${
                 isOverToday ? "border-action-bleed" : "border-border"
               }`}
             >
@@ -560,14 +553,14 @@ export default function Dashboard() {
                   of the sentence. */}
               <div className="flex items-center gap-2 mb-1.5">
                 <Wallet size={13} strokeWidth={3} className="text-text-muted shrink-0" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted">
                   Cleared Today
                 </p>
               </div>
 
               {/* The number. `break-all` is gone: it split currency figures
                   mid-digit ("£1,2 / 34.56"). Length-based sizing replaces it. */}
-              <p className={`${heroSize} font-black italic tracking-tighter leading-[0.9] text-text-main tabular-nums mb-5`}>
+              <p className={`${heroSize} dark:not-italic font-black italic tracking-tighter leading-[0.9] text-text-main tabular-nums mb-5`}>
                 {heroAmount}
               </p>
 
@@ -575,7 +568,7 @@ export default function Dashboard() {
                   allowance and the meter is an empty grey slab, so the quiet
                   state gets one line instead of a bar showing nothing. */}
               {!isFirstTime && !hasSpentToday && (
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted">
                   Nothing spent yet
                 </p>
               )}
@@ -594,7 +587,7 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                    <span className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted">
                       {format(todaySpend)} spent
                     </span>
                     {/* Promoted out of 10px grey text into a chip. This is the
@@ -617,7 +610,7 @@ export default function Dashboard() {
                       from what is left over the days that remain. That was only
                       ever said in a notification, which can be blocked or off. */}
                   {isOverToday && daysToPayday > 0 && (
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted leading-snug">
+                    <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted leading-snug">
                       Spread across the {daysToPayday} days to payday, about{' '}
                       {format(Math.abs(spendRemaining) / daysToPayday)} off each day
                     </p>
@@ -658,12 +651,12 @@ export default function Dashboard() {
 
               return (
                 <div
-                  className={`border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] ${days === 0 ? "bg-action-capture" : "bg-black"} ${!widgetVisible("safe-spend") ? "lg:col-span-3" : ""}`}
+                  className={`dashboard-panel dark:border-border border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--color-action-primary)] ${days === 0 ? "bg-action-capture" : "bg-black dark:bg-surface"} ${!widgetVisible("safe-spend") ? "lg:col-span-3" : ""}`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <p
-                        className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${days === 0 ? "text-black/60" : "text-white/60"}`}
+                        className={`dashboard-copy text-[10px] font-bold uppercase tracking-widest mb-1 ${days === 0 ? "text-black/60" : "text-white/60 dark:text-text-muted"}`}
                       >
                         {days === 0 ? "Payday" : "Payday In"}
                       </p>
@@ -674,22 +667,22 @@ export default function Dashboard() {
                           </span>
                         ) : (
                           <>
-                            <span className="text-3xl font-black italic tracking-tighter text-action-primary tabular-nums leading-none">
+                            <span className="dashboard-secondary-amount dark:text-text-main text-3xl font-black italic tracking-tighter text-action-primary tabular-nums leading-none">
                               {days}
                             </span>
-                            <span className="text-[16px] font-black uppercase text-white/60">
+                            <span className="text-[16px] font-black uppercase text-white/60 dark:text-text-muted">
                               {days === 1 ? "day" : "days"}
                             </span>
                           </>
                         )}
                       </div>
                       <p
-                        className={`text-[10px] font-bold uppercase tracking-widest mt-2 ${days === 0 ? "text-black/50" : "text-white/40"}`}
+                        className={`dashboard-copy text-[10px] font-bold uppercase tracking-widest mt-2 ${days === 0 ? "text-black/50" : "text-white/40 dark:text-text-muted"}`}
                       >
                         {paydayFormatted}
                       </p>
                       <p
-                        className={`text-[11px] font-bold uppercase tracking-wider mt-3 leading-tight ${days === 0 ? "text-black/70" : "text-white/50"}`}
+                        className={`dashboard-copy text-[11px] font-bold uppercase tracking-wider mt-3 leading-tight ${days === 0 ? "text-black/70" : "text-white/50 dark:text-text-muted"}`}
                       >
                         {motivation}
                       </p>
@@ -788,7 +781,7 @@ export default function Dashboard() {
             });
 
             return (
-              <div className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+              <div className="dashboard-panel dark:border-border bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
                 <div className="flex items-center justify-between mb-4">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-action-primary text-[10px] font-black tracking-widest uppercase">
                     OBLIGATION QUEUE
@@ -821,10 +814,10 @@ export default function Dashboard() {
                         key={bill.id}
                         type="button"
                         onClick={() => payBillFromQueue(bill.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 bg-input border-4 rounded-2xl hover:bg-action-capture/10 transition-all group ${isOverdue ? "border-action-bleed" : "border-black hover:border-action-capture"}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 dark:border bg-input border-4 rounded-2xl hover:bg-action-capture/10 transition-all group ${isOverdue ? "border-action-bleed" : "border-black dark:border-border hover:border-action-capture"}`}
                       >
                         <div className="w-5 h-5 rounded-md border-[3px] border-black bg-surface group-hover:bg-action-capture group-hover:border-black transition-all shrink-0" />
-                        <span className="font-black uppercase text-sm text-text-main flex-1 text-left truncate">
+                        <span className="dark:font-semibold dark:normal-case font-black uppercase text-sm text-text-main flex-1 text-left truncate">
                           {bill.name}
                         </span>
                         {dueLabel && (
@@ -867,10 +860,10 @@ export default function Dashboard() {
                         type="button"
                         title={actionTitle}
                         onClick={() => paySubscription(sub.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 bg-input border-4 rounded-2xl hover:bg-action-capture/10 transition-all group ${isOverdue ? "border-action-bleed" : "border-black hover:border-action-capture"}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 dark:border bg-input border-4 rounded-2xl hover:bg-action-capture/10 transition-all group ${isOverdue ? "border-action-bleed" : "border-black dark:border-border hover:border-action-capture"}`}
                       >
                         <div className="w-5 h-5 rounded-md border-[3px] border-black bg-action-primary/30 group-hover:bg-action-capture group-hover:border-black transition-all shrink-0" />
-                        <span className="font-black uppercase text-sm text-text-main flex-1 text-left truncate">
+                        <span className="dark:font-semibold dark:normal-case font-black uppercase text-sm text-text-main flex-1 text-left truncate">
                           {sub.name}
                         </span>
                         <span
@@ -885,7 +878,7 @@ export default function Dashboard() {
                     );
                   })}
                 </div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mt-3">
+                <p className="dashboard-copy text-[11px] font-bold uppercase tracking-widest text-text-muted mt-3">
                   Tap an obligation to mark it paid · removes it from your
                   upcoming total
                 </p>
@@ -899,9 +892,9 @@ export default function Dashboard() {
             {/* Long-term money is deliberately quiet: thin border, muted type,
                 no hard shadow. It is handled in the background, so it should not
                 compete with the discretionary pots below. */}
-            <div className="bg-surface border-2 border-border/50 rounded-3xl p-5 overflow-hidden min-h-fit">
+            <div className="dashboard-panel bg-surface border-2 border-border/50 rounded-3xl p-5 overflow-hidden min-h-fit">
               <div className="flex justify-between items-start mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                <p className="dashboard-copy text-[10px] font-bold uppercase tracking-wider text-text-muted">
                   Long-Term Reserves
                 </p>
                 <Shield
@@ -910,17 +903,17 @@ export default function Dashboard() {
                   strokeWidth={2}
                 />
               </div>
-              <p className={`${pillarSize(maskWhole(longTermTotal))} font-black italic tracking-tighter text-text-muted tabular-nums`}>
+              <p className={`dashboard-secondary-amount ${pillarSize(maskWhole(longTermTotal))} font-black italic tracking-tighter text-text-muted tabular-nums`}>
                 {maskWhole(longTermTotal)}
               </p>
-              <p className="text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">
+              <p className="dashboard-copy text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">
                 Investments and reserves
               </p>
             </div>
 
-            <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden min-h-fit">
+            <div className="dashboard-panel bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] overflow-hidden min-h-fit">
               <div className="flex justify-between items-start mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                <p className="dashboard-copy text-[10px] font-bold uppercase tracking-wider text-text-muted">
                   Spendable
                 </p>
                 <TrendingUp
@@ -929,13 +922,13 @@ export default function Dashboard() {
                   strokeWidth={2.5}
                 />
               </div>
-              <p className={`${pillarSize(spendableText)} font-black italic tracking-tighter text-text-main tabular-nums`}>
+              <p className={`dashboard-secondary-amount ${pillarSize(spendableText)} font-black italic tracking-tighter text-text-main tabular-nums`}>
                 {spendableText}
               </p>
               {upcomingBills > 0 ? (
                 liquidAssets >= upcomingBills ? (
                   <div className="mt-2 space-y-0.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">
+                    <p className="dashboard-copy text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">
                       −{maskWhole(upcomingBills)} reserved
                     </p>
                     <p className="text-[10px] font-black uppercase tracking-wide text-capture-readable tabular-nums">
@@ -944,7 +937,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="mt-2 space-y-0.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">
+                    <p className="dashboard-copy text-[10px] font-bold uppercase tracking-wide text-action-bleed/80 tabular-nums">
                       {maskWhole(upcomingBills)} due before payday
                     </p>
                     <p className="text-[10px] font-black uppercase tracking-wide text-action-bleed tabular-nums">
@@ -953,7 +946,7 @@ export default function Dashboard() {
                   </div>
                 )
               ) : (
-                <p className="text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">
+                <p className="dashboard-copy text-[11px] text-text-muted mt-2 font-bold uppercase tracking-wide">
                   Available cash
                 </p>
               )}
@@ -964,7 +957,7 @@ export default function Dashboard() {
         {/* ── Sinking Funds ── */}
         {discretionaryPots.length > 0 && (
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">
+            <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">
               Sinking Funds
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -977,26 +970,26 @@ export default function Dashboard() {
                   <Link
                     key={pot.id}
                     to="/vaults"
-                    className={`${POT_COLORS[i % POT_COLORS.length]} border-[3px] border-black rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all overflow-hidden`}
+                    className={`dashboard-panel dark:bg-surface dark:border-border ${POT_COLORS[i % POT_COLORS.length]} border-[3px] border-black rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all overflow-hidden`}
                   >
-                    <p className="text-[10px] font-black uppercase tracking-widest text-black/60 truncate">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-black/60 dark:text-text-muted truncate">
                       {pot.name}
                     </p>
-                    <p className="text-2xl font-black italic tracking-tighter text-black tabular-nums mt-1">
+                    <p className="text-2xl font-black italic tracking-tighter text-black dark:text-text-main dark:not-italic dark:font-bold tabular-nums mt-1">
                       {maskWhole(pot.current)}
                     </p>
                     {/* Meter only means something against a target. */}
                     {pot.target > 0 && (
                       <>
-                        <div className="h-3 bg-black/10 border-2 border-black rounded-full overflow-hidden mt-3">
+                        <div className="h-3 bg-black/10 dark:bg-input border-2 border-black dark:border-0 rounded-full overflow-hidden mt-3">
                           <motion.div
-                            className="h-full bg-black"
+                            className="h-full bg-black dark:bg-action-capture"
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
                             transition={{ type: "spring", stiffness: 200, damping: 30 }}
                           />
                         </div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-black/60 mt-1.5 tabular-nums">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-black/60 dark:text-text-muted mt-1.5 tabular-nums">
                           {pct.toFixed(0)}% of {maskWhole(pot.target)}
                         </p>
                       </>
@@ -1013,9 +1006,9 @@ export default function Dashboard() {
           {/* Net Worth */}
           {!isFirstTime &&
             (liquidAssets > 0 || totalVaulted > 0 || totalDebt > 0) && (
-              <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+              <div className="md:col-span-2 dashboard-panel bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                  <p className="dashboard-copy text-[10px] font-bold uppercase tracking-wider text-text-muted">
                     Net Worth
                   </p>
                   <span
@@ -1031,7 +1024,7 @@ export default function Dashboard() {
                 </p>
                 <div className="grid grid-cols-3 gap-2 pt-3 border-t-2 border-border/30">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                    <p className="dashboard-copy text-[11px] font-bold uppercase tracking-wide text-text-muted">
                       Cash
                     </p>
                     <p className="font-black text-sm text-text-main tabular-nums">
@@ -1039,7 +1032,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-capture-readable">
+                    <p className="dashboard-copy text-[11px] font-bold uppercase tracking-wide text-capture-readable">
                       Vaulted
                     </p>
                     <p className="font-black text-sm text-text-main tabular-nums">
@@ -1047,7 +1040,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-action-bleed">
+                    <p className="dashboard-copy text-[11px] font-bold uppercase tracking-wide text-action-bleed">
                       Debt
                     </p>
                     <p className="font-black text-sm text-action-bleed tabular-nums">
@@ -1083,11 +1076,11 @@ export default function Dashboard() {
                     ? "text-action-primary"
                     : "text-action-bleed";
               return (
-                <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-4 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+                <div className="md:col-span-2 dashboard-panel bg-surface border-4 border-border rounded-3xl p-4 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
                   <div className="grid grid-cols-3 gap-3">
                     {/* Net Flow */}
                     <div
-                      className={`min-w-0 ${showBudget || showSavings ? "border-r-2 border-black dark:border-white pr-3" : ""}`}
+                      className={`min-w-0 ${showBudget || showSavings ? "border-r-2 border-black dark:border-r dark:border-border pr-3" : ""}`}
                     >
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide leading-tight min-h-[2.2em]">
                         Net Flow
@@ -1103,7 +1096,7 @@ export default function Dashboard() {
 
                     {/* Budget Spent */}
                     <div
-                      className={`min-w-0 ${showSavings ? "border-r-2 border-black dark:border-white pr-3" : ""}`}
+                      className={`min-w-0 ${showSavings ? "border-r-2 border-black dark:border-r dark:border-border pr-3" : ""}`}
                     >
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide leading-tight min-h-[2.2em]">
                         Budget Spent
@@ -1132,45 +1125,44 @@ export default function Dashboard() {
             })()}
 
           {/* First-time welcome */}
-          {isFirstTime && (
+          {showFirstMove && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="md:col-span-2 bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
+              className="md:col-span-2 dashboard-panel dashboard-welcome bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
             >
-              <div className="inline-flex px-3 py-1 bg-action-primary border-2 border-action-primary rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
+              <div className="inline-flex px-3 py-1 dark:bg-input dark:border-transparent dark:text-text-main bg-action-primary border-2 border-action-primary rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
                 YOUR FIRST MOVE
               </div>
-              <p className="text-white text-sm font-black uppercase leading-relaxed mb-5">
-                Your Cleared Today amount is live. Now build the habit · log purchases
-                from the dashboard, then close the day with Daily Review.
+              <p className="text-white text-sm font-bold leading-relaxed mb-5">
+                You’re set up. Choose what you’d like to do next.
               </p>
               <div className="space-y-2">
                 {[
                   {
-                    to: "/recon",
-                    icon: Search,
-                    label: "Daily Review",
-                    sub: "Review today's spend and catch anything missed",
-                  },
-                  {
                     to: "/vaults",
                     icon: Shield,
                     label: "Create a Vault",
-                    sub: "Set a savings goal (emergency fund, trip, etc.)",
+                    sub: "Set money aside for something you’re saving for.",
                   },
                   {
                     to: "/subscriptions",
                     icon: X,
                     label: "Cancel a Subscription",
-                    sub: "Find subscriptions you forgot about",
+                    sub: "Check for subscriptions you no longer use.",
+                  },
+                  {
+                    to: "/recon",
+                    icon: Search,
+                    label: "Daily Review",
+                    sub: "Check today’s spending and add anything you missed.",
                   },
                 ].map(({ to, icon: Icon, label, sub }) => (
                   <Link
                     key={to}
                     to={to}
-                    className="flex items-center gap-3 p-3 bg-surface/10 hover:bg-surface/20 border-[3px] border-white/20 hover:border-white/40 rounded-2xl transition-all group"
+                    className="flex items-center gap-3 p-3 dark:bg-input dark:hover:bg-input/70 dark:border-border dark:border bg-surface/10 hover:bg-surface/20 border-[3px] border-white/20 hover:border-white/40 rounded-2xl transition-all group"
                   >
                     <Icon
                       size={16}
@@ -1178,32 +1170,39 @@ export default function Dashboard() {
                       className="text-action-primary shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-[11px] font-black uppercase tracking-widest">
+                      <p className="text-white text-[11px] font-black tracking-wide">
                         {label}
                       </p>
-                      <p className="text-white/50 text-[10px] font-black uppercase truncate">
+                      <p className="text-white/70 text-[10px] font-bold leading-relaxed">
                         {sub}
                       </p>
                     </div>
                     <ChevronRight
                       size={14}
                       strokeWidth={3}
-                      className="text-white/30 group-hover:text-white/60 transition-colors shrink-0"
+                      className="text-white/30 group-hover:text-white/60 dark:text-text-muted transition-colors shrink-0"
                     />
                   </Link>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={dismissFirstMove}
+                className="mt-4 min-h-11 px-2 text-xs font-bold text-white/70 hover:text-white underline underline-offset-4 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action-primary"
+              >
+                Skip for now
+              </button>
             </motion.div>
           )}
 
           {/* Top Categories */}
           {!isFirstTime && topCategories.length > 0 && (
-            <div className="md:col-span-2 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+            <div className="md:col-span-2 dashboard-panel bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                <p className="dashboard-copy text-[10px] font-bold uppercase tracking-wider text-text-muted">
                   Where It Went
                 </p>
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
+                <span className="dashboard-copy text-[10px] font-bold uppercase tracking-wide text-text-muted">
                   This Month
                 </span>
               </div>
@@ -1215,7 +1214,7 @@ export default function Dashboard() {
                         {cat.label}
                       </span>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-[11px] font-bold uppercase text-text-muted">
+                        <span className="dashboard-copy text-[11px] font-bold uppercase text-text-muted">
                           {cat.pct.toFixed(0)}%
                         </span>
                         <span className="text-xs font-black tabular-nums text-text-main">
@@ -1284,13 +1283,13 @@ export default function Dashboard() {
           </button>
           <Link
             to="/transactions"
-            className="flex-1 min-w-25 flex items-center justify-center border-4 border-border bg-surface text-text-main font-black uppercase tracking-widest text-sm rounded-full h-14 shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+            className="dark:border dark:shadow-none dark:hover:bg-input dark:hover:translate-x-0 dark:hover:translate-y-0 flex-1 min-w-25 flex items-center justify-center border-4 border-border bg-surface text-text-main font-black uppercase tracking-widest text-sm rounded-full h-14 shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
           >
             HISTORY
           </Link>
           <Link
             to="/vaults"
-            className="flex-1 min-w-25 flex items-center justify-center border-4 border-border bg-surface text-text-main font-black uppercase tracking-widest text-sm rounded-full h-14 shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+            className="dark:border dark:shadow-none dark:hover:bg-input dark:hover:translate-x-0 dark:hover:translate-y-0 flex-1 min-w-25 flex items-center justify-center border-4 border-border bg-surface text-text-main font-black uppercase tracking-widest text-sm rounded-full h-14 shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
           >
             SAVINGS
           </Link>
@@ -1298,9 +1297,9 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         {recentTxs.length > 0 && (
-          <div className="bg-surface border-4 border-border rounded-3xl overflow-hidden shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+          <div className="dashboard-panel bg-surface border-4 border-border rounded-3xl overflow-hidden shadow-[6px_6px_0px_0px_var(--shadow-color)]">
             <div className="flex items-center justify-between px-5 pt-4 pb-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+              <p className="dashboard-copy text-[10px] font-bold uppercase tracking-wider text-text-muted">
                 Recent Activity
               </p>
               <Link
@@ -1345,7 +1344,7 @@ export default function Dashboard() {
                       <p className="text-xs font-black uppercase tracking-wider text-text-main truncate">
                         {tx.merchant}
                       </p>
-                      <p className="text-[10px] font-bold uppercase text-text-muted">
+                      <p className="dashboard-copy text-[10px] font-bold uppercase text-text-muted">
                         {relativeDate(tx.date)}
                       </p>
                     </div>
@@ -1357,7 +1356,7 @@ export default function Dashboard() {
                         {format(tx.amount)}
                       </p>
                       {tx.isFlip && tx.flipAmount > 0 && (
-                        <p className="text-[11px] font-bold uppercase text-action-bleed">
+                        <p className="dashboard-copy text-[11px] font-bold uppercase text-action-bleed">
                           {format(tx.flipAmount)} taxed
                         </p>
                       )}
@@ -1372,7 +1371,7 @@ export default function Dashboard() {
         {/* Long dashboard? Jump straight to the widget toggles to trim the scroll. */}
         <Link
           to="/settings#dashboard-widgets"
-          className="flex items-center justify-center gap-1.5 py-3 text-[11px] font-bold uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+          className="flex items-center justify-center gap-1.5 py-3 dashboard-copy text-[11px] font-bold uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
         >
           <SlidersHorizontal size={12} strokeWidth={2.5} /> Customize dashboard
         </Link>
@@ -1403,7 +1402,7 @@ export default function Dashboard() {
               initial={{ y: 50, scale: 0.95 }}
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 20, opacity: 0 }}
-              className="bg-surface border-4 border-border rounded-3xl p-6 w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+              className="dashboard-panel bg-surface border-4 border-border rounded-3xl p-6 w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
             >
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-black italic tracking-tighter uppercase text-text-main">
@@ -1420,7 +1419,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">
+              <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">
                 Adds to your liquid capital · raises your Cleared Today amount
                 immediately
               </p>
