@@ -60,6 +60,11 @@ assert.match(authPlatform, /access_token.*refresh_token/);
 assert.match(authPlatform, /history\.replaceState/);
 assert.match(app, /clearAuthCallbackUrl\(\)/);
 
+const recoveryEmail = readFileSync('supabase/templates/recovery.html', 'utf8');
+assert.match(recoveryEmail, /Pocket CFO/);
+assert.equal((recoveryEmail.match(/\{\{ \.ConfirmationURL \}\}/g) ?? []).length, 1);
+assert.doesNotMatch(recoveryEmail, /\{\{ \.(Token|TokenHash|Email) \}\}/);
+
 const headers = JSON.parse(readFileSync('vercel.json', 'utf8')).headers[0].headers as { key: string; value: string }[];
 const csp = headers.find(header => header.key === 'Content-Security-Policy')?.value ?? '';
 assert.match(csp, /script-src 'self'/);
