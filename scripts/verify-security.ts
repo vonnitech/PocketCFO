@@ -51,6 +51,15 @@ assert.match(telemetry, /key !== 'safeSpend' && key !== 'billsReserved'/);
 const viteConfig = readFileSync('vite.config.ts', 'utf8');
 assert.doesNotMatch(viteConfig, /sourcemap\s*:\s*true/);
 
+const authGate = readFileSync('src/components/AuthGate.tsx', 'utf8');
+const authPlatform = readFileSync('src/native/platform.ts', 'utf8');
+const app = readFileSync('src/App.tsx', 'utf8');
+assert.doesNotMatch(authGate, /err instanceof Error \? err\.message/);
+assert.match(authGate, /If an account exists for that email/);
+assert.match(authPlatform, /access_token.*refresh_token/);
+assert.match(authPlatform, /history\.replaceState/);
+assert.match(app, /clearAuthCallbackUrl\(\)/);
+
 const headers = JSON.parse(readFileSync('vercel.json', 'utf8')).headers[0].headers as { key: string; value: string }[];
 const csp = headers.find(header => header.key === 'Content-Security-Policy')?.value ?? '';
 assert.match(csp, /script-src 'self'/);

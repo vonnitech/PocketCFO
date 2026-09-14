@@ -19,6 +19,7 @@ import { ProUpsellPopover } from './components/ProUpsellPopover';
 import { runPaydayCheck } from './core/lifecycle';
 import { NotificationToaster } from './components/NotificationCenter';
 import { useNotificationEngine } from './hooks/useNotifications';
+import { clearAuthCallbackUrl } from './native/platform';
 
 // Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -245,6 +246,7 @@ function App() {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setSessionLoaded(true);
+      clearAuthCallbackUrl();
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
@@ -269,6 +271,9 @@ function App() {
       // the user actually finishes the update.
       if (event === 'PASSWORD_RECOVERY') {
         setRecoveryMode(true);
+        clearAuthCallbackUrl();
+      } else if (event === 'SIGNED_IN') {
+        clearAuthCallbackUrl();
       }
     });
 

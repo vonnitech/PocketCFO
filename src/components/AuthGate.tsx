@@ -49,6 +49,13 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
 
   const clearMessages = () => { setError(''); setNotice(''); };
 
+  const safeFailure = (activeMode: Mode) => {
+    if (activeMode === 'login') return 'EMAIL OR PASSWORD IS INCORRECT';
+    if (activeMode === 'signup') return 'ACCOUNT COULD NOT BE CREATED. CHECK YOUR DETAILS AND TRY AGAIN';
+    if (activeMode === 'recover') return 'RESET LINK IS INVALID OR EXPIRED. REQUEST A NEW LINK';
+    return 'REQUEST COULD NOT BE COMPLETED. TRY AGAIN';
+  };
+
   useEffect(() => {
     setPasswordVisible(false);
   }, [mode]);
@@ -105,11 +112,13 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: authRedirectUrl(),
         });
-        if (authError) throw authError;
         // Always show the same generic message regardless of whether the email
         // exists — prevents account enumeration via the reset endpoint.
         setNotice('If an account exists for that email, a reset link is on its way.');
         setPassword('');
+        // Keep the response identical for registered and unregistered addresses,
+        // including provider and rate-limit failures.
+        void authError;
 
       } else if (mode === 'recover') {
         if (!password || password.length < 8) {
@@ -123,9 +132,10 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         // Hand control back to App.tsx — it'll re-evaluate routing and load the app.
         setTimeout(() => onRecoveryDone?.(), 600);
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed';
-      setError(msg.toUpperCase());
+    } catch {
+      // Provider errors can reveal project configuration, password policy and
+      // account state. Show only the action the user can safely take.
+      setError(safeFailure(mode));
     } finally {
       setLoading(false);
     }
@@ -150,9 +160,8 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         await Browser.open({ url: data.url });
         setLoading(false);
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
-      setError(msg.toUpperCase());
+    } catch {
+      setError('GOOGLE SIGN-IN COULD NOT BE COMPLETED. TRY AGAIN');
       setLoading(false);
     }
   };
