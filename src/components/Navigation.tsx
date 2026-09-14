@@ -6,6 +6,7 @@ import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useProLocked } from '../lib/pro';
 import { supabase } from '../core/supabase';
+import { BrandLogo } from './BrandLogo';
 
 // The four tabs that live in the floating bar. The fifth slot opens the menu
 // holding everything else, so every destination sits in the same thumb zone and
@@ -42,6 +43,17 @@ const primaryTabs = [
   { path: '/breakdown',    icon: PieChart,    label: 'Stats' },
 ];
 
+const desktopCoreLinks = [
+  { path: '/',              icon: CircleGauge,      label: 'Dashboard' },
+  { path: '/recon',         icon: ClipboardCheck,   label: 'Daily Review' },
+  { path: '/transactions',  icon: Receipt,           label: 'Ledger' },
+  { path: '/vaults',        icon: LockKeyhole,       label: 'Vaults' },
+  { path: '/breakdown',     icon: PieChart,          label: 'Audit Log' },
+  { path: '/subscriptions', icon: Repeat,            label: 'Subscriptions' },
+  { path: '/limit',         icon: Percent,           label: 'Spend Limit' },
+  { path: '/pacing',        icon: SlidersHorizontal, label: 'Pacing' },
+];
+
 // Core screens that are not one of the four tabs.
 const manageLinks = [
   { path: '/recon',         icon: ClipboardCheck,    label: 'Daily Review' },
@@ -62,6 +74,32 @@ const calculatorTools: { path: string; icon: React.ElementType; label: string; s
   { path: '/fire',             icon: Flame,        label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
   { path: '/income',           icon: Banknote,     label: 'Income Tracker',  subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
 ];
+
+function DesktopNavItem({ path, icon: Icon, label, locked }: {
+  path: string; icon: React.ElementType; label: string; locked?: boolean;
+}) {
+  return (
+    <NavLink
+      to={path}
+      end={path === '/'}
+      className={({ isActive }) =>
+        `relative flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition-colors duration-150 ${
+          isActive
+            ? 'bg-action-primary border-black text-primary-contrast'
+            : 'border-transparent text-text-muted hover:bg-input hover:text-text-main hover:border-border'
+        }`
+      }
+    >
+      <Icon size={17} strokeWidth={2} className="shrink-0" />
+      <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wider leading-none">{label}</span>
+      {locked && (
+        <span className="ml-auto inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest opacity-70">
+          <Lock size={10} strokeWidth={3} /> Preview
+        </span>
+      )}
+    </NavLink>
+  );
+}
 
 function SheetLink({ path, icon: Icon, label, onClick }: {
   path: string; icon: React.ElementType; label: string; onClick: () => void;
@@ -155,10 +193,71 @@ export default function Navigation() {
 
   return (
     <>
+      <aside className="hidden md:flex h-screen w-64 flex-col bg-surface border-r-[3px] border-border px-4 py-5 transition-colors duration-300">
+        <div className="mb-7 px-1">
+          <BrandLogo />
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto no-scrollbar">
+          <section className="flex flex-col gap-0.5">
+            <p className="px-3 mb-1.5 text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50">Core</p>
+            {desktopCoreLinks.map(item => <DesktopNavItem key={item.path} {...item} />)}
+          </section>
+
+          <div className="h-px shrink-0 bg-border opacity-30 mx-1" />
+
+          <section className="flex flex-col gap-0.5">
+            <p className="px-3 mb-1.5 text-[11px] font-black uppercase tracking-[0.25em] text-text-muted/50">Tools</p>
+            {calculatorTools.map(item => (
+              <DesktopNavItem
+                key={item.path}
+                path={item.path}
+                icon={item.icon}
+                label={item.label}
+                locked={!!item.pro && proLocked}
+              />
+            ))}
+          </section>
+
+          <div className="mt-auto pt-4 border-t-2 border-border/30 space-y-1">
+            <div className="flex gap-1.5 mb-1.5">
+              <button
+                type="button"
+                title={privacyMode ? 'Disable privacy mode' : 'Enable privacy mode'}
+                onClick={() => togglePrivacyMode()}
+                className={`flex-1 h-9 flex items-center justify-center gap-1.5 border-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors ${privacyMode ? 'bg-action-bleed border-action-bleed text-white' : 'border-border bg-input text-text-muted hover:text-text-main'}`}
+              >
+                {privacyMode ? <EyeOff size={13} /> : <Eye size={13} />}
+                {privacyMode ? 'Hidden' : 'Privacy'}
+              </button>
+              <button
+                type="button"
+                title="Toggle theme"
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                className="flex-1 h-9 flex items-center justify-center gap-1.5 border-2 border-border bg-input rounded-xl text-[9px] font-black uppercase tracking-wider text-text-muted hover:text-text-main transition-colors"
+              >
+                {theme === 'light' ? <Moon size={13} /> : <Sun size={13} />}
+                {theme === 'light' ? 'Dark' : 'Light'}
+              </button>
+            </div>
+            <DesktopNavItem path="/settings" icon={Settings} label="Settings" />
+            {email && <p className="px-3 pt-2 text-[10px] font-bold text-text-muted truncate" title={email}>{email}</p>}
+            <button
+              type="button"
+              onClick={signOut}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 border-transparent text-text-muted hover:bg-action-bleed/10 hover:text-action-bleed hover:border-action-bleed/30 transition-colors"
+            >
+              <LogOut size={16} strokeWidth={2} />
+              <span className="text-[11px] font-bold uppercase tracking-wider leading-none">Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
       {/* The outer bar spans the viewport so it can centre the pill, but it must
           not swallow taps on the page behind it, hence pointer-events-none here
           and pointer-events-auto on the pill itself. */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 nav-pb-safe pointer-events-none">
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex md:hidden justify-center px-4 nav-pb-safe pointer-events-none">
         <div className="app-navigation pointer-events-auto w-full max-w-md flex items-stretch gap-0.5 bg-surface border-[3px] border-border rounded-3xl shadow-[4px_4px_0px_0px_var(--shadow-color)] px-1.5 py-1.5 transition-colors duration-300">
           {primaryTabs.map(tab => (
             <NavLink
@@ -203,7 +302,7 @@ export default function Navigation() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-60 bg-black/40"
+              className="fixed inset-0 z-60 bg-black/40 md:hidden"
               onClick={close}
             />
             <motion.div
@@ -211,7 +310,7 @@ export default function Navigation() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-              className="fixed bottom-0 left-0 right-0 z-70 bg-surface border-t-[3px] border-border dark:border-t rounded-t-3xl px-5 pt-4 sheet-pb-safe max-h-[90vh] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 z-70 bg-surface border-t-[3px] border-border dark:border-t rounded-t-3xl px-5 pt-4 sheet-pb-safe md:hidden max-h-[90vh] overflow-y-auto"
             >
               {/* Drag handle */}
               <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />

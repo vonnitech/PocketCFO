@@ -5,7 +5,7 @@ import { BrandLogo } from './BrandLogo';
 // sheet rises from the edge its trigger is on rather than the opposite one.
 export default function TopHeader() {
   return (
-    <header className="shrink-0 z-50 w-full flex items-center px-4 pb-3 header-pt-safe bg-base border-b-[3px] border-border dark:border-b dark:border-border/50 transition-colors duration-300">
+    <header className="shrink-0 z-50 w-full flex md:hidden items-center px-4 pb-3 header-pt-safe bg-base border-b-[3px] border-border dark:border-b dark:border-border/50 transition-colors duration-300">
       <BrandLogo />
     </header>
   );
