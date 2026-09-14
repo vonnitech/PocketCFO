@@ -588,7 +588,7 @@ export function FireCalculator() {
           <LiveBadge />
         </div>
 
-        <div className="grid min-w-0 grid-cols-2 gap-3">
+        <div className="grid min-w-0 grid-cols-1 min-[420px]:grid-cols-2 gap-3">
           <div className="min-w-0 overflow-hidden bg-input border-4 border-black rounded-2xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
               <ShieldCheck size={12} strokeWidth={2.5} className="text-capture-readable shrink-0" />
@@ -666,7 +666,7 @@ export function FireCalculator() {
           </div>
         </div>
 
-        <div className="grid min-w-0 grid-cols-2 gap-3">
+        <div className="grid min-w-0 grid-cols-1 min-[420px]:grid-cols-2 gap-3">
           <Field label="Current Age" value={ca} onChange={setCa} integer />
           {strategy === 'COAST' ? (
             <div className="flex flex-col justify-center items-center bg-input border-4 border-black/20 rounded-2xl px-3 py-2 gap-0.5">
@@ -813,7 +813,7 @@ export function FireCalculator() {
 
       {/* Stats Row */}
       {calc && (
-        <div className="grid min-w-0 grid-cols-3 gap-3">
+        <div className="grid min-w-0 grid-cols-1 min-[480px]:grid-cols-3 gap-3">
           {(calc.isCoast ? [
             {
               label: 'Coast #',
