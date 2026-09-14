@@ -71,6 +71,11 @@ export default defineConfig(({ mode }) => {
         ],
       },
       workbox: {
+        // Take control as soon as a deployment's new worker is installed. This
+        // prevents an open or installed PWA from continuing to serve the prior
+        // release until every old tab has been closed.
+        skipWaiting: true,
+        clientsClaim: true,
         // Adds the notificationclick handler (and, later, the push listener) to
         // the generated service worker. It has to be a real file in public/ so
         // importScripts can fetch it at install time; if this URL ever 404s the
