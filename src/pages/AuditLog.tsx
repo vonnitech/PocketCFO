@@ -7,6 +7,7 @@ import { CSVImport } from '../components/CSVImport';
 import { ProAction } from '../components/ProAction';
 import { WealthVsLifestyleChart } from '../components/WealthVsLifestyleChart';
 import { currencyDef, getActiveCurrency } from '../lib/currency';
+import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
 
 type Period = 'week' | 'month' | 'all';
 
@@ -541,18 +542,18 @@ export const AuditLog: React.FC = () => {
 
       {/* Totals */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-bleed border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase mb-3">
             <Activity size={11} /> TOTAL OUTFLOW
           </div>
-          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-action-bleed tabular-nums">-{formatCell(totalOutflow)}</p>
+          <p className={`${amountFitClass} ${amountTextSize(`-${formatCell(totalOutflow)}`, 'summary')} font-black italic tracking-tighter text-action-bleed tabular-nums`}>-{formatCell(totalOutflow)}</p>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Pure spend + penalties</p>
         </div>
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase mb-3">
             <ShieldCheck size={11} /> WEALTH CAPTURED
           </div>
-          <p className="text-3xl sm:text-4xl font-black italic tracking-tighter text-capture-readable tabular-nums">+{formatCell(wealthCaptured)}</p>
+          <p className={`${amountFitClass} ${amountTextSize(`+${formatCell(wealthCaptured)}`, 'summary')} font-black italic tracking-tighter text-capture-readable tabular-nums`}>+{formatCell(wealthCaptured)}</p>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Savings captures and vault deposits</p>
         </div>
       </div>

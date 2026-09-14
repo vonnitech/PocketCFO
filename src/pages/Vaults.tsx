@@ -10,6 +10,7 @@ import { useStore } from '../store/useStore';
 import type { VaultAssetClass } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
+import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
 import { isSinkingFund } from '../core/vaults';
 import { useProLocked } from '../lib/pro';
 import { FREE_VAULT_CAP, lockedVaultIds } from '../core/vaults';
@@ -307,18 +308,18 @@ export default function Vaults() {
           Mobile: Total full-width, Goal + Available half-width below. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {/* Total Vaulted — accent hero */}
-        <div className="col-span-2 sm:col-span-1 bg-action-primary border-4 border-black rounded-2xl p-4 shadow-brutal">
+        <div className="col-span-2 sm:col-span-1 min-w-0 overflow-hidden bg-action-primary border-4 border-black rounded-2xl p-4 shadow-brutal">
           <p className="text-[10px] font-black uppercase tracking-widest text-black/60 mb-1">Total Vaulted</p>
-          <p className="text-3xl sm:text-2xl font-black italic tabular-nums text-black leading-none">
+          <p className={`${amountFitClass} ${amountTextSize(formatCurrency(totalVaulted, privacyMode), 'summary')} font-black italic tabular-nums text-black`}>
             {formatCurrency(totalVaulted, privacyMode)}
           </p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-black/50 mt-1">Across all vaults</p>
         </div>
 
         {/* Monthly Goal */}
-        <div className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+        <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Monthly Goal</p>
-          <p className="text-xl font-black italic tabular-nums text-text-main leading-none">
+          <p className={`${amountFitClass} ${amountTextSize(formatCurrency(monthlySavingsGoal, privacyMode))} font-black italic tabular-nums text-text-main`}>
             {formatCurrency(monthlySavingsGoal, privacyMode)}
           </p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">
@@ -327,9 +328,9 @@ export default function Vaults() {
         </div>
 
         {/* Available to Vault */}
-        <div className="bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+        <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Available to Vault</p>
-          <p className="text-xl font-black italic tabular-nums text-capture-readable leading-none">
+          <p className={`${amountFitClass} ${amountTextSize(formatCurrency(availableToVault, privacyMode))} font-black italic tabular-nums text-capture-readable`}>
             {formatCurrency(availableToVault, privacyMode)}
           </p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">

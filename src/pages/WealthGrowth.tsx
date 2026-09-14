@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, AlertOctagon, RotateCcw } from 'lucide-react';
 import { currencySymbol } from '../lib/currency';
+import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
 
 export const WealthGrowth: React.FC = () => {
   const [principal, setPrincipal] = useState('');
@@ -145,7 +146,7 @@ export const WealthGrowth: React.FC = () => {
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black border-2 border-black rounded-full text-[10px] font-black tracking-widest uppercase mb-3 text-action-capture">
               <TrendingUp size={11} strokeWidth={3} /> Future Value
             </div>
-            <p className="text-5xl md:text-6xl font-black italic leading-none tabular-nums text-capture-readable">
+            <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${fmt(metrics.futureValue)}`, 'hero')} font-black italic tabular-nums text-capture-readable`}>
               {currencySymbol()}{fmt(metrics.futureValue)}
             </p>
             {parseInt(years) > 0 && (
@@ -159,14 +160,14 @@ export const WealthGrowth: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
               <p className="label-xs mb-2">Total Principal</p>
-              <p className="text-2xl font-black italic text-text-main tabular-nums">
+              <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${fmt(metrics.totalPrincipal)}`)} font-black italic text-text-main tabular-nums`}>
                 {currencySymbol()}{fmt(metrics.totalPrincipal)}
               </p>
               <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">Your money in</p>
             </div>
             <div className={`border-4 rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${metrics.marketYield > 0 ? 'bg-black border-black' : 'bg-surface border-border shadow-[6px_6px_0px_0px_var(--shadow-color)]'}`}>
               <p className={`label-xs mb-2 ${metrics.marketYield > 0 ? 'text-capture-readable' : ''}`}>Market Yield</p>
-              <p className={`text-2xl font-black italic tabular-nums ${metrics.marketYield > 0 ? 'text-capture-readable' : 'text-text-main'}`}>
+              <p className={`${amountFitClass} ${amountTextSize(`+${currencySymbol()}${fmt(metrics.marketYield)}`)} font-black italic tabular-nums ${metrics.marketYield > 0 ? 'text-capture-readable' : 'text-text-main'}`}>
                 +{currencySymbol()}{fmt(metrics.marketYield)}
               </p>
               <p className={`text-[11px] font-bold uppercase tracking-wide mt-1.5 ${metrics.marketYield > 0 ? 'text-capture-readable/60' : 'text-text-muted'}`}>Free market growth</p>

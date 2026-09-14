@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
+import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
 import { useStore } from '../store/useStore';
 import {
   calculateTrueSafeSpend,
@@ -209,13 +210,13 @@ const chooseWorthIt = (id: WorthIt) => {
               </span>
             </div>
             <div className="flex items-end gap-4 mb-3">
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Cleared Today</p>
-                <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(effectiveLimit, privacyMode)}</p>
+                <p className={`${amountFitClass} ${amountTextSize(formatCurrency(effectiveLimit, privacyMode))} font-black italic tracking-tighter text-text-main tabular-nums`}>{formatCurrency(effectiveLimit, privacyMode)}</p>
               </div>
-              <div className="flex-1 text-right">
+              <div className="flex-1 min-w-0 overflow-hidden text-right">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Spend Logged Today</p>
-                <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(spendLoggedToday, privacyMode)}</p>
+                <p className={`${amountFitClass} ${amountTextSize(formatCurrency(spendLoggedToday, privacyMode))} font-black italic tracking-tighter text-text-main tabular-nums`}>{formatCurrency(spendLoggedToday, privacyMode)}</p>
               </div>
             </div>
             {capturedToday > 0 && (
@@ -342,13 +343,13 @@ const chooseWorthIt = (id: WorthIt) => {
             </span>
           </div>
             <div className="flex items-end gap-4 mb-3">
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Cleared Today</p>
-                <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(safeSpendLimit, privacyMode)}</p>
+                <p className={`${amountFitClass} ${amountTextSize(formatCurrency(safeSpendLimit, privacyMode))} font-black italic tracking-tighter text-text-main tabular-nums`}>{formatCurrency(safeSpendLimit, privacyMode)}</p>
               </div>
-              <div className="flex-1 text-right">
+              <div className="flex-1 min-w-0 overflow-hidden text-right">
               <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Spend Logged Today</p>
-              <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{formatCurrency(spendLoggedToday, privacyMode)}</p>
+              <p className={`${amountFitClass} ${amountTextSize(formatCurrency(spendLoggedToday, privacyMode))} font-black italic tracking-tighter text-text-main tabular-nums`}>{formatCurrency(spendLoggedToday, privacyMode)}</p>
             </div>
           </div>
           <div className="h-3 bg-input border-2 border-border rounded-full overflow-hidden mb-1.5">

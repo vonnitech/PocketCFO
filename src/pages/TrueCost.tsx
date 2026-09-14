@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Flame, RotateCcw, TrendingUp, Clock } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { currencySymbol } from '../lib/currency';
+import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
 
 function contrastText(hex?: string): string {
   if (!hex || hex.length < 7) return 'text-black';
@@ -97,7 +98,7 @@ export const TrueCost: React.FC = () => {
           <p className="text-white/70 text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 mb-2">
             <Flame size={11} strokeWidth={3} /> Interest burned
           </p>
-          <p className="text-5xl md:text-6xl font-black italic text-white leading-none">
+          <p className={`${amountFitClass} ${amountTextSize(`+${currencySymbol()}${m.banksCut.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'hero')} font-black italic text-white`}>
             +{currencySymbol()}{m.banksCut.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
           <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-3">
@@ -110,15 +111,15 @@ export const TrueCost: React.FC = () => {
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <p className="label-xs mb-2">Monthly Payment</p>
-          <p className="text-2xl font-black italic text-text-main tabular-nums">
+          <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${m.monthlyPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)} font-black italic text-text-main tabular-nums`}>
             {currencySymbol()}{m.monthlyPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <p className="label-xs mb-2">Total Cost</p>
-          <p className="text-2xl font-black italic text-text-main tabular-nums">
+          <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${m.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`)} font-black italic text-text-main tabular-nums`}>
             {currencySymbol()}{m.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
         </div>
@@ -130,7 +131,7 @@ export const TrueCost: React.FC = () => {
           <p className="text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 mb-2 text-capture-readable">
             <TrendingUp size={11} strokeWidth={3} /> If you invested instead
           </p>
-          <p className="text-4xl md:text-5xl font-black italic leading-none tabular-nums text-capture-readable">
+          <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${m.opportunityCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'hero')} font-black italic tabular-nums text-capture-readable`}>
             {currencySymbol()}{m.opportunityCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
           <p className="text-capture-readable/60 text-[10px] font-bold uppercase tracking-widest mt-3">

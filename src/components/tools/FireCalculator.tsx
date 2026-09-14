@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { userKey } from '../../lib/userScopedStorage';
 import { currencySymbol } from '../../lib/currency';
+import { amountFitClass, amountTextSize } from '../../lib/amountDisplay';
 import { PreviewChip } from '../PreviewChip';
 import { ProAction } from '../ProAction';
 
@@ -423,6 +424,9 @@ export function FireCalculator() {
     };
   }, [ca, ta, ae, strategy, ptIncome, totalVaulted, monthlyContrib, incomeGrowthRate]);
 
+  const investedText = fmtFull(totalVaulted);
+  const contributionText = fmtFull(monthlyContrib);
+
   // ── Setup prompt ─────────────────────────────────────────────────────────
   if (!isConfigured || (totalVaulted === 0 && monthlySavingsGoal === 0)) {
     return (
@@ -519,7 +523,7 @@ export function FireCalculator() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-1">
                 {calc.isCoast ? 'Your Coast Number' : 'Your FIRE Number'}
               </p>
-              <p className="text-4xl sm:text-5xl md:text-6xl font-black italic tracking-tighter text-action-primary leading-none tabular-nums break-words">
+              <p className={`${amountFitClass} ${amountTextSize(fmtFull(calc.isCoast ? calc.coastNumber : calc.fireNumber), 'hero')} font-black italic tracking-tighter text-action-primary tabular-nums`}>
                 {fmtFull(calc.isCoast ? calc.coastNumber : calc.fireNumber)}
               </p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-2">
@@ -587,25 +591,25 @@ export function FireCalculator() {
         </div>
 
         <div className="grid min-w-0 grid-cols-2 gap-3">
-          <div className="min-w-0 bg-input border-4 border-black rounded-2xl p-4">
+          <div className="min-w-0 overflow-hidden bg-input border-4 border-black rounded-2xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
               <ShieldCheck size={12} strokeWidth={2.5} className="text-capture-readable shrink-0" />
               <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Investments</p>
             </div>
-            <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">{fmtFull(totalVaulted)}</p>
+            <p className={`${amountFitClass} ${amountTextSize(investedText)} font-black italic tracking-tighter text-text-main tabular-nums`}>{investedText}</p>
             <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted mt-1">
               {vaults.length} investment vault{vaults.length !== 1 ? 's' : ''}
             </p>
           </div>
 
-          <div className="min-w-0 bg-input border-4 border-black rounded-2xl p-4">
+          <div className="min-w-0 overflow-hidden bg-input border-4 border-black rounded-2xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Zap size={12} strokeWidth={2.5} className="text-action-primary shrink-0" />
               <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">
                 {monthlyOverride !== '' ? 'Override' : monthlySavingsGoal > 0 ? 'Savings Goal' : 'Est. Savings'}
               </p>
             </div>
-            <p className={`text-2xl font-black italic tracking-tighter tabular-nums ${monthlyOverride !== '' ? 'text-action-primary' : 'text-text-main'}`}>{fmtFull(monthlyContrib)}</p>
+            <p className={`${amountFitClass} ${amountTextSize(contributionText)} font-black italic tracking-tighter tabular-nums ${monthlyOverride !== '' ? 'text-action-primary' : 'text-text-main'}`}>{contributionText}</p>
             <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted mt-1">per month</p>
           </div>
         </div>
@@ -855,9 +859,9 @@ export function FireCalculator() {
               accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
           ]).map(s => (
-            <div key={s.label} className="min-w-0 bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+            <div key={s.label} className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-2xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1">{s.label}</p>
-              <p className={`text-xl font-black italic tracking-tighter tabular-nums ${s.accent}`}>{s.value}</p>
+              <p className={`${amountFitClass} ${amountTextSize(s.value)} font-black italic tracking-tighter tabular-nums ${s.accent}`}>{s.value}</p>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-0.5 leading-tight">{s.sub}</p>
             </div>
           ))}
