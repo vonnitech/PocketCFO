@@ -465,9 +465,9 @@ export function FireCalculator() {
   return (
     <div className="min-w-0 space-y-6">
       {/* Header */}
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+      <div className="flex min-w-0 flex-col gap-3 min-[520px]:grid min-[520px]:grid-cols-[minmax(0,1fr)_auto] min-[520px]:items-start">
         <div className="min-w-0">
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
+          <h1 className="text-3xl min-[420px]:text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
             FIRE CALCULATOR
           </h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
@@ -493,7 +493,7 @@ export function FireCalculator() {
           )}
           <div className="mt-2"><PreviewChip /></div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0 mt-1">
+        <div className="flex items-center gap-1.5 self-end shrink-0 min-[520px]:mt-1">
           {fireConfig && (
             <button
               type="button"
@@ -518,27 +518,26 @@ export function FireCalculator() {
       {/* Hero */}
       {calc && (
         <div className="relative bg-black border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-4">
-            <div className="min-w-0">
+          <div className="mb-4 min-w-0">
+            <div className="mb-1 flex items-start justify-between gap-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-1">
                 {calc.isCoast ? 'Your Coast Number' : 'Your FIRE Number'}
               </p>
-              <p className={`${amountFitClass} ${amountTextSize(fmtFull(calc.isCoast ? calc.coastNumber : calc.fireNumber), 'hero')} font-black italic tracking-tighter text-action-primary tabular-nums`}>
-                {fmtFull(calc.isCoast ? calc.coastNumber : calc.fireNumber)}
-              </p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-2">
-                {calc.isCoast
-                  ? `Invest this today · grows to ${fmt(calc.fireNumber)} by 65`
-                  : `Annual expenses × 25 · retire at ${calc.targetAge}`}
-              </p>
+              <div className="w-10 h-10 -mt-1 bg-action-primary border-[3px] border-black rounded-xl flex items-center justify-center shadow-brutal-sm shrink-0">
+                {strategy === 'COAST'
+                  ? <Anchor size={19} strokeWidth={3} className="text-black" />
+                  : <Flame size={19} strokeWidth={3} className="text-black" />
+                }
+              </div>
             </div>
-
-            <div className="w-12 h-12 mt-0.5 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center shadow-brutal-sm">
-              {strategy === 'COAST'
-                ? <Anchor size={22} strokeWidth={3} className="text-black" />
-                : <Flame size={22} strokeWidth={3} className="text-black" />
-              }
-            </div>
+            <p className={`${amountFitClass} ${amountTextSize(fmtFull(calc.isCoast ? calc.coastNumber : calc.fireNumber), 'hero')} font-black italic tracking-tighter text-action-primary tabular-nums`}>
+              {fmtFull(calc.isCoast ? calc.coastNumber : calc.fireNumber)}
+            </p>
+            <p className="max-w-full text-[10px] font-bold uppercase tracking-wide text-white/40 mt-2 leading-relaxed">
+              {calc.isCoast
+                ? `Invest this today · grows to ${fmt(calc.fireNumber)} by 65`
+                : `Annual expenses × 25 · retire at ${calc.targetAge}`}
+            </p>
           </div>
 
           {/* Next milestone: psychological stepping stone */}
@@ -548,7 +547,7 @@ export function FireCalculator() {
             const milestoneText = fmtFull(milestone);
             const toGoText = fmtFull(toGo);
             return !calc.onTrack && milestone < calc.fireNumber && (
-              <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 overflow-hidden">
+              <div className="mb-3 flex min-w-0 flex-col gap-1 min-[420px]:grid min-[420px]:grid-cols-[minmax(0,1fr)_auto] min-[420px]:items-baseline min-[420px]:gap-2 overflow-hidden">
                 <span className="min-w-0 text-[10px] font-bold uppercase tracking-widest text-action-primary">
                   Next Portfolio Milestone · {milestoneText.length > 12 ? fmt(milestone) : milestoneText}
                 </span>
@@ -560,11 +559,11 @@ export function FireCalculator() {
           })()}
 
           <div className="space-y-2">
-            <div className="flex justify-between items-baseline text-[10px] font-bold uppercase tracking-wide">
-              <span className="text-white/50">
+            <div className="flex min-w-0 flex-col gap-1 min-[420px]:flex-row min-[420px]:justify-between min-[420px]:items-baseline text-[10px] font-bold uppercase tracking-wide">
+              <span className="min-w-0 text-white/50 leading-relaxed">
                 {calc.isCoast ? 'Projected at 65' : `Plan at ${calc.targetAge}`} · {fmtFull(calc.projAtTarget)}
               </span>
-              <span className={`font-black tabular-nums ${calc.onTrack ? 'text-capture-readable' : 'text-action-bleed'}`}>
+              <span className={`shrink-0 whitespace-nowrap font-black tabular-nums ${calc.onTrack ? 'text-capture-readable' : 'text-action-bleed'}`}>
                 {calc.onTrack ? 'Goal reached' : `${calc.projPct.toFixed(1)}%`}
               </span>
             </div>
@@ -648,13 +647,13 @@ export function FireCalculator() {
         {/* Strategy Selector */}
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Strategy</p>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-2 min-[380px]:grid-cols-3 sm:grid-cols-5 gap-1.5">
             {STRATEGIES.map(s => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => setStrategy(s.id)}
-                className={`shrink-0 px-3 py-1.5 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`min-w-0 overflow-hidden whitespace-nowrap text-ellipsis px-2 py-2 rounded-xl border-2 text-[9px] min-[420px]:text-[10px] font-black uppercase tracking-wide transition-all ${
                   strategy === s.id
                     ? 'bg-black border-black text-action-primary'
                     : 'bg-input border-border text-text-muted hover:border-black hover:text-text-main'
