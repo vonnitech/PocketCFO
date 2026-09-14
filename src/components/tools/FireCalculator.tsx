@@ -576,10 +576,6 @@ export function FireCalculator() {
                 transition={{ type: 'spring', stiffness: 180, damping: 28 }}
               />
             </div>
-            <div className="flex justify-between items-baseline text-[10px] font-bold uppercase tracking-wide pt-1">
-              <span className="text-white/40">Invested today</span>
-              <span className="text-white/60 tabular-nums">{fmtFull(totalVaulted)}</span>
-            </div>
           </div>
 
         </div>
