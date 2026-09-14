@@ -74,6 +74,11 @@ function fmtFull(n: number): string {
   return currencySymbol() + Math.round(n).toLocaleString();
 }
 
+function targetProgress(current: number, target: number): number {
+  if (target <= 0) return 0;
+  return Math.min(100, Math.max(0, (current / target) * 100));
+}
+
 // Calculates the next stepping-stone milestone above the current balance.
 // Steps scale with magnitude so milestones always feel close enough to chase.
 function nextMilestone(current: number): number {
@@ -325,8 +330,8 @@ export function FireCalculator() {
       const projAtTarget = fv(totalVaulted, 0, yearsTo65 * 12);
       const surplus      = onCoast ? projAtTarget - fireNumber : 0;
       const shortfall    = onCoast ? 0 : coastNumber - totalVaulted;
-      const progressPct  = coastNumber > 0 ? (totalVaulted / coastNumber) * 100 : 0;
-      const projPct      = Math.min(100, (projAtTarget / fireNumber) * 100);
+      const progressPct  = targetProgress(totalVaulted, coastNumber);
+      const projPct      = targetProgress(projAtTarget, fireNumber);
       const coastYTF     = yearsToFire(totalVaulted, 0, fireNumber);
 
       const displayYears = yearsTo65 + 5;
@@ -361,8 +366,8 @@ export function FireCalculator() {
 
     const yearsToTarget = targetAge - currentAge;
     const projAtTarget  = fvWithGrowth(totalVaulted, monthlyContrib, yearsToTarget * 12, incomeGrowthRate);
-    const progressPct   = fireNumber > 0 ? (totalVaulted / fireNumber) * 100 : 0;
-    const projPct       = fireNumber > 0 ? (projAtTarget / fireNumber) * 100 : 0;
+    const progressPct   = targetProgress(totalVaulted, fireNumber);
+    const projPct       = targetProgress(projAtTarget, fireNumber);
     const onTrack       = projAtTarget >= fireNumber;
     const yearsToFIRE   = yearsToFireWithGrowth(totalVaulted, monthlyContrib, fireNumber, incomeGrowthRate);
     const fireAge       = yearsToFIRE !== null ? currentAge + yearsToFIRE : null;
