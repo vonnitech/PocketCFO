@@ -10,12 +10,12 @@ export function amountTextSize(text: string, scale: AmountDisplayScale = 'compac
 
   if (scale === 'hero') {
     return length <= 9
-      ? 'text-5xl md:text-6xl'
+      ? 'text-3xl min-[420px]:text-5xl md:text-6xl'
       : length <= 12
-        ? 'text-4xl md:text-5xl'
+        ? 'text-2xl min-[420px]:text-4xl md:text-5xl'
         : length <= 16
-          ? 'text-3xl md:text-4xl'
-          : 'text-2xl md:text-3xl';
+          ? 'text-xl min-[420px]:text-3xl md:text-4xl'
+          : 'text-base min-[420px]:text-2xl md:text-3xl';
   }
 
   if (scale === 'summary') {

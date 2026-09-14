@@ -189,7 +189,7 @@ export default function Navigation() {
       : 'border-transparent text-text-muted hover:text-text-main'
     }`;
 
-  const tabLabel = 'w-full truncate text-[9px] font-black uppercase tracking-wide sm:tracking-wider leading-tight text-center px-0.5 dark:text-[11px] dark:normal-case dark:font-semibold dark:tracking-normal';
+  const tabLabel = 'w-full truncate text-[8px] min-[360px]:text-[9px] font-black uppercase tracking-normal min-[360px]:tracking-wide sm:tracking-wider leading-tight text-center dark:text-[8px] min-[360px]:dark:text-[9px] sm:dark:text-[11px] dark:normal-case dark:font-semibold dark:tracking-normal';
 
   return (
     <>
@@ -257,7 +257,7 @@ export default function Navigation() {
       {/* The outer bar spans the viewport so it can centre the pill, but it must
           not swallow taps on the page behind it, hence pointer-events-none here
           and pointer-events-auto on the pill itself. */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex md:hidden justify-center px-4 nav-pb-safe pointer-events-none">
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex md:hidden justify-center px-2 min-[360px]:px-4 nav-pb-safe pointer-events-none">
         <div className="app-navigation pointer-events-auto w-full max-w-md flex items-stretch gap-0.5 bg-surface border-[3px] border-border rounded-3xl shadow-[4px_4px_0px_0px_var(--shadow-color)] px-1.5 py-1.5 transition-colors duration-300">
           {primaryTabs.map(tab => (
             <NavLink

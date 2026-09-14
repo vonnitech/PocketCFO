@@ -517,13 +517,13 @@ export function FireCalculator() {
 
       {/* Hero */}
       {calc && (
-        <div className="relative bg-black border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]">
+        <div className="relative min-w-0 bg-black border-4 border-black rounded-3xl p-4 min-[420px]:p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]">
           <div className="mb-4 min-w-0">
             <div className="mb-1 flex items-start justify-between gap-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-1">
+              <p className="min-w-0 text-[9px] min-[420px]:text-[10px] font-bold uppercase tracking-wide min-[420px]:tracking-widest text-white/50 mb-1">
                 {calc.isCoast ? 'Your Coast Number' : 'Your FIRE Number'}
               </p>
-              <div className="w-10 h-10 -mt-1 bg-action-primary border-[3px] border-black rounded-xl flex items-center justify-center shadow-brutal-sm shrink-0">
+              <div className="w-9 h-9 min-[420px]:w-10 min-[420px]:h-10 -mt-1 bg-action-primary border-[3px] border-black rounded-xl flex items-center justify-center shadow-brutal-sm shrink-0">
                 {strategy === 'COAST'
                   ? <Anchor size={19} strokeWidth={3} className="text-black" />
                   : <Flame size={19} strokeWidth={3} className="text-black" />
