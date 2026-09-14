@@ -1,5 +1,5 @@
 import { useNativeBridge } from './native/useNativeBridge';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
@@ -145,9 +145,11 @@ function App() {
   const theme                 = useStore(s => s.theme);
   const themeColors           = useStore(s => s.themeColors);
   const { isPro: isProUser, isLoading: proLoading } = useProStatus();
+  const userId                = useStore(s => s.userId);
   const hasCompletedOnboarding = useStore(s => s.hasCompletedOnboarding);
-  const isNewUser             = useStore(s => s.transactions.length === 0 && s.reconHistory.length === 0);
   const { visible: tourVisible, dismiss: dismissTour } = useFeatureTour();
+  const [tourEligible, setTourEligible] = useState(false);
+  const tourAccountRef = useRef<string | null>(null);
 
   // Drives notification evaluation for the whole session. Mounted once, here,
   // so there is exactly one ticker no matter what the user has open.
@@ -163,6 +165,29 @@ function App() {
   useEffect(() => {
     initDB();
   }, []);
+
+  // Only offer the tour to an account that began this app session with
+  // onboarding incomplete. Transaction history is not a reliable new-account
+  // signal: established accounts can legitimately have no recent activity.
+  useEffect(() => {
+    if (!userId) {
+      tourAccountRef.current = null;
+      setTourEligible(false);
+      return;
+    }
+
+    // Wait for the server-backed profile before deciding whether this is an
+    // established account. Cached/default state can briefly say "incomplete".
+    if (!dataFresh) return;
+
+    if (tourAccountRef.current !== userId) {
+      tourAccountRef.current = userId;
+      setTourEligible(!hasCompletedOnboarding);
+      return;
+    }
+
+    if (!hasCompletedOnboarding) setTourEligible(true);
+  }, [userId, dataFresh, hasCompletedOnboarding]);
 
   // Lock screen when app is backgrounded
   useEffect(() => {
@@ -435,7 +460,7 @@ function App() {
     <ErrorBoundary>
       <ScreenLock />
       <AnimatePresence>
-        {hasCompletedOnboarding && tourVisible && isNewUser && (
+        {hasCompletedOnboarding && tourVisible && tourEligible && (
           <FeatureTour onDismiss={dismissTour} />
         )}
       </AnimatePresence>
