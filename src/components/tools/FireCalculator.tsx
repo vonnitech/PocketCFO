@@ -63,6 +63,24 @@ function neededMonthly(assets: number, target: number, months: number): number {
   return needed * R / (g - 1);
 }
 
+function neededMonthlyWithGrowth(
+  assets: number,
+  target: number,
+  months: number,
+  annualGrowth: number,
+): number {
+  if (annualGrowth === 0) return neededMonthly(assets, target, months);
+  if (months <= 0) return Infinity;
+
+  const assetsAtTarget = fvWithGrowth(assets, 0, months, annualGrowth);
+  if (assetsAtTarget >= target) return 0;
+
+  const growingContributionFactor = fvWithGrowth(0, 1, months, annualGrowth);
+  return growingContributionFactor > 0
+    ? (target - assetsAtTarget) / growingContributionFactor
+    : Infinity;
+}
+
 function fmt(n: number): string {
   const s = currencySymbol();
   if (n >= 1_000_000) return `${s}${(n / 1_000_000).toFixed(2)}M`;
@@ -371,7 +389,12 @@ export function FireCalculator() {
     const onTrack       = projAtTarget >= fireNumber;
     const yearsToFIRE   = yearsToFireWithGrowth(totalVaulted, monthlyContrib, fireNumber, incomeGrowthRate);
     const fireAge       = yearsToFIRE !== null ? currentAge + yearsToFIRE : null;
-    const reqMonthly    = neededMonthly(totalVaulted, fireNumber, yearsToTarget * 12);
+    const reqMonthly    = neededMonthlyWithGrowth(
+      totalVaulted,
+      fireNumber,
+      yearsToTarget * 12,
+      incomeGrowthRate,
+    );
     const surplus       = onTrack ? projAtTarget - fireNumber : 0;
 
     const displayYears = Math.min(80, Math.max(yearsToTarget + 12, yearsToFIRE ? yearsToFIRE + 5 : yearsToTarget + 20, 20));
@@ -514,7 +537,7 @@ export function FireCalculator() {
             </div>
           </div>
 
-          {/* Next milestone — psychological stepping stone */}
+          {/* Next milestone: psychological stepping stone */}
           {(() => {
             const milestone = nextMilestone(totalVaulted);
             const toGo = Math.max(0, milestone - totalVaulted);
@@ -532,7 +555,7 @@ export function FireCalculator() {
 
           <div className="space-y-2">
             <div className="flex justify-between items-baseline text-[10px] font-bold uppercase tracking-wide">
-              <span className="text-white/50">Today · {fmtFull(totalVaulted)}</span>
+              <span className="text-white/50">Funded today · {fmtFull(totalVaulted)}</span>
               <span className="text-action-primary font-black tabular-nums">{calc.progressPct.toFixed(1)}%</span>
             </div>
             <div className="h-3 bg-white/10 border-2 border-white/20 rounded-full overflow-hidden">
@@ -549,10 +572,10 @@ export function FireCalculator() {
                   <span className="text-white/40">
                     {calc.isCoast
                       ? `At 65 · ${fmtFull(calc.projAtTarget)}`
-                      : `At ${calc.targetAge} · ${fmtFull(calc.projAtTarget)}`}
+                      : `Projected at ${calc.targetAge} · ${fmtFull(calc.projAtTarget)}`}
                   </span>
                   <span className={`font-black tabular-nums ${calc.onTrack ? 'text-capture-readable' : 'text-action-bleed'}`}>
-                    {calc.projPct.toFixed(1)}%
+                    {calc.onTrack ? 'Goal reached' : `${calc.projPct.toFixed(1)}%`}
                   </span>
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
@@ -734,7 +757,7 @@ export function FireCalculator() {
           </div>
           {incomeGrowthRate > 0 && (
             <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary mt-1.5">
-              Contributions compound {incomeGrowthRaw}%/yr — projections grow faster over time
+              Contributions grow {incomeGrowthRaw}% per year. The required monthly amount uses the same assumption.
             </p>
           )}
         </div>
@@ -836,12 +859,12 @@ export function FireCalculator() {
               accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
             {
-              label: calc.onTrack ? 'Min / Mo' : 'Need / Mo',
-              value: calc.reqMonthly !== null && isFinite(calc.reqMonthly) ? fmt(calc.reqMonthly) : '—',
+              label: 'Required / Mo',
+              value: calc.reqMonthly !== null && isFinite(calc.reqMonthly) ? fmt(calc.reqMonthly) : 'N/A',
               sub: calc.onTrack
-                ? (monthlyContrib >= (calc.reqMonthly ?? 0)
-                    ? `saving ${fmt(monthlyContrib)} · ${fmt(monthlyContrib - (calc.reqMonthly ?? 0))} above min`
-                    : `saving ${fmt(monthlyContrib)} now · growth makes up the gap`)
+                ? (calc.reqMonthly === 0
+                    ? `${fmt(monthlyContrib)} monthly plan · no minimum needed`
+                    : `${fmt(monthlyContrib)} monthly plan · ${fmt(Math.max(0, monthlyContrib - (calc.reqMonthly ?? 0)))} above minimum`)
                 : `${fmt((calc.reqMonthly ?? 0) - monthlyContrib)} more than now`,
               accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
