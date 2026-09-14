@@ -555,39 +555,25 @@ export function FireCalculator() {
 
           <div className="space-y-2">
             <div className="flex justify-between items-baseline text-[10px] font-bold uppercase tracking-wide">
-              <span className="text-white/50">Funded today · {fmtFull(totalVaulted)}</span>
-              <span className="text-action-primary font-black tabular-nums">{calc.progressPct.toFixed(1)}%</span>
+              <span className="text-white/50">
+                {calc.isCoast ? 'Projected at 65' : `Plan at ${calc.targetAge}`} · {fmtFull(calc.projAtTarget)}
+              </span>
+              <span className={`font-black tabular-nums ${calc.onTrack ? 'text-capture-readable' : 'text-action-bleed'}`}>
+                {calc.onTrack ? 'Goal reached' : `${calc.projPct.toFixed(1)}%`}
+              </span>
             </div>
             <div className="h-3 bg-white/10 border-2 border-white/20 rounded-full overflow-hidden">
               <motion.div
-                className="h-full rounded-full bg-action-capture"
+                className={`h-full rounded-full ${calc.onTrack ? 'bg-action-capture' : 'bg-action-bleed/60'}`}
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, calc.progressPct)}%` }}
+                animate={{ width: `${calc.projPct}%` }}
                 transition={{ type: 'spring', stiffness: 180, damping: 28 }}
               />
             </div>
-            {calc.projPct > calc.progressPct && (
-              <>
-                <div className="flex justify-between items-baseline text-[10px] font-bold uppercase tracking-wide pt-1">
-                  <span className="text-white/40">
-                    {calc.isCoast
-                      ? `At 65 · ${fmtFull(calc.projAtTarget)}`
-                      : `Projected at ${calc.targetAge} · ${fmtFull(calc.projAtTarget)}`}
-                  </span>
-                  <span className={`font-black tabular-nums ${calc.onTrack ? 'text-capture-readable' : 'text-action-bleed'}`}>
-                    {calc.onTrack ? 'Goal reached' : `${calc.projPct.toFixed(1)}%`}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <motion.div
-                    className={`h-full rounded-full ${calc.onTrack ? 'bg-action-capture' : 'bg-action-bleed/60'}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, calc.projPct)}%` }}
-                    transition={{ type: 'spring', stiffness: 180, damping: 28, delay: 0.1 }}
-                  />
-                </div>
-              </>
-            )}
+            <div className="flex justify-between items-baseline text-[10px] font-bold uppercase tracking-wide pt-1">
+              <span className="text-white/40">Invested today</span>
+              <span className="text-white/60 tabular-nums">{fmtFull(totalVaulted)}</span>
+            </div>
           </div>
 
         </div>
