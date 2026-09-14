@@ -545,13 +545,15 @@ export function FireCalculator() {
           {(() => {
             const milestone = nextMilestone(totalVaulted);
             const toGo = Math.max(0, milestone - totalVaulted);
-            return milestone < calc.fireNumber && (
-              <div className="mb-3 flex items-baseline justify-between gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-action-primary">
-                  Next Milestone · {fmtFull(milestone)}
+            const milestoneText = fmtFull(milestone);
+            const toGoText = fmtFull(toGo);
+            return !calc.onTrack && milestone < calc.fireNumber && (
+              <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 overflow-hidden">
+                <span className="min-w-0 text-[10px] font-bold uppercase tracking-widest text-action-primary">
+                  Next Portfolio Milestone · {milestoneText.length > 12 ? fmt(milestone) : milestoneText}
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/50 tabular-nums">
-                  {fmtFull(toGo)} to go
+                <span className="max-w-full whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-white/50 tabular-nums">
+                  {toGoText.length > 12 ? fmt(toGo) : toGoText} to go
                 </span>
               </div>
             );
