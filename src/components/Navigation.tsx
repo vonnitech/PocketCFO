@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { CircleGauge, Receipt, LockKeyhole, PieChart, Ellipsis, Settings, ClipboardCheck, Split, Hourglass, Sun, Moon, Repeat, X, Eye, EyeOff, TrendingUp, TrendingDown, LogOut, Flame, Banknote, Lock, LifeBuoy, SlidersHorizontal, Percent } from 'lucide-react';
+import { CircleGauge, Receipt, LockKeyhole, PieChart, Ellipsis, Settings, ClipboardCheck, Split, Hourglass, Sun, Moon, Repeat, X, Eye, EyeOff, TrendingDown, LogOut, Flame, Banknote, Lock, LifeBuoy, SlidersHorizontal, Percent } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -70,7 +70,6 @@ const calculatorTools: { path: string; icon: React.ElementType; label: string; s
   { path: '/true-cost',        icon: Hourglass,    label: 'True Cost',       subtitle: 'Calculate the real price of purchases over time' },
   { path: '/debt-destroyer',   icon: TrendingDown, label: 'Debt Payoff',     subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
   { path: '/tactical-command', icon: LifeBuoy,     label: 'Safety Net',      subtitle: 'How long your cash lasts and your target buffer' },
-  { path: '/compound-growth',  icon: TrendingUp,   label: 'Wealth Growth',   subtitle: 'Project your long-term net worth' },
   { path: '/fire',             icon: Flame,        label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
   { path: '/income',           icon: Banknote,     label: 'Income Tracker',  subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
 ];
