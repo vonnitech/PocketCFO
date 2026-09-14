@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Trash2, Plus, Check, X, Edit2, ArrowLeft, ChevronDown, Pause, Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -494,7 +494,7 @@ export default function Config() {
             <div key={debt.id} className="bg-input border-4 border-black rounded-2xl p-4">
               {editingDebtId === debt.id ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
                     <input title="Debt Name" type="text" value={editDebtFields.name ?? debt.name} onChange={e => setEditDebtFields(f => ({ ...f, name: e.target.value }))} className="col-span-2 bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" placeholder="Name" />
                     <input title="Balance" type="number" min="0" value={editDebtFields.balance ?? debt.balance} onChange={e => setEditDebtFields(f => ({ ...f, balance: Number(e.target.value) }))} className="bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" placeholder="Balance" />
                     <input title="Interest Rate" type="number" min="0" value={editDebtFields.interestRate ?? debt.interestRate} onChange={e => setEditDebtFields(f => ({ ...f, interestRate: Number(e.target.value) }))} className="bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" placeholder="Rate %" />
@@ -521,7 +521,7 @@ export default function Config() {
           ))}
           {isAddingDebt ? (
             <div className="space-y-3 bg-input border-4 border-black rounded-2xl p-4">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
                 <input autoFocus title="Debt Name" type="text" placeholder="Name (e.g. Credit Card A)" value={newDebtName} onChange={e => setNewDebtName(e.target.value)} className="col-span-2 bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none focus:border-action-bleed transition-colors" />
                 <input title="Balance" type="number" min="0" placeholder="Balance $" value={newDebtBalance} onChange={e => setNewDebtBalance(e.target.value)} className="bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" />
                 <input title="Interest Rate" type="number" min="0" placeholder="Rate %" value={newDebtRate} onChange={e => setNewDebtRate(e.target.value)} className="bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" />

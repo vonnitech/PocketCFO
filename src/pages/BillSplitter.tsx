@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Users, CheckCircle2, Trash2, Plus, Pencil, Check, X, Send } from 'lucide-react';
 import { useStore, IouEntry } from '../store/useStore';
 import { saveSplitTransaction } from '../db';
@@ -249,7 +249,7 @@ export const BillSplitter: React.FC = () => {
             <h2 className="text-xl font-black italic uppercase tracking-tighter text-text-main">Split Done</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
             <div className="bg-input border-4 border-black rounded-2xl p-4">
               <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1">Total Bill</p>
               <p className="text-lg sm:text-xl font-black italic text-text-main tabular-nums">{money(s.bill)}</p>
@@ -260,7 +260,7 @@ export const BillSplitter: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
             <div className="bg-input border-4 border-black rounded-2xl p-4">
               <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1">Your Vault</p>
               <p className="text-lg sm:text-xl font-black italic text-capture-readable tabular-nums">+{money(s.flip)}</p>

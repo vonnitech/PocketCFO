@@ -306,7 +306,7 @@ export default function Vaults() {
 
       {/* Stats: Total Vaulted (accent hero) / Monthly Goal / Available to Vault.
           Mobile: Total full-width, Goal + Available half-width below. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 gap-3">
         {/* Total Vaulted — accent hero */}
         <div className="col-span-2 sm:col-span-1 min-w-0 overflow-hidden bg-action-primary border-4 border-black rounded-2xl p-4 shadow-brutal">
           <p className="text-[10px] font-black uppercase tracking-widest text-black/60 mb-1">Total Vaulted</p>

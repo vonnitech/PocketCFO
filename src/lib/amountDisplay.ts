@@ -22,21 +22,21 @@ export function amountTextSize(text: string, scale: AmountDisplayScale = 'compac
     return length <= 9
       ? 'text-3xl sm:text-4xl'
       : length <= 12
-        ? 'text-2xl sm:text-3xl'
-        : length <= 16
-          ? 'text-xl sm:text-2xl'
-          : 'text-sm sm:text-lg';
+        ? 'text-xl min-[420px]:text-2xl sm:text-3xl'
+      : length <= 16
+          ? 'text-sm min-[420px]:text-xl sm:text-2xl'
+          : 'text-[10px] min-[420px]:text-sm sm:text-lg';
   }
 
   return length <= 8
     ? 'text-2xl'
     : length <= 11
-      ? 'text-xl'
+      ? 'text-base min-[420px]:text-xl'
       : length <= 14
-        ? 'text-base'
+        ? 'text-xs min-[420px]:text-base'
         : length <= 18
-          ? 'text-xs'
-          : 'text-[10px]';
+          ? 'text-[10px] min-[420px]:text-xs'
+          : 'text-[9px] min-[420px]:text-[10px]';
 }
 
-export const amountFitClass = 'block max-w-full min-w-0 whitespace-nowrap leading-none';
+export const amountFitClass = 'block max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none';

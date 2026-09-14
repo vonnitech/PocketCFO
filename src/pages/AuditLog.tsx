@@ -571,7 +571,7 @@ export const AuditLog: React.FC = () => {
             <TrendingUp size={11} /> VS LAST MONTH
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1">This Month</p>
               <p className="text-2xl font-black italic tracking-tighter text-text-main tabular-nums">

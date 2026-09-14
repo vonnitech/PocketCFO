@@ -45,7 +45,7 @@ export const SafetyNet: React.FC = () => {
           <Clock size={11} /> SURVIVAL CLOCK
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wide text-text-muted block mb-1.5">Cash Available</label>
             <div className="relative">
@@ -95,19 +95,19 @@ export const SafetyNet: React.FC = () => {
           const ct = runwayStatus === 'safe' ? captureTxt : 'text-black';
           const ctMuted = runwayStatus === 'safe' ? captureTxt : 'text-black';
           return (
-            <div className={`${runwayColor} border-4 border-black rounded-2xl p-5 flex items-center justify-between`}>
-              <div>
+            <div className={`${runwayColor} min-w-0 border-4 border-black rounded-2xl p-4 min-[420px]:p-5 flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3 overflow-hidden`}>
+              <div className="min-w-0">
                 <p className={`text-[11px] font-black uppercase tracking-widest opacity-60 mb-1 ${ct}`}>Runway</p>
                 <div className="flex items-baseline gap-2">
-                  <span className={`font-black text-5xl italic tabular-nums ${ct}`}>
+                  <span className={`min-w-0 overflow-hidden text-ellipsis font-black text-4xl min-[420px]:text-5xl italic tabular-nums ${ct}`}>
                     {runwayMonths === Infinity ? '∞' : runwayMonths.toFixed(1)}
                   </span>
                   <span className={`opacity-60 font-black uppercase text-sm ${ct}`}>months</span>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="min-w-0 text-left min-[420px]:text-right">
                 {runwayStatus === 'critical' && (
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex flex-row min-[420px]:flex-col items-center min-[420px]:items-end gap-1">
                     <AlertTriangle size={20} className="text-text-main" strokeWidth={3} />
                     <p className="text-[11px] font-black uppercase text-black/70 leading-tight">CRITICAL<br />LOW</p>
                   </div>

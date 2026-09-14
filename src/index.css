@@ -234,6 +234,20 @@
 
   .label-xs {
     @apply text-[10px] font-bold uppercase tracking-wider text-text-muted;
+    overflow-wrap: anywhere;
+  }
+
+  /* Grid items default to min-width:auto, which lets long currency values and
+     translated labels force a column wider than the phone viewport. */
+  .grid > * {
+    min-width: 0;
+  }
+
+  @media (max-width: 419px) {
+    h1 {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
   }
 
   /* Color theme swatches — avoids inline styles for dynamic palette preview */

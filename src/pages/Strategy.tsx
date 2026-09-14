@@ -105,7 +105,7 @@ export default function Strategy() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
               <div className="bg-input border-4 border-black rounded-2xl p-4">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Months to Freedom</p>
                 <p className="text-2xl font-black italic text-text-main">{acceleratedMonths} mos</p>

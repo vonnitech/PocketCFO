@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
@@ -220,7 +220,7 @@ const chooseWorthIt = (id: WorthIt) => {
               </div>
             </div>
             {capturedToday > 0 && (
-              <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2 mb-3">
                 <div className="bg-input border-2 border-border rounded-2xl px-3 py-2">
                   <p className="text-[9px] font-black uppercase tracking-widest text-capture-readable">Captured</p>
                   <p className="text-sm font-black tabular-nums text-capture-readable">+{formatCurrency(capturedToday, privacyMode)}</p>
@@ -666,7 +666,7 @@ const chooseWorthIt = (id: WorthIt) => {
               ) : surplus > 0 ? (
                 <div className="space-y-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-center text-black/60">What to do with the surplus?</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                     <motion.button
                       type="button"
                       whileTap={{ scale: 0.97 }}

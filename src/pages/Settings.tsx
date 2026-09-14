@@ -636,7 +636,7 @@ export default function Settings() {
               </button>
 
               {/* Monthly + Lifetime — quieter */}
-              <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 mb-3">
                 <button type="button" onClick={() => startCheckout('monthly')}
                   className="text-left bg-input border-2 border-black rounded-2xl p-4 hover:border-black hover:bg-surface transition-colors">
                   <div className="text-[1rem] font-black text-text-main tabular-nums">{PRICING.monthly.price}<span className="text-xs font-bold">/mo</span></div>

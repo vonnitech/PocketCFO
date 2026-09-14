@@ -110,7 +110,7 @@ export const TrueCost: React.FC = () => {
           <p className={`font-black uppercase tracking-widest text-sm ${captureTxt}`}>Zero interest · clean deal</p>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-4">
         <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <p className="label-xs mb-2">Monthly Payment</p>
           <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${m.monthlyPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)} font-black italic text-text-main tabular-nums`}>
@@ -203,7 +203,7 @@ export const TrueCost: React.FC = () => {
         </div>
 
         {/* APR + Term */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-4">
           <div>
             <label htmlFor="tc-apr" className={registerLabel}>APR</label>
             <div className={registerBox}>

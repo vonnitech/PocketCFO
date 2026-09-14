@@ -104,7 +104,7 @@ export const WealthGrowth: React.FC = () => {
         </div>
 
         {/* Return + Years */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-4">
           <div>
             <label className="label-xs block mb-2">Annual Return (%)</label>
             <div className="relative">
@@ -157,15 +157,15 @@ export const WealthGrowth: React.FC = () => {
           </div>
 
           {/* Principal vs Yield */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-4">
+            <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
               <p className="label-xs mb-2">Total Principal</p>
               <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${fmt(metrics.totalPrincipal)}`)} font-black italic text-text-main tabular-nums`}>
                 {currencySymbol()}{fmt(metrics.totalPrincipal)}
               </p>
               <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">Your money in</p>
             </div>
-            <div className={`border-4 rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${metrics.marketYield > 0 ? 'bg-black border-black' : 'bg-surface border-border shadow-[6px_6px_0px_0px_var(--shadow-color)]'}`}>
+            <div className={`min-w-0 overflow-hidden border-4 rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${metrics.marketYield > 0 ? 'bg-black border-black' : 'bg-surface border-border shadow-[6px_6px_0px_0px_var(--shadow-color)]'}`}>
               <p className={`label-xs mb-2 ${metrics.marketYield > 0 ? 'text-capture-readable' : ''}`}>Market Yield</p>
               <p className={`${amountFitClass} ${amountTextSize(`+${currencySymbol()}${fmt(metrics.marketYield)}`)} font-black italic tabular-nums ${metrics.marketYield > 0 ? 'text-capture-readable' : 'text-text-main'}`}>
                 +{currencySymbol()}{fmt(metrics.marketYield)}

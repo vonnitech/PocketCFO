@@ -888,7 +888,7 @@ export default function Dashboard() {
 
         {/* Pillars */}
         {widgetVisible("vault-status") && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-4">
             {/* Long-term money is deliberately quiet: thin border, muted type,
                 no hard shadow. It is handled in the background, so it should not
                 compete with the discretionary pots below. */}
