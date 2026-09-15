@@ -43,6 +43,7 @@ const Subscriptions = lazy(() => import('./pages/Subscriptions'));
 const Fire = lazy(() => import('./pages/Fire'));
 const IncomeTracker = lazy(() => import('./pages/IncomeTracker'));
 const Ledger = lazy(() => import('./pages/Ledger'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 const AuditLog = lazy(() =>
   import('./pages/AuditLog').then(module => ({ default: module.AuditLog }))
 );
@@ -68,12 +69,6 @@ function ScrollToTop() {
 function OnboardingRouteGuard({ hasCompletedOnboarding }: { hasCompletedOnboarding: boolean }) {
   const { pathname } = useLocation();
   if (!hasCompletedOnboarding && pathname !== '/') return <Navigate to="/" replace />;
-  return null;
-}
-
-function LoggedOutRouteGuard() {
-  const { pathname } = useLocation();
-  if (pathname !== '/') return <Navigate to="/" replace />;
   return null;
 }
 
@@ -427,8 +422,16 @@ function App() {
     return (
       <ErrorBoundary>
         <Router>
-          <LoggedOutRouteGuard />
-          <AuthGate recoveryMode={recoveryMode} onRecoveryDone={() => setRecoveryMode(false)} />
+          {recoveryMode ? (
+            <AuthGate recoveryMode onRecoveryDone={() => setRecoveryMode(false)} />
+          ) : (
+            <div className="min-h-screen bg-base dot-bg text-text-main font-sans overflow-x-hidden p-4">
+              <Routes>
+                <Route path="/" element={<AuthGate recoveryMode={false} onRecoveryDone={() => setRecoveryMode(false)} />} />
+                <Route path="*" element={withPageWrapper(<NotFound />)} />
+              </Routes>
+            </div>
+          )}
         </Router>
       </ErrorBoundary>
     );
@@ -505,7 +508,7 @@ function App() {
                     already pointing at the old path keeps working. */}
                 <Route path="/velocity"        element={<Navigate to="/pacing" replace />} />
                 <Route path="/settings"        element={withPageWrapper(<Settings />)} />
-                <Route path="*"                element={<Navigate to="/" replace />} />
+                <Route path="*"                element={withPageWrapper(<NotFound />)} />
               </Routes>
             </div>
           </main>
