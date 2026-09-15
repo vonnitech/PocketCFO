@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { deleteAccountForToken } from './api/_delete-account-core';
+import { deleteAccountForToken } from './api/_delete-account-core.ts';
 
 function localAccountApi(env: Record<string, string>): Plugin {
   return {
@@ -122,7 +122,7 @@ export default defineConfig(({ mode }) => {
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(import.meta.dirname, '.'),
     },
   },
   build: {
