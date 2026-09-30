@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
       manifest: {
         name: 'Pocket CFO',
         short_name: 'Pocket CFO',
-        description: 'Your personal CFO — track spending, crush debt, build wealth.',
+        description: 'Track daily spending, plan debt payoff, and keep an eye on subscriptions.',
         theme_color: '#facc15',
         background_color: '#FAFAF9',
         display: 'standalone',
