@@ -322,6 +322,15 @@ export default function Dashboard() {
     return Math.max(0, raw - hardDailyCap);
   }, [hardDailyCap, nextPayday, liquidAssets, upcomingBills]);
 
+  // What the cap sweep actually moved into a vault today, read from the ledger
+  // rather than recomputed, so the banner never claims a transfer that did not happen.
+  const sweptToday = useMemo(() => {
+    const todayKey = toLocalDateKey(new Date());
+    return transactions
+      .filter((t) => t.merchant === "SURPLUS INTERCEPTED" && toLocalDateKey(t.date) === todayKey)
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [transactions]);
+
   const format = (val: number) => formatCurrency(val, false);
   const maskBal = (val: number) =>
     privacyMode ? "••••••" : formatCurrency(val, false);
@@ -617,11 +626,26 @@ export default function Dashboard() {
                   )}
                 </div>
               )}
-              {hardCapSweep > 0 && (
+              {/* Green only for money that really moved today. Otherwise the cap
+                  just holds the daily number down and the rest stays in cash. */}
+              {(sweptToday > 0 || hardCapSweep > 0) && (
                 <div className="mt-3 px-3 py-2 bg-black border-2 border-black rounded-xl">
-                  <p className="font-mono text-[10px] font-black tracking-widest text-emerald-500">
-                    [SURPLUS INTERCEPTED: +{format(hardCapSweep)} TO VAULT]
-                  </p>
+                  {sweptToday > 0 ? (
+                    <p className="font-mono text-[10px] font-black tracking-widest text-emerald-500">
+                      [SURPLUS INTERCEPTED: +{format(sweptToday)} TO VAULT]
+                    </p>
+                  ) : vaults.length > 0 ? (
+                    <p className="font-mono text-[10px] font-black tracking-widest text-text-muted">
+                      [CAP HOLDS BACK {format(hardCapSweep)} TODAY. IT STAYS IN CASH]
+                    </p>
+                  ) : (
+                    <Link
+                      to="/vaults"
+                      className="block font-mono text-[10px] font-black tracking-widest text-amber-400"
+                    >
+                      [CAP SURPLUS: {format(hardCapSweep)} STAYS IN CASH. CREATE A VAULT TO CAPTURE IT]
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
