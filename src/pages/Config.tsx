@@ -63,7 +63,6 @@ export default function Config() {
     useShallow(s => ({
       debts: s.debts,
       hardDailyCap: s.hardDailyCap,
-      impulses: s.impulses,
       liquidAssets: s.liquidAssets,
       monthlySavingsGoal: s.monthlySavingsGoal,
       monthlyTakeHome: s.monthlyTakeHome,
@@ -76,15 +75,12 @@ export default function Config() {
       addDebt: s.addDebt,
       updateDebt: s.updateDebt,
       removeDebt: s.removeDebt,
-      setImpulses: s.setImpulses,
     })),
   );
-  const { setHorizon, updateBaseline, addDebt, updateDebt, removeDebt, setImpulses } = state;
+  const { setHorizon, updateBaseline, addDebt, updateDebt, removeDebt } = state;
   const captureTxt = contrastText(state.themeColors?.secondary);
   const primaryTxt  = contrastText(state.themeColors?.primary);
 
-  const [isAddingConfigImpulse, setIsAddingConfigImpulse] = useState(false);
-  const [newConfigImpulseName, setNewConfigImpulseName] = useState('');
 
   // Horizon settings state — string so empty field shows blank not "0"
   const [horizonCapital, setHorizonCapital] = useState(() => state.liquidAssets || '');
@@ -155,10 +151,6 @@ export default function Config() {
   const [baselineSavings, setBaselineSavings] = useState(() => state.monthlySavingsGoal || '');
   const [baselineSaved, setBaselineSaved] = useState(false);
 
-  // Local impulse rate state — avoids per-keypress store updates that stomp cursor
-  const [impulseRates, setImpulseRates] = useState<Record<string, string>>(() =>
-    Object.fromEntries((state.impulses || []).map(g => [g.id, String(g.taxRate * 100)]))
-  );
 
   // Debt management state
   const [isAddingDebt, setIsAddingDebt] = useState(false);
@@ -550,75 +542,6 @@ export default function Config() {
           )}
         </div>
       </Card>
-
-      {/* Habit Tracker */}
-      <Card badge="HABIT TRACKER" badgeColor="bg-action-bleed" badgeTextColor="text-white">
-        <div className="space-y-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Configure habits and tax rates</p>
-          {(state.impulses || []).map(impulse => (
-            <div key={impulse.id} className="flex items-center justify-between p-4 bg-input border-4 border-black rounded-2xl">
-              <div>
-                <h4 className="font-black italic uppercase text-sm tracking-widest text-text-main">{impulse.name}</h4>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Tax Rate: {(impulse.taxRate * 100)}%</p>
-              </div>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  title="Tax Rate %"
-                  className="w-16 bg-surface border-4 border-black rounded-xl text-center font-black text-sm p-1 text-black outline-none"
-                  value={impulseRates[impulse.id] ?? String(impulse.taxRate * 100)}
-                  onChange={e => setImpulseRates(r => ({ ...r, [impulse.id]: e.target.value }))}
-                  onBlur={e => {
-                    const val = Math.max(0, parseFloat(e.target.value) || 0);
-                    setImpulses(state.impulses.map(imp => imp.id === impulse.id ? { ...imp, taxRate: val / 100 } : imp));
-                    setImpulseRates(r => ({ ...r, [impulse.id]: String(val) }));
-                  }}
-                />
-                <button type="button" aria-label="Delete habit" onClick={() => setImpulses(state.impulses.filter(imp => imp.id !== impulse.id))} className="p-2 text-action-bleed hover:bg-action-bleed/10 rounded-xl transition-colors">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-          {isAddingConfigImpulse ? (
-            <div className="flex flex-col md:flex-row gap-2">
-              <input
-                autoFocus
-                placeholder="Habit Name"
-                className="flex-1 min-w-0 bg-input border-4 border-black rounded-2xl p-3 text-sm font-black uppercase text-black outline-none focus:border-action-bleed transition-colors"
-                value={newConfigImpulseName}
-                onChange={e => setNewConfigImpulseName(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setIsAddingConfigImpulse(false)} className="px-4 h-12 bg-surface border-4 border-black rounded-2xl text-[10px] font-black uppercase text-text-main">Cancel</button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (newConfigImpulseName.trim()) {
-                      setImpulses([...(state.impulses || []), { id: Math.random().toString(36).substr(2, 9), name: newConfigImpulseName.trim(), taxRate: 0.5 }]);
-                      setIsAddingConfigImpulse(false); setNewConfigImpulseName('');
-                    }
-                  }}
-                  className={`px-4 h-12 bg-action-capture border-4 border-black rounded-2xl text-[10px] font-black uppercase ${captureTxt}`}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsAddingConfigImpulse(true)}
-              className="w-full h-12 border-4 border-dashed border-border rounded-2xl text-[10px] font-black uppercase text-text-muted hover:border-action-bleed hover:text-action-bleed transition-all"
-            >
-              + Add New Habit
-            </button>
-          )}
-        </div>
-      </Card>
-
 
       {/* Architect Note */}
       <div className="bg-input border-2 border-border rounded-3xl p-5">

@@ -273,14 +273,6 @@ export const calculateTotalStandardDeduction = (amount: number): number => {
   return amount + calculateUniversalFlip(amount);
 };
 
-export const calculateImpulsePenalty = (amount: number, penaltyRate: number): number => {
-  return amount * penaltyRate;
-};
-
-export const calculateImpulseDeduction = (amount: number, penaltyRate: number): number => {
-  return amount + calculateImpulsePenalty(amount, penaltyRate);
-};
-
 /**
  * 3. The Spend Challenge
  */

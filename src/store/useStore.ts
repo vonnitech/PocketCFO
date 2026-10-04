@@ -161,6 +161,10 @@ export interface AppState {
   };
   extraCashPool: number;
   dashboardWidgets: { id: string; visible: boolean }[];
+  // Tombstone. The Impulse Tax feature was removed on 2026-10-05: it asked users
+  // to register their bad habits and charge themselves a penalty, and its charging
+  // path had already become unreachable. Retained only so older backups and
+  // exports still import without failing. Nothing writes or reads it.
   impulses: Impulse[];
   reconHistory: ReconEntry[];
   rolloverPool: number;
@@ -413,7 +417,6 @@ interface StoreActions {
   collectIou: (id: string) => void;
   appendIouEntries: (entries: IouEntry[]) => void;
   setBaseline: (liquid: number, fixed: number, goal: number) => void;
-  executeImpulseHit: (amount: number, taxRate: number) => void;
   logSpend: (amount: number, merchant?: string, category?: string) => void;
   addSplitTransaction: (split: SplitTransaction) => void;
   saveSplitPreset: (preset: CustomSplitPreset) => void;
@@ -448,7 +451,6 @@ interface StoreActions {
   permanentlyDeleteVault: (id: string) => void;
   processPayday: () => Promise<void>;
   dismissPaydayBanner: () => void;
-  setImpulses: (impulses: Impulse[]) => Promise<void>;
   submitReconEntry: (params: {
     rawSpend: number;
     action: 'roll' | 'stash';
@@ -912,13 +914,6 @@ export const useStore = create<StoreState>()(
       if (!userId) return;
       await (supabase.from('profiles') as any).update({ dashboard_widgets: widgets }).eq('id', userId);
     },
-    setImpulses: async (impulses) => {
-      const { userId } = get() as StoreState;
-      set((state: any) => ({ ...state, impulses }));
-      if (!userId) return;
-      await (supabase.from('profiles') as any).update({ impulses }).eq('id', userId);
-    },
-
     setState: (newState) => set((state: any) => {
       const nextState = { ...state, ...newState };
       return {
@@ -1248,87 +1243,6 @@ export const useStore = create<StoreState>()(
       }
     },
 
-    executeImpulseHit: async (amount, taxRate) => {
-      const { userId, vaults } = get() as StoreState;
-      if (!userId) return;
-
-      const penalty    = amount * taxRate;
-      const now        = new Date().toISOString();
-      const mainTxId   = crypto.randomUUID();
-      const captureTxId = penalty > 0 ? crypto.randomUUID() : null;
-      const firstVault  = vaults[0] ?? null;
-
-      const inserts: Record<string, unknown>[] = [{
-        id:          mainTxId,
-        user_id:     userId,
-        merchant:    'IMPULSE_HIT',
-        amount,
-        category:    'PENALTY',
-        is_flip:     true,
-        flip_amount: penalty,
-        date:        now,
-      }];
-      if (captureTxId && penalty > 0) {
-        inserts.push({
-          id:          captureTxId,
-          user_id:     userId,
-          merchant:    'IMPULSE TAX',
-          amount:      penalty,
-          category:    'SAVINGS',
-          is_flip:     true,
-          flip_amount: 0,
-          date:        now,
-        });
-      }
-
-      const { error } = await supabase.from('transactions').insert(inserts as any);
-      if (error) return;
-
-      if (penalty > 0 && firstVault) {
-        await (supabase.from('vaults') as any).update({ current: firstVault.current + penalty }).eq('id', firstVault.id);
-      }
-
-      set((state: any) => {
-        const nextVaults = (penalty > 0 && firstVault)
-          ? state.vaults.map((v: any) => v.id === firstVault.id ? { ...v, current: v.current + penalty } : v)
-          : state.vaults;
-
-        const newTxs: Transaction[] = [{
-          id:        mainTxId,
-          merchant:  'IMPULSE_HIT',
-          amount,
-          category:  'PENALTY',
-          date:      now,
-          isFlip:    true,
-          flipAmount: penalty,
-        }];
-        if (captureTxId) {
-          newTxs.push({
-            id:        captureTxId,
-            merchant:  'IMPULSE TAX',
-            amount:    penalty,
-            category:  'SAVINGS',
-            date:      now,
-            isFlip:    true,
-            flipAmount: 0,
-          });
-        }
-
-        const nextState = {
-          ...state,
-          liquidAssets:        state.liquidAssets - amount - penalty,
-          primaryVaultBalance: calculatePrimaryVaultBalance(nextVaults),
-          vaults:              nextVaults,
-          transactions:        [...newTxs, ...state.transactions],
-          stats: {
-            ...state.stats,
-            flipsExecuted:   state.stats.flipsExecuted + (penalty > 0 ? 1 : 0),
-            lifetimeCapture: state.stats.lifetimeCapture + penalty,
-          },
-        };
-        return { ...nextState, safeSpendLimit: calculateTrueSafeSpend(nextState) };
-      });
-    },
 
     addIncome: async (amount, source) => {
       const { userId } = get() as StoreState;
