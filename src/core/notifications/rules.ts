@@ -183,7 +183,7 @@ const overspendToday: NotificationRule = {
       dedupeKey: esc.dedupeKey,
       title: "You are past what's cleared today",
       body,
-      actionPath: '/recon',
+      actionPath: '/daily',
       memoryWrites: writeRiskMemory('overspend-today', {
         level: a.level, step: a.step, day: todayKey, overshoot: a.overshoot,
         lastKey: esc.dedupeKey,
@@ -390,7 +390,7 @@ const dailyReviewDue: NotificationRule = {
       dedupeKey: 'daily-review-due',
       title: 'Daily Review is open',
       body: `${money(drain)} logged today. Reviewing it rolls whatever is left into tomorrow.`,
-      actionPath: '/recon',
+      actionPath: '/daily',
     };
   },
 };

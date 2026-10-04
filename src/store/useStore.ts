@@ -1036,7 +1036,7 @@ export const useStore = create<StoreState>()(
 
       // Claim the sweep date immediately before any awaits. A concurrent call to
       // setHorizon (e.g. user double-submits) would then read lastSweepDate === todayKey
-      // and skip, preventing duplicate SURPLUS INTERCEPTED transactions.
+      // and skip, preventing duplicate SWEPT TO VAULT transactions.
       if (doSweep) set((s: any) => ({ ...s, lastSweepDate: todayKey }));
 
       // Optimistic local update — happens before any awaits so the UI never loses state
@@ -1093,7 +1093,7 @@ export const useStore = create<StoreState>()(
           (supabase.from('transactions') as any).insert({
             id:          sweepTxId,
             user_id:     userId,
-            merchant:    'SURPLUS INTERCEPTED',
+            merchant:    'SWEPT TO VAULT',
             amount:      sweepAmount,
             category:    'SAVINGS',
             is_flip:     false,
@@ -1116,7 +1116,7 @@ export const useStore = create<StoreState>()(
             primaryVaultBalance: calculatePrimaryVaultBalance(nextVaults),
             transactions: [{
               id:        sweepTxId,
-              merchant:  'SURPLUS INTERCEPTED',
+              merchant:  'SWEPT TO VAULT',
               amount:    sweepAmount,
               category:  'SAVINGS',
               date:      new Date().toISOString(),

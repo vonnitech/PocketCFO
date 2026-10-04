@@ -38,8 +38,8 @@ const STEPS = [
   {
     icon: List,
     color: 'bg-black',
-    title: 'Ledger & Audit',
-    body: 'Your Ledger lists every transaction, and the Audit Log breaks down where your money went with a month over month view. Check in weekly for a full review.',
+    title: 'Ledger & Breakdown',
+    body: 'Your Ledger lists every transaction, and the Breakdown screen shows where your money went with a month over month view. Check in weekly for a full review.',
   },
 ] as const;
 

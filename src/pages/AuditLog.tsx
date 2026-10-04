@@ -508,7 +508,7 @@ export const AuditLog: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Audit Log</h1>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Breakdown</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Spending breakdown</p>
         </div>
         <div className="flex items-center gap-2">

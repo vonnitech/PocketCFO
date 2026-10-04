@@ -45,10 +45,10 @@ const primaryTabs = [
 
 const desktopCoreLinks = [
   { path: '/',              icon: CircleGauge,      label: 'Dashboard' },
-  { path: '/recon',         icon: ClipboardCheck,   label: 'Daily Review' },
+  { path: '/daily',         icon: ClipboardCheck,   label: 'Daily Review' },
   { path: '/transactions',  icon: Receipt,           label: 'Ledger' },
   { path: '/vaults',        icon: LockKeyhole,       label: 'Vaults' },
-  { path: '/breakdown',     icon: PieChart,          label: 'Audit Log' },
+  { path: '/breakdown',     icon: PieChart,          label: 'Breakdown' },
   { path: '/subscriptions', icon: Repeat,            label: 'Subscriptions' },
   { path: '/limit',         icon: Percent,           label: 'Spend Limit' },
   { path: '/pacing',        icon: SlidersHorizontal, label: 'Pacing' },
@@ -56,7 +56,7 @@ const desktopCoreLinks = [
 
 // Core screens that are not one of the four tabs.
 const manageLinks = [
-  { path: '/recon',         icon: ClipboardCheck,    label: 'Daily Review' },
+  { path: '/daily',         icon: ClipboardCheck,    label: 'Daily Review' },
   { path: '/limit',         icon: Percent,           label: 'Spend Limit' },
   { path: '/pacing',        icon: SlidersHorizontal, label: 'Pacing' },
   { path: '/subscriptions', icon: Repeat,            label: 'Subscriptions' },
@@ -68,8 +68,8 @@ const manageLinks = [
 const calculatorTools: { path: string; icon: React.ElementType; label: string; subtitle: string; pro?: boolean }[] = [
   { path: '/split',            icon: Split,        label: 'Bill Splitter',   subtitle: 'Divide expenses and track who owes what' },
   { path: '/true-cost',        icon: Hourglass,    label: 'True Cost',       subtitle: 'Calculate the real price of purchases over time' },
-  { path: '/debt-destroyer',   icon: TrendingDown, label: 'Debt Payoff',     subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
-  { path: '/tactical-command', icon: LifeBuoy,     label: 'Safety Net',      subtitle: 'How long your cash lasts and your target buffer' },
+  { path: '/debt',             icon: TrendingDown, label: 'Debt Payoff',     subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
+  { path: '/safety-net',       icon: LifeBuoy,     label: 'Safety Net',      subtitle: 'How long your cash lasts and your target buffer' },
   { path: '/fire',             icon: Flame,        label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
   { path: '/income',           icon: Banknote,     label: 'Income Tracker',  subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
 ];

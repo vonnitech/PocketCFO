@@ -327,7 +327,7 @@ export default function Dashboard() {
   const sweptToday = useMemo(() => {
     const todayKey = toLocalDateKey(new Date());
     return transactions
-      .filter((t) => t.merchant === "SURPLUS INTERCEPTED" && toLocalDateKey(t.date) === todayKey)
+      .filter((t) => t.merchant === "SWEPT TO VAULT" && toLocalDateKey(t.date) === todayKey)
       .reduce((sum, t) => sum + t.amount, 0);
   }, [transactions]);
 
@@ -432,7 +432,7 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-          {/* Every other route's h1 names the route — "Audit Log", "Bill Splitter",
+          {/* Every other route's h1 names the route — "Breakdown", "Bill Splitter",
               "Daily Review". This one used to be the greeting, which made the
               dashboard the only screen whose top-level heading did not say where you
               are, and the only heading on the page at all: navigating by heading
@@ -632,7 +632,7 @@ export default function Dashboard() {
                 <div className="mt-3 px-3 py-2 bg-black border-2 border-black rounded-xl">
                   {sweptToday > 0 ? (
                     <p className="font-mono text-[10px] font-black tracking-widest text-emerald-500">
-                      [SURPLUS INTERCEPTED: +{format(sweptToday)} TO VAULT]
+                      [SWEPT TO VAULT: +{format(sweptToday)}]
                     </p>
                   ) : vaults.length > 0 ? (
                     <p className="font-mono text-[10px] font-black tracking-widest text-text-muted">
@@ -1177,7 +1177,7 @@ export default function Dashboard() {
                     sub: "Check for subscriptions you no longer use.",
                   },
                   {
-                    to: "/recon",
+                    to: "/daily",
                     icon: Search,
                     label: "Daily Review",
                     sub: "Check today’s spending and add anything you missed.",
@@ -1268,7 +1268,7 @@ export default function Dashboard() {
           {/* Streak nudge */}
           {!isFirstTime && !loggedToday && streak > 0 && (
             <Link
-              to="/recon"
+              to="/daily"
               className="md:col-span-2 flex items-center gap-4 bg-action-primary border-4 border-black rounded-[28px] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1.5 hover:translate-y-1.5 transition-all group"
             >
               <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shrink-0">

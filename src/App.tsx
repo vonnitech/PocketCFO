@@ -488,12 +488,11 @@ function App() {
             <div className="max-w-4xl min-w-0 mx-auto">
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />
-                <Route path="/audit"           element={withPageWrapper(<AuditLog />)} />
                 <Route path="/split"           element={withPageWrapper(<BillSplitter />)} />
                 <Route path="/true-cost"       element={withPageWrapper(<TrueCost />)} />
-                <Route path="/debt-destroyer"  element={withPageWrapper(<DebtPayoff />)} />
-                <Route path="/tactical-command" element={withPageWrapper(<SafetyNet />)} />
-                <Route path="/recon"           element={withPageWrapper(<DailyLog />)} />
+                <Route path="/debt"            element={withPageWrapper(<DebtPayoff />)} />
+                <Route path="/safety-net"      element={withPageWrapper(<SafetyNet />)} />
+                <Route path="/daily"           element={withPageWrapper(<DailyLog />)} />
                 <Route path="/vaults"          element={withPageWrapper(<Vaults />)} />
                 <Route path="/subscriptions"   element={withPageWrapper(<Subscriptions />)} />
                 <Route path="/compound-growth" element={<Navigate to="/fire" replace />} />
@@ -507,6 +506,12 @@ function App() {
                 {/* The screen was called Velocity until it was renamed. Anything
                     already pointing at the old path keeps working. */}
                 <Route path="/velocity"        element={<Navigate to="/pacing" replace />} />
+                {/* Same for the screens that carried military names. Old links,
+                    bookmarks and notification deep links keep working. */}
+                <Route path="/debt-destroyer"  element={<Navigate to="/debt" replace />} />
+                <Route path="/tactical-command" element={<Navigate to="/safety-net" replace />} />
+                <Route path="/recon"           element={<Navigate to="/daily" replace />} />
+                <Route path="/audit"           element={<Navigate to="/breakdown" replace />} />
                 <Route path="/settings"        element={withPageWrapper(<Settings />)} />
                 <Route path="*"                element={withPageWrapper(<NotFound />)} />
               </Routes>
