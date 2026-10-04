@@ -4,7 +4,12 @@ import {createRoot} from 'react-dom/client';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import App from './App.tsx';
+import { initAnalytics } from './core/analytics';
 import './index.css';
+
+// No-op unless VITE_POSTHOG_KEY is set. Runs on native too: funnel drop-off in
+// the phone builds matters as much as on the web.
+initAnalytics();
 
 // A production preview can leave a service worker controlling localhost. Vite's
 // development server does not install one, so remove any existing registrations

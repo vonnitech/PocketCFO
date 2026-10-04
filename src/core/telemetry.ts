@@ -1,7 +1,10 @@
-// Local development event sink. Production does not emit these events until a
-// privacy-reviewed telemetry provider is configured. Financial values are
-// removed even in development so DevTools and captured console logs cannot expose
-// account balances or reserved bill amounts.
+// Event definitions and sink. Product events reach PostHog when VITE_POSTHOG_KEY
+// is configured; without it nothing leaves the browser. Security events stay
+// local by design (see logSecurityEvent). Financial values are removed before
+// any event is logged or sent, so neither DevTools, captured console logs, nor
+// the analytics provider can see account balances or reserved bill amounts.
+
+import { captureEvent } from './analytics';
 
 export type SecurityEvent =
   | { type: 'pin.lockout';      attempts: number; cooldownSec: number }
@@ -19,9 +22,10 @@ export function logSecurityEvent(event: SecurityEvent): void {
   const payload = { ...event, ts: new Date().toISOString() };
   // eslint-disable-next-line no-console
   console.warn('[security]', payload);
-  // TODO when Sentry/PostHog is wired:
-  //   Sentry.addBreadcrumb({ category: 'security', level: 'warning', message: event.type, data: payload });
-  //   posthog.capture(`security:${event.type}`, payload);
+  // Deliberately not forwarded to analytics. These describe a named user's
+  // authentication behaviour (lockouts, failed unlocks, forced signouts), which
+  // is more sensitive than funnel data and is not what the funnel is for. Wire
+  // them to an error reporter if they are ever needed in production.
 }
 
 // Product/funnel events. Same sink as security events; swap the body when analytics
@@ -59,12 +63,17 @@ export type ProductEvent =
   | { type: 'payment_intent';      plan: 'monthly' | 'annual' | 'lifetime' };
 
 export function logProductEvent(event: ProductEvent): void {
-  if (!import.meta.env.DEV) return;
+  // safeSpend and billsReserved are the user's actual money. They are dropped
+  // here, before the event reaches the console or the analytics provider, so
+  // amounts never leave the device. daysUntilPayday and billCount are kept:
+  // they make the funnel readable without exposing balances.
   const payload: Record<string, unknown> = { ts: new Date().toISOString() };
   for (const [key, value] of Object.entries(event)) {
     if (key !== 'safeSpend' && key !== 'billsReserved') payload[key] = value;
   }
-  // eslint-disable-next-line no-console
-  console.warn('[product]', payload);
-  // TODO when PostHog is wired: posthog.capture(`product:${event.type}`, payload);
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn('[product]', payload);
+  }
+  captureEvent(`product:${event.type}`, payload);
 }
