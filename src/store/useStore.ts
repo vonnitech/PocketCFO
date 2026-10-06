@@ -1022,7 +1022,6 @@ export const useStore = create<StoreState>()(
       const sweepAmount = capToUse > 0 && rawLimit > capToUse ? rawLimit - capToUse : 0;
       const todayKey    = toLocalDateKey(new Date());
       const alreadySwept = lastSweepDate === todayKey;
-      const doSweep     = sweepAmount > 0 && !alreadySwept && currentVaults.length > 0;
       // Locked vaults are excluded: an automatic sweep into one would be the
       // same blocked deposit arriving by another route.
       const proForSweep = proSnapshot();
@@ -1030,6 +1029,9 @@ export const useStore = create<StoreState>()(
         currentVaults,
         proForSweep.loaded ? lockedVaultIds(currentVaults, proForSweep.isPro) : undefined,
       );
+      // Only sweep when there is a vault to receive it, otherwise cash would be
+      // deducted with nowhere to land.
+      const doSweep     = sweepAmount > 0 && !alreadySwept && !!firstVault;
       const finalLiquid = doSweep ? capital - sweepAmount : capital;
 
       // Claim the sweep date immediately before any awaits. A concurrent call to
