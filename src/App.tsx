@@ -2,6 +2,7 @@ import { useNativeBridge } from './native/useNativeBridge';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import PageviewTracker from './core/PageviewTracker';
 import { AnimatePresence } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useStore, INITIAL_STATE } from './store/useStore';
@@ -422,6 +423,7 @@ function App() {
     return (
       <ErrorBoundary>
         <Router>
+          <PageviewTracker />
           {recoveryMode ? (
             <AuthGate recoveryMode onRecoveryDone={() => setRecoveryMode(false)} />
           ) : (
@@ -445,6 +447,7 @@ function App() {
       <ErrorBoundary>
         <ScreenLock />
         <Router>
+          <PageviewTracker />
           <ScrollToTop />
           <div className="h-screen bg-base dot-bg text-text-main font-sans overflow-y-auto overflow-x-hidden relative">
             <main id="main-scroll" className="min-h-screen min-w-0 p-4 pt-4 md:p-8 relative">
@@ -470,6 +473,7 @@ function App() {
         )}
       </AnimatePresence>
       <Router>
+        <PageviewTracker />
         <ScrollToTop />
         <OnboardingRouteGuard hasCompletedOnboarding={hasCompletedOnboarding} />
         <PaydayBanner />
