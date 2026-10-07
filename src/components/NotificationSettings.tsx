@@ -60,7 +60,7 @@ export function NotificationSettings() {
           <BellOff size={14} strokeWidth={2.5} className="text-action-bleed shrink-0 mt-0.5" />
           <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed leading-snug">
             Notifications are blocked for this site. To turn them back on, allow notifications
-            for Pocket CFO in your browser settings. Your inbox keeps working either way.
+            for StackPiggy in your browser settings. Your inbox keeps working either way.
           </p>
         </div>
       )}

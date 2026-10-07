@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.pocketcfo.mobile',
-  appName: 'Pocket CFO',
+  appName: 'StackPiggy',
   webDir: 'dist-native',
   backgroundColor: '#101214',
   server: { androidScheme: 'https' },

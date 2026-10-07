@@ -103,7 +103,7 @@ export function deliverRecord(record: NotificationRecord): Promise<boolean> {
 export function deliverTest(): Promise<boolean> {
   return deliver({
     title: 'Notifications are working',
-    body: 'This is what a Pocket CFO alert looks like. Real ones only arrive when something about your money needs you.',
+    body: 'This is what a StackPiggy alert looks like. Real ones only arrive when something about your money needs you.',
     tag: 'pocketcfo-test',
     path: '/settings',
   });

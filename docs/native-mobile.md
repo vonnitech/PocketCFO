@@ -68,7 +68,7 @@ TLS verification. This workstation needed a temporary truststore containing its
 existing Windows trusted roots; that machine-specific file is not in the repo.
 
 After signing in and finishing onboarding, long-press the phone's home screen,
-choose Widgets > Pocket CFO > Cleared Today. The widget is resizable. Its body
+choose Widgets > StackPiggy > Cleared Today. The widget is resizable. Its body
 opens Home; Log Spend opens the existing spending form after authentication and
 screen unlock.
 

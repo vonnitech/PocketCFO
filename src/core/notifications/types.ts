@@ -1,8 +1,8 @@
 // =========================================================================
 // Notification system — shared types.
 //
-// Design rule this whole module exists to enforce: Pocket CFO notifies people
-// about THEIR MONEY, never about Pocket CFO. There is no marketing category and
+// Design rule this whole module exists to enforce: StackPiggy notifies people
+// about THEIR MONEY, never about StackPiggy. There is no marketing category and
 // no "we miss you" copy, because the moment a finance app cries wolf for
 // engagement, the user stops trusting the one alert that actually mattered.
 //

@@ -73,7 +73,7 @@ export function Login({ onAuthenticated }: LoginProps) {
         <div className="bg-black border-4 border-black rounded-3xl p-5 mb-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
           <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
             <span className="text-[11px] font-black tracking-[0.3em] uppercase text-white/40">
-              POCKET_CFO :: AUTH_TERMINAL
+              STACKPIGGY :: AUTH_TERMINAL
             </span>
             <div className="w-2 h-2 rounded-full bg-action-primary animate-pulse" />
           </div>

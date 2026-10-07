@@ -184,7 +184,7 @@ export default function Settings() {
         clearEnrolledCredential(state.userId);
         setBioEnrolled(false);
       } else {
-        await enrollCredential(state.userId, state.firstName || 'Pocket CFO');
+        await enrollCredential(state.userId, state.firstName || 'StackPiggy');
         setBioEnrolled(true);
         logSecurityEvent({ type: 'webauthn.enrolled' });
       }
@@ -251,7 +251,7 @@ export default function Settings() {
       const mod = await import('../core/export');
       await fn(mod);
     } catch (err) {
-      console.error('[PocketCFO] export failed', err);
+      console.error('[StackPiggy] export failed', err);
       alert('Export failed. Please try again.');
     }
   };
@@ -265,7 +265,7 @@ export default function Settings() {
       await import('../components/ImportMapperModal');
       setImportOpen(true);
     } catch (err) {
-      console.error('[PocketCFO] import module failed to load', err);
+      console.error('[StackPiggy] import module failed to load', err);
       alert('Import needs a connection the first time you use it. Please try again online.');
     }
   };
@@ -402,7 +402,7 @@ export default function Settings() {
       await supabase.auth.signOut();
       setState({ ...INITIAL_STATE });
     } catch (err) {
-      console.error('[PocketCFO] delete account failed', err);
+      console.error('[StackPiggy] delete account failed', err);
       alert((err as Error).message || 'Could not delete account. Please try again.');
       setDeletingAccount(false);
     }
@@ -417,7 +417,7 @@ export default function Settings() {
     const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
     const a = document.createElement('a');
     a.setAttribute('href', dataUri);
-    a.setAttribute('download', `pocket_cfo_payload_${new Date().toISOString().split('T')[0]}.json`);
+    a.setAttribute('download', `stackpiggy_payload_${new Date().toISOString().split('T')[0]}.json`);
     a.click();
   };
 
@@ -609,7 +609,7 @@ export default function Settings() {
         <div id="pro" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <Lock size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
-            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">Pocket CFO Pro</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">StackPiggy Pro</p>
           </div>
           {isNative ? (
             <div className="space-y-2">

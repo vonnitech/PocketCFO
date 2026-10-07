@@ -9,7 +9,7 @@ const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | unde
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
 if (!isSupabaseConfigured) {
-  console.warn('[PocketCFO] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set. Add them to .env.local');
+  console.warn('[StackPiggy] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set. Add them to .env.local');
 }
 
 // Even when unconfigured we create a client so imports don't crash.

@@ -2,7 +2,7 @@
 
 **Last updated: 1 October 2026**
 
-PocketCFO helps you track your own money. That only works if you trust it with real
+StackPiggy helps you track your own money. That only works if you trust it with real
 numbers, so this page explains exactly what we hold, what we never look at, and how
 to get rid of all of it.
 
@@ -59,7 +59,7 @@ your name or email.
 
 ## Who else is involved
 
-We use a small number of outside services to run PocketCFO. Each one sees only what
+We use a small number of outside services to run StackPiggy. Each one sees only what
 it needs.
 
 | Service | What it does | What it sees |
@@ -73,7 +73,7 @@ Card details go straight to LemonSqueezy. They never reach us and we cannot see 
 
 Your data is held in the United States. Your account and financial information sit in
 Supabase's US East region, and our usage data is held by PostHog in the United
-States. If you use PocketCFO from outside the US, your information is transferred
+States. If you use StackPiggy from outside the US, your information is transferred
 there so the service can work.
 
 ---
@@ -116,7 +116,7 @@ To exercise any of this, write to [CONTACT EMAIL].
 
 ## Children
 
-PocketCFO is not intended for anyone under 18 and we do not knowingly collect their
+StackPiggy is not intended for anyone under 18 and we do not knowingly collect their
 information.
 
 ---
