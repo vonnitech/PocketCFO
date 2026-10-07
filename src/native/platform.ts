@@ -1,7 +1,7 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 export const isNative = Capacitor.isNativePlatform();
-export const NATIVE_AUTH_REDIRECT = 'app.pocketcfo.mobile://auth/callback';
+export const NATIVE_AUTH_REDIRECT = 'app.stackpiggy.mobile://auth/callback';
 export const authRedirectUrl = () => isNative ? NATIVE_AUTH_REDIRECT : window.location.origin;
 
 const AUTH_QUERY_KEYS = [

@@ -46,12 +46,12 @@ assert.ok(!JSON.stringify(snapshot).includes('account-a'));
 const yen = makeWidgetSnapshot({ ...state, currency: 'JPY' }, now)!;
 assert.equal(yen.amountText, new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(78));
 
-assert.deepEqual(parseNativeLink('app.pocketcfo.mobile://spend'), { type: 'spend' });
-assert.deepEqual(parseNativeLink('app.pocketcfo.mobile://home'), { type: 'home' });
-assert.deepEqual(parseNativeLink('app.pocketcfo.mobile://auth/callback?code=one-use-code'), { type: 'auth', code: 'one-use-code' });
+assert.deepEqual(parseNativeLink('app.stackpiggy.mobile://spend'), { type: 'spend' });
+assert.deepEqual(parseNativeLink('app.stackpiggy.mobile://home'), { type: 'home' });
+assert.deepEqual(parseNativeLink('app.stackpiggy.mobile://auth/callback?code=one-use-code'), { type: 'auth', code: 'one-use-code' });
 for (const link of ['https://example.com/spend', 'javascript:alert(1)',
-  'app.pocketcfo.mobile://auth/callback', 'app.pocketcfo.mobile://attacker@auth/callback?code=x',
-  'app.pocketcfo.mobile://spend/untrusted', 'app.pocketcfo.mobile://auth/elsewhere?code=x']) {
+  'app.stackpiggy.mobile://auth/callback', 'app.stackpiggy.mobile://attacker@auth/callback?code=x',
+  'app.stackpiggy.mobile://spend/untrusted', 'app.stackpiggy.mobile://auth/elsewhere?code=x']) {
   assert.equal(parseNativeLink(link), null);
 }
 

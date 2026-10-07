@@ -1,4 +1,4 @@
-package app.pocketcfo.mobile;
+package app.stackpiggy.mobile;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;

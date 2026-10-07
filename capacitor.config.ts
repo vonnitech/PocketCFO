@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.pocketcfo.mobile',
+  appId: 'app.stackpiggy.mobile',
   appName: 'StackPiggy',
   webDir: 'dist-native',
   backgroundColor: '#101214',

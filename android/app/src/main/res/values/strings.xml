@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Pocket CFO</string>
     <string name="title_activity_main">Pocket CFO</string>
-    <string name="package_name">app.pocketcfo.mobile</string>
-    <string name="custom_url_scheme">app.pocketcfo.mobile</string>
+    <string name="package_name">app.stackpiggy.mobile</string>
+    <string name="custom_url_scheme">app.stackpiggy.mobile</string>
 </resources>

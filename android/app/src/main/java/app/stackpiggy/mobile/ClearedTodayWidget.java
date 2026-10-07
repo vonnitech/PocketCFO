@@ -1,4 +1,4 @@
-package app.pocketcfo.mobile;
+package app.stackpiggy.mobile;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -12,7 +12,7 @@ import android.widget.RemoteViews;
 import org.json.JSONObject;
 
 public class ClearedTodayWidget extends AppWidgetProvider {
-    private static final String REFRESH = "app.pocketcfo.mobile.WIDGET_REFRESH";
+    private static final String REFRESH = "app.stackpiggy.mobile.WIDGET_REFRESH";
 
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         refreshAll(context);
@@ -68,7 +68,7 @@ public class ClearedTodayWidget extends AppWidgetProvider {
     private static PendingIntent openApp(Context context, String destination, int requestCode) {
         Intent intent = new Intent(context, MainActivity.class)
             .setAction(Intent.ACTION_VIEW)
-            .setData(Uri.parse("app.pocketcfo.mobile://" + destination))
+            .setData(Uri.parse("app.stackpiggy.mobile://" + destination))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return PendingIntent.getActivity(context, requestCode, intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

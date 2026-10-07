@@ -3,7 +3,7 @@ export type NativeDestination = { type: 'auth'; code: string } | { type: 'spend'
 export function parseNativeLink(value: string): NativeDestination | null {
   try {
     const url = new URL(value);
-    if (url.protocol !== 'app.pocketcfo.mobile:' || url.username || url.password || url.port) return null;
+    if (url.protocol !== 'app.stackpiggy.mobile:' || url.username || url.password || url.port) return null;
     if (url.host === 'auth' && url.pathname === '/callback') {
       const code = url.searchParams.get('code');
       return code ? { type: 'auth', code } : null;

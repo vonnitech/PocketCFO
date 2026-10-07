@@ -23,7 +23,7 @@ Ordinary Supabase sign-in and data access use the existing Supabase configuratio
 In Supabase Authentication > URL Configuration, add this exact redirect URL:
 
 ```text
-app.pocketcfo.mobile://auth/callback
+app.stackpiggy.mobile://auth/callback
 ```
 
 Native Google sign-in opens the system browser and returns using PKCE. Email
@@ -89,9 +89,9 @@ Capacitor Swift Package Manager dependencies. Select a development team for
 
 | Purpose | Identifier |
 | --- | --- |
-| App (Android application ID and iOS bundle ID) | `app.pocketcfo.mobile` |
-| iOS widget extension | `app.pocketcfo.mobile.widget` |
-| Shared iOS App Group | `group.app.pocketcfo.mobile` |
+| App (Android application ID and iOS bundle ID) | `app.stackpiggy.mobile` |
+| iOS widget extension | `app.stackpiggy.mobile.widget` |
+| Shared iOS App Group | `group.app.stackpiggy.mobile` |
 
 Enable the same App Group for both targets in Signing & Capabilities. If these
 identifiers are unavailable to your team, update the Capacitor config, native

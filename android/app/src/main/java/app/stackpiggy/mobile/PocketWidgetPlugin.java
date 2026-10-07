@@ -1,4 +1,4 @@
-package app.pocketcfo.mobile;
+package app.stackpiggy.mobile;
 
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
