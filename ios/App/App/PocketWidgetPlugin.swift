@@ -9,7 +9,7 @@ public class PocketWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "update", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise)
     ]
-    private var storage: UserDefaults? { UserDefaults(suiteName: "group.app.pocketcfo.mobile") }
+    private var storage: UserDefaults? { UserDefaults(suiteName: "group.app.stackpiggy.mobile") }
 
     @objc func update(_ call: CAPPluginCall) {
         guard let storage = storage else { call.reject("Widget storage unavailable"); return }

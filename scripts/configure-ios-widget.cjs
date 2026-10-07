@@ -19,7 +19,7 @@ if (!project.hasFile('PrivacyInfo.xcprivacy')) {
 const targets = project.pbxNativeTargetSection();
 let widgetId = Object.keys(targets).find(id => targets[id]?.name?.replaceAll('"', '') === 'ClearedTodayWidget');
 if (!widgetId) {
-  const widget = project.addTarget('ClearedTodayWidget', 'app_extension', 'ClearedTodayWidget', 'app.pocketcfo.mobile.widget');
+  const widget = project.addTarget('ClearedTodayWidget', 'app_extension', 'ClearedTodayWidget', 'app.stackpiggy.mobile.widget');
   widgetId = widget.uuid;
   project.addBuildPhase([], 'PBXSourcesBuildPhase', 'Sources', widgetId);
   project.addBuildPhase([], 'PBXFrameworksBuildPhase', 'Frameworks', widgetId);

@@ -42,7 +42,7 @@ struct PocketProvider: TimelineProvider {
     }
 
     private func readSnapshot() -> PocketSnapshot? {
-        guard let data = UserDefaults(suiteName: "group.app.pocketcfo.mobile")?.data(forKey: "snapshot") else { return nil }
+        guard let data = UserDefaults(suiteName: "group.app.stackpiggy.mobile")?.data(forKey: "snapshot") else { return nil }
         return try? JSONDecoder().decode(PocketSnapshot.self, from: data)
     }
 }
@@ -78,14 +78,14 @@ struct PocketWidgetView: View {
             detail.font(.system(size: 11)).foregroundStyle(muted).lineLimit(2)
             Spacer(minLength: 0)
             if family == .systemMedium {
-                Link(destination: URL(string: "app.pocketcfo.mobile://spend")!) { action }
+                Link(destination: URL(string: "app.stackpiggy.mobile://spend")!) { action }
             } else {
                 action
             }
         }
         // Small widgets have a single tap destination; medium widgets also
         // expose a distinct Log Spend link while the background opens Home.
-        .widgetURL(URL(string: family == .systemSmall ? "app.pocketcfo.mobile://spend" : "app.pocketcfo.mobile://home"))
+        .widgetURL(URL(string: family == .systemSmall ? "app.stackpiggy.mobile://spend" : "app.stackpiggy.mobile://home"))
     }
 
     private var detail: Text {
