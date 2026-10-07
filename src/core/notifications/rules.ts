@@ -409,7 +409,7 @@ const accountSyncIssue: NotificationRule = {
     return {
       dedupeKey: 'account-sync',
       title: 'Some changes have not saved',
-      body: 'Pocket CFO could not reach the server on your last few changes. They are safe on this device and will sync when the connection is back.',
+      body: 'StackPiggy could not reach the server on your last few changes. They are safe on this device and will sync when the connection is back.',
       actionPath: '/settings',
     };
   },

@@ -61,7 +61,7 @@ assert.match(authPlatform, /history\.replaceState/);
 assert.match(app, /clearAuthCallbackUrl\(\)/);
 
 const recoveryEmail = readFileSync('supabase/templates/recovery.html', 'utf8');
-assert.match(recoveryEmail, /Pocket CFO/);
+assert.match(recoveryEmail, /StackPiggy/);
 assert.equal((recoveryEmail.match(/\{\{ \.ConfirmationURL \}\}/g) ?? []).length, 1);
 assert.doesNotMatch(recoveryEmail, /\{\{ \.(Token|TokenHash|Email) \}\}/);
 

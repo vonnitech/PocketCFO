@@ -1,4 +1,4 @@
-// Official PocketCFO brand lockup: real coin-badge icon + wordmark, perfectly centered.
+// Official StackPiggy brand lockup: real coin-badge icon + wordmark, perfectly centered.
 // The icon (public/icon.svg) is the brand mark — fixed brand colours, so it reads as
 // identity and stays consistent in both light and dark themes.
 export function BrandLogo() {
@@ -7,7 +7,7 @@ export function BrandLogo() {
       {/* Brand mark — the coin badge, fixed square so it never warps */}
       <img
         src="/icon.svg"
-        alt="Pocket CFO"
+        alt="StackPiggy"
         width={40}
         height={40}
         className="w-10 h-10 shrink-0 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"

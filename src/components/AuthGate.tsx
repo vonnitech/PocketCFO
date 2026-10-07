@@ -193,7 +193,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         {/* Header */}
         <div className="bg-black border-4 border-black rounded-3xl px-5 py-4 mb-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[15px] font-black tracking-tight text-white">Pocket CFO</span>
+            <span className="text-[15px] font-black tracking-tight text-white">StackPiggy</span>
             <div className="w-2 h-2 rounded-full bg-action-primary animate-pulse" />
           </div>
           <p className="text-[11px] font-bold text-white/50 leading-relaxed">

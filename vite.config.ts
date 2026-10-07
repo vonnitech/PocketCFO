@@ -52,8 +52,8 @@ export default defineConfig(({ mode }) => {
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'icon-mark.svg', 'favicon.svg', 'favicon-32x32.png', 'icon-192x192.png', 'icon-512x512.png'],
       manifest: {
-        name: 'Pocket CFO',
-        short_name: 'Pocket CFO',
+        name: 'StackPiggy',
+        short_name: 'StackPiggy',
         description: 'Track daily spending, plan debt payoff, and keep an eye on subscriptions.',
         theme_color: '#facc15',
         background_color: '#FAFAF9',

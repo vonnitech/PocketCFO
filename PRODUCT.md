@@ -54,7 +54,7 @@ Privacy matters in shared or public environments, so the app includes a privacy 
 
 ## Brand Commitments
 
-**Working name: PocketCFO. Rename pending clearance.** Treat PocketCFO as a working name, not a final brand commitment. New naming, identity, domains, and customer-facing assets must remain portable until the rename is decided.
+**The product is StackPiggy.** The name cleared a trademark search and the domain is registered. New naming, identity, domains, and customer-facing assets must remain portable until the rename is decided.
 
 The voice is direct, candid, concise, and nonjudgmental. It treats the user as capable, explains consequences plainly, and avoids shame, moral scoring, or paternalistic language. Terms should describe what the money is doing: “committed” for obligations, “captured” or “vaulted” for deliberate reserves, “cleared today” for spendable money, and “ended early” rather than language that labels the user a failure.
 

@@ -73,7 +73,7 @@ export function exportLedgerCSV(transactions: Transaction[]): void {
       Penalty:  (t.flipAmount || 0).toFixed(2),
     }));
   const csv = Papa.unparse(rows);
-  downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `pocket_cfo_ledger.csv`);
+  downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `stackpiggy_ledger.csv`);
 }
 
 // ── Excel (multi-tab) ────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
 
   // Summary tab
   const summaryRows: (string | number)[][] = [
-    ['POCKET CFO · FINANCIAL SUMMARY'],
+    ['STACKPIGGY · FINANCIAL SUMMARY'],
     ['Generated', new Date().toLocaleString()],
     ['User', spreadsheetSafe(snap.firstName || '—')],
     [],
@@ -129,7 +129,7 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
   ledgerSheet['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 12 }, { wch: 8 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, ledgerSheet, 'Ledger');
 
-  XLSX.writeFile(wb, `pocket_cfo_report.xlsx`);
+  XLSX.writeFile(wb, `stackpiggy_report.xlsx`);
 }
 
 // ── PDF ──────────────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ export async function exportReportPDF(snap: ExportSnapshot): Promise<void> {
   doc.setTextColor(250, 204, 21);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text('POCKET CFO', margin + 24, y + 28);
+  doc.text('STACKPIGGY', margin + 24, y + 28);
   doc.setFontSize(10);
   doc.setTextColor(255, 255, 255);
   doc.text('FINANCIAL AUDIT', margin + 24, y + 46);
@@ -261,11 +261,11 @@ export async function exportReportPDF(snap: ExportSnapshot): Promise<void> {
     doc.setPage(p);
     doc.setFontSize(7);
     doc.setTextColor(120);
-    doc.text(`Pocket CFO · Generated ${new Date().toLocaleString()}`, margin, doc.internal.pageSize.getHeight() - 16);
+    doc.text(`StackPiggy · Generated ${new Date().toLocaleString()}`, margin, doc.internal.pageSize.getHeight() - 16);
     doc.text(`Page ${p} of ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 16, { align: 'right' });
   }
 
-  doc.save(`pocket_cfo_report.pdf`);
+  doc.save(`stackpiggy_report.pdf`);
 }
 
 // ── Import parser (headers + rows for the column-mapping modal) ──────────────

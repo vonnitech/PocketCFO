@@ -1,5 +1,5 @@
 ---
-name: Product Design System (rename pending)
+name: Product Design System
 description: A tactile pay-cycle ledger that shows what's cleared for today.
 colors:
   action-yellow: "#facc15"
@@ -112,8 +112,6 @@ components:
 ---
 
 # Product Design System
-
-**Working name: PocketCFO. Rename pending clearance.**
 
 ## Overview
 

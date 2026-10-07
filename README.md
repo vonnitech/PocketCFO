@@ -1,6 +1,4 @@
-# Pocket CFO (working name)
-
-> Working name: PocketCFO. Rename pending clearance.
+# StackPiggy
 
 A pay-cycle operating system for people who live between paydays: clear today's spend, protect future obligations, and keep debt, savings, and vaults moving without judgment.
 

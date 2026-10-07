@@ -61,11 +61,11 @@ export async function enrollCredential(userId: string, displayName: string): Pro
   const credential = await navigator.credentials.create({
     publicKey: {
       challenge,
-      rp: { name: 'Pocket CFO' },
+      rp: { name: 'StackPiggy' },
       user: {
         id:          userIdBytes,
-        name:        displayName || 'Pocket CFO User',
-        displayName: displayName || 'Pocket CFO User',
+        name:        displayName || 'StackPiggy User',
+        displayName: displayName || 'StackPiggy User',
       },
       pubKeyCredParams: [
         { type: 'public-key', alg: -7 },   // ES256

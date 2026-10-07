@@ -24,7 +24,7 @@ database migrations and hosting settings still need deployment verification.
 | 33–34 | IDOR and trusted client IDs/roles | Code complete; deploy verify | Billing/account user IDs come from verified access tokens; RLS binds data to the authenticated user. |
 | 35–36 | Sensitive logs and source maps | Code complete | Provider bodies, user IDs and financial telemetry are not logged; production telemetry is disabled; Vite source maps are off. |
 | 37–38 | Vulnerable/outdated dependencies | Production clear | `npm audit --omit=dev` reports zero known production vulnerabilities. Development tool advisories remain and need routine upgrade review. |
-| 39–40 | AI prompt/tool injection | Not applicable | Pocket CFO has no AI model or tool execution feature. |
+| 39–40 | AI prompt/tool injection | Not applicable | StackPiggy has no AI model or tool execution feature. |
 | 41 | Excessive database permissions | Code complete; deploy verify | Browser code uses the anon key under RLS; service-role access exists only in server endpoints. Verify Vercel variables and Supabase grants. |
 | 42–43 | Audit logs, monitoring and alerting | Release blocker | Add a privacy-reviewed production error/alerting service and durable audit events for billing/account deletion without recording financial values or tokens. |
 | 44 | Backup and restore | Release blocker | Enable and test Supabase backups/point-in-time recovery as appropriate for the plan; document a restore drill and owner. |
