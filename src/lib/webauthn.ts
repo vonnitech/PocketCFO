@@ -13,6 +13,17 @@ const CRED_KEY_PREFIX = 'pocket-cfo-webauthn-cred-';
 
 function credKey(userId: string): string { return `${CRED_KEY_PREFIX}${userId}`; }
 
+// A credential belongs to the exact host it was created on, so one enrolled at
+// www.example.com is invisible at example.com and vice versa. Naming the
+// registrable domain explicitly makes the two share. Only the "www." prefix is
+// stripped: rp.id has to be a suffix of the current host, and anything more
+// aggressive would throw on localhost or inside the native shell.
+function relyingPartyId(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const host = window.location.hostname;
+  return host.startsWith('www.') ? host.slice(4) : undefined;
+}
+
 export function isWebAuthnSupported(): boolean {
   return typeof window !== 'undefined'
     && typeof window.PublicKeyCredential !== 'undefined'
@@ -61,7 +72,7 @@ export async function enrollCredential(userId: string, displayName: string): Pro
   const credential = await navigator.credentials.create({
     publicKey: {
       challenge,
-      rp: { name: 'StackPiggy' },
+      rp: { name: 'StackPiggy', id: relyingPartyId() },
       user: {
         id:          userIdBytes,
         name:        displayName || 'StackPiggy User',
@@ -99,13 +110,22 @@ export async function verifyCredential(userId: string): Promise<boolean> {
     const assertion = await navigator.credentials.get({
       publicKey: {
         challenge,
+        rpId: relyingPartyId(),
         allowCredentials: [{ type: 'public-key', id: b64UrlDecode(stored) }],
         userVerification: 'required',
         timeout:          60_000,
       },
     });
     return !!assertion;
-  } catch {
+  } catch (err) {
+    // A credential enrolled on a different domain cannot be used here and never
+    // will be, so the stored reference is dead weight that leaves the unlock
+    // button failing forever. Forget it and let the user enrol again. A plain
+    // cancellation reports NotAllowedError and must keep its credential.
+    const name = (err as { name?: string } | null)?.name;
+    if (name === 'InvalidStateError' || name === 'SecurityError') {
+      try { localStorage.removeItem(credKey(userId)); } catch { /* storage unavailable */ }
+    }
     return false;
   }
 }
