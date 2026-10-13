@@ -71,6 +71,12 @@ assert.match(csp, /script-src 'self'/);
 assert.match(csp, /script-src-attr 'none'/);
 assert.match(csp, /object-src 'none'/);
 assert.match(csp, /frame-ancestors 'none'/);
+// Analytics has to be allowed through explicitly, and its absence fails silently:
+// the browser refuses each send with nothing surfacing in the app, so the only
+// symptom is an empty dashboard that looks like nobody is using the product.
+// These two assertions exist so tightening the policy breaks a test instead.
+assert.match(csp, /connect-src[^;]*https:\/\/us\.i\.posthog\.com/);
+assert.match(csp, /script-src 'self'[^;]*https:\/\/us-assets\.i\.posthog\.com/);
 assert.equal(headers.find(header => header.key === 'X-Content-Type-Options')?.value, 'nosniff');
 
 console.log('Security checks passed: bounded imports, spreadsheet/XSS defenses, signed ordered webhooks, trusted billing URLs, redacted telemetry, and race-safe plan caps.');
