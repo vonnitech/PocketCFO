@@ -1,23 +1,26 @@
-// Official StackPiggy brand lockup: real coin-badge icon + wordmark, perfectly centered.
-// The icon (public/icon.svg) is the brand mark — fixed brand colours, so it reads as
-// identity and stays consistent in both light and dark themes.
+// The wordmark is near-black in the light file and white in the dark one, so a
+// single image would leave the name invisible in one theme. Both are rendered
+// and CSS picks, which avoids a flash while JS works out the theme.
 export function BrandLogo() {
-  return (
-    <div className="flex flex-row items-center gap-2.5 select-none">
-      {/* Brand mark — the coin badge, fixed square so it never warps */}
-      <img
-        src="/icon.svg"
-        alt="StackPiggy"
-        width={40}
-        height={40}
-        className="w-10 h-10 shrink-0 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-      />
+  const shared = 'h-12 w-auto max-w-[16rem] shrink-0 object-contain';
 
-      {/* Wordmark — single line, never wraps or truncates. */}
-      <div className="text-xl font-black tracking-tighter leading-none whitespace-nowrap">
-        <span className="text-text-main">Pocket</span>
-        <span className="text-yellow-400">&nbsp;CFO</span>
-      </div>
+  return (
+    <div className="flex items-center select-none">
+      <img
+        src="/stackpiggy-logo.svg"
+        alt="StackPiggy"
+        width={1505}
+        height={400}
+        className={`${shared} dark:hidden`}
+      />
+      <img
+        src="/stackpiggy-logo-dark.svg"
+        alt=""
+        aria-hidden="true"
+        width={1505}
+        height={400}
+        className={`${shared} hidden dark:block`}
+      />
     </div>
   );
 }

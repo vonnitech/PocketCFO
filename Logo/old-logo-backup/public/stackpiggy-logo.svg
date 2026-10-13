@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 260" role="img" aria-label="StackPiggy">
+  <rect x="16" y="16" width="228" height="228" rx="56" fill="#FFD600"/>
+  <path fill="#111111" d="M76 63h85c43 0 74 30 74 69s-31 69-74 69h-29v41h-34v-75h63c17 0 29-12 29-27s-12-27-29-27h-65c-12 0-20 6-20 15 0 8 6 13 19 18l33 12c28 11 42 28 42 52 0 31-25 53-62 53H61v-33h67c11 0 18-5 18-14 0-7-6-12-17-16l-35-13c-29-11-43-30-43-55 0-35 29-60 69-60Z"/>
+  <path fill="#22C55E" d="M132 94h29c17 0 29 12 29 27s-12 27-29 27h-29V94Z"/>
+  <text x="286" y="170" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="132" font-weight="800" letter-spacing="-7">stackp</text>
+  <text x="868" y="170" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="132" font-weight="800" letter-spacing="-7">ggy</text>
+  <circle cx="841" cy="66" r="11" fill="#FB5D95"/>
+</svg>

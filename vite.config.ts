@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => {
     VitePWA({
       disable: mode === 'native',
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'icon-mark.svg', 'favicon.svg', 'favicon-32x32.png', 'icon-192x192.png', 'icon-512x512.png'],
+      includeAssets: ['stackpiggy-icon.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'icon-192x192.png', 'icon-512x512.png'],
       manifest: {
         name: 'StackPiggy',
         short_name: 'StackPiggy',
@@ -62,8 +62,6 @@ export default defineConfig(({ mode }) => {
         start_url: '/',
         scope: '/',
         icons: [
-          // SVG fallback — resolution-independent for browsers that support it
-          { src: '/icon.svg',         sizes: 'any',     type: 'image/svg+xml', purpose: 'any maskable' },
           // PNG raster icons — required by iOS, older Android, and the Chrome install prompt preview
           { src: '/icon-192x192.png', sizes: '192x192', type: 'image/png',     purpose: 'any' },
           { src: '/icon-512x512.png', sizes: '512x512', type: 'image/png',     purpose: 'any' },
