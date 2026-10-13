@@ -27,6 +27,7 @@ import { BottomSheet } from "../components/BottomSheet";
 import { TransactionForm } from "../components/TransactionForm";
 import { dueSubscriptionsBeforePayday } from "../store/useStore";
 import { useFirstMove } from "../hooks/useFirstMove";
+import { PaydayNoteCard } from "../components/PaydayNoteCard";
 
 // Categories excluded from the Recent Activity feed — purely internal moves only.
 // Bills and debt payments should remain visible so users have a paper trail.
@@ -474,6 +475,12 @@ export default function Dashboard() {
           </div>
           <NotificationBell />
         </div>
+
+        {/* The payday note, if one was written and the day has gone thin. It
+            sits above Log Spend so it is read before the next spend, not after. */}
+        {hasCompletedOnboarding && (
+          <PaydayNoteCard spendRemaining={spendRemaining} dailyLimit={safeSpendLimit} />
+        )}
 
         {/* Log Spend trigger */}
         {hasCompletedOnboarding && (

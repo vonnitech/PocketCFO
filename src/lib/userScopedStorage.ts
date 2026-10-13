@@ -25,6 +25,8 @@ export const USER_LOCAL_BASES = [
   'pocket-cfo-first-move-v1',    // First-move card completed or skipped
   'pocket-cfo-notif-prefs-v1',   // Notification preferences + permission primer state
   'pocket-cfo-notif-log-v1',     // Notification inbox, cooldowns, rule memory
+  'stackpiggy-payday-note-v1',   // The line written on payday, read later in the cycle
+  'stackpiggy-wishlist-v1',      // Things wanted but not bought
 ];
 
 // Removes all per-user browser-local data for a given user. Called by the wipe.

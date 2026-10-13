@@ -40,6 +40,7 @@ const Config = lazy(() => import('./pages/Config'));
 const Settings = lazy(() => import('./pages/Settings'));
 const DailyLog = lazy(() => import('./pages/DailyLog'));
 const Vaults = lazy(() => import('./pages/Vaults'));
+const Wishlist = lazy(() => import('./pages/Wishlist'));
 const Subscriptions = lazy(() => import('./pages/Subscriptions'));
 const Fire = lazy(() => import('./pages/Fire'));
 const IncomeTracker = lazy(() => import('./pages/IncomeTracker'));
@@ -498,6 +499,7 @@ function App() {
                 <Route path="/safety-net"      element={withPageWrapper(<SafetyNet />)} />
                 <Route path="/daily"           element={withPageWrapper(<DailyLog />)} />
                 <Route path="/vaults"          element={withPageWrapper(<Vaults />)} />
+                <Route path="/wishlist"        element={withPageWrapper(<Wishlist />)} />
                 <Route path="/subscriptions"   element={withPageWrapper(<Subscriptions />)} />
                 <Route path="/compound-growth" element={<Navigate to="/fire" replace />} />
                 <Route path="/fire"            element={withPageWrapper(<Fire />)} />
