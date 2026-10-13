@@ -68,7 +68,7 @@ struct PocketWidgetView: View {
                 Text("Cleared Today").font(.caption).foregroundStyle(muted)
                 Spacer()
                 if family == .systemMedium {
-                    Text("Pocket CFO").font(.caption.weight(.semibold)).foregroundStyle(muted)
+                    Text("StackPiggy").font(.caption.weight(.semibold)).foregroundStyle(muted)
                 }
             }
             Text(entry.snapshot?.hidden == true ? "••••" : entry.valid ? entry.snapshot!.amountText : "—")
@@ -89,7 +89,7 @@ struct PocketWidgetView: View {
     }
 
     private var detail: Text {
-        guard let snapshot = entry.snapshot else { return Text("Open Pocket CFO to get started") }
+        guard let snapshot = entry.snapshot else { return Text("Open StackPiggy to get started") }
         if snapshot.hidden { return Text("Amount hidden") }
         if !entry.valid { return Text("Open to refresh today's amount") }
         return Text("Updated \(Date(timeIntervalSince1970: snapshot.updatedAt / 1000), style: .time)")

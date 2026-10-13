@@ -1,77 +1,75 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { CircleGauge, Receipt, LockKeyhole, PieChart, Ellipsis, Settings, ClipboardCheck, Split, Hourglass, Sun, Moon, Repeat, X, Eye, EyeOff, TrendingDown, LogOut, Flame, Banknote, Lock, LifeBuoy, SlidersHorizontal, Percent } from 'lucide-react';
+import { Sun, Moon, X, Eye, EyeOff, LogOut, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useProLocked } from '../lib/pro';
 import { supabase } from '../core/supabase';
 import { BrandLogo } from './BrandLogo';
+import {
+  StackPiggyHomeIcon,
+  StackPiggyDailyReviewIcon,
+  StackPiggySpendLimitIcon,
+  StackPiggyPacingIcon,
+  StackPiggySubscriptionsIcon,
+  StackPiggySettingsIcon,
+  StackPiggyBillSplitIcon,
+  StackPiggyTrueCostIcon,
+  StackPiggyDebtPayoffIcon,
+  StackPiggySafetyNetIcon,
+  StackPiggyFireIcon,
+  StackPiggyIncomeIcon,
+  StackPiggyMoreIcon,
+  StackPiggySpendIcon,
+  StackPiggyStatsIcon,
+  StackPiggyVaultIcon,
+} from './StackPiggyIcons';
 
-// The four tabs that live in the floating bar. The fifth slot opens the menu
-// holding everything else, so every destination sits in the same thumb zone and
-// the sheet rises from the edge its trigger is on.
-//
-// Icon rule for the whole app: every icon is a physical instrument or a literal
-// action, never an abstract concept. CircleGauge (not LayoutDashboard, not House)
-// because Home's job is to show one reading, not to describe its own layout or
-// restate its label. The enclosed variant over plain Gauge: an open arc floats
-// inside a round pill, a closed dial with a hub sits in it.
-//
-// Second rule: keep the icons within one optical density range — every glyph in
-// this bar is 2-3 elements. Landmark carried the right meaning for Vaults but has
-// six, four of them near-identical columns that mush together at 22px; LockKeyhole
-// says the same thing in three. Lucide's Vault has ten and is unusable here. One
-// dense outlier is enough to stop a set looking like it was drawn by one hand.
-//
-// Ellipsis, not Menu, on the overflow slot: a hamburger promises a drawer sliding
-// in from the edge it sits on. This opens a bottom sheet, and three dots is the
-// platform glyph for exactly that.
-// Labels are short on purpose. Budget per slot, after the bar padding, the
-// four gaps, each tab border and the label padding:
-//
-//   320px (iPhone SE, the constraint):  ~45px
-//   448px (max-w-md, the widest state): ~78px
-//
-// Size any new label against 45px, not 78. 'Dashboard' and 'Breakdown' at
-// font-black 9px overrun even the 78px case, which is why they ellipsised, and
-// the truncated one was whichever tab was active.
-const primaryTabs = [
-  { path: '/',             icon: CircleGauge, label: 'Home' },
-  { path: '/transactions', icon: Receipt,     label: 'Spend' },
-  { path: '/vaults',       icon: LockKeyhole, label: 'Vaults' },
-  { path: '/breakdown',    icon: PieChart,    label: 'Stats' },
+// The bottom tabs use a small, consistent visual language: money, logging,
+// saving, progress, and tools. Labels stay short enough for a 320px viewport.
+type PrimaryTab = {
+  path: string;
+  icon: React.ElementType;
+  label: string;
+};
+
+const primaryTabs: PrimaryTab[] = [
+  { path: '/',             icon: StackPiggyHomeIcon,  label: 'Home' },
+  { path: '/transactions', icon: StackPiggySpendIcon, label: 'Spend' },
+  { path: '/vaults',       icon: StackPiggyVaultIcon, label: 'Vaults' },
+  { path: '/breakdown',    icon: StackPiggyStatsIcon, label: 'Stats' },
 ];
 
 const desktopCoreLinks = [
-  { path: '/',              icon: CircleGauge,      label: 'Dashboard' },
-  { path: '/daily',         icon: ClipboardCheck,   label: 'Daily Review' },
-  { path: '/transactions',  icon: Receipt,           label: 'Ledger' },
-  { path: '/vaults',        icon: LockKeyhole,       label: 'Vaults' },
-  { path: '/breakdown',     icon: PieChart,          label: 'Breakdown' },
-  { path: '/subscriptions', icon: Repeat,            label: 'Subscriptions' },
-  { path: '/limit',         icon: Percent,           label: 'Spend Limit' },
-  { path: '/pacing',        icon: SlidersHorizontal, label: 'Pacing' },
+  { path: '/',              icon: StackPiggyHomeIcon, label: 'Dashboard' },
+  { path: '/daily',         icon: StackPiggyDailyReviewIcon, label: 'Daily Review' },
+  { path: '/transactions',  icon: StackPiggySpendIcon, label: 'Ledger' },
+  { path: '/vaults',        icon: StackPiggyVaultIcon, label: 'Vaults' },
+  { path: '/breakdown',     icon: StackPiggyStatsIcon, label: 'Breakdown' },
+  { path: '/subscriptions', icon: StackPiggySubscriptionsIcon, label: 'Subscriptions' },
+  { path: '/limit',         icon: StackPiggySpendLimitIcon, label: 'Spend Limit' },
+  { path: '/pacing',        icon: StackPiggyPacingIcon, label: 'Pacing' },
 ];
 
 // Core screens that are not one of the four tabs.
 const manageLinks = [
-  { path: '/daily',         icon: ClipboardCheck,    label: 'Daily Review' },
-  { path: '/limit',         icon: Percent,           label: 'Spend Limit' },
-  { path: '/pacing',        icon: SlidersHorizontal, label: 'Pacing' },
-  { path: '/subscriptions', icon: Repeat,            label: 'Subscriptions' },
-  { path: '/settings',      icon: Settings,          label: 'Settings' },
+  { path: '/daily',         icon: StackPiggyDailyReviewIcon, label: 'Daily Review' },
+  { path: '/limit',         icon: StackPiggySpendLimitIcon, label: 'Spend Limit' },
+  { path: '/pacing',        icon: StackPiggyPacingIcon, label: 'Pacing' },
+  { path: '/subscriptions', icon: StackPiggySubscriptionsIcon, label: 'Subscriptions' },
+  { path: '/settings',      icon: StackPiggySettingsIcon, label: 'Settings' },
 ];
 
 // `pro: true` marks a Tool that requires Pro. Bill Splitter (viral acquisition)
 // and True Cost (free differentiator) are deliberately left free.
 const calculatorTools: { path: string; icon: React.ElementType; label: string; subtitle: string; pro?: boolean }[] = [
-  { path: '/split',            icon: Split,        label: 'Bill Splitter',   subtitle: 'Divide expenses and track who owes what' },
-  { path: '/true-cost',        icon: Hourglass,    label: 'True Cost',       subtitle: 'Calculate the real price of purchases over time' },
-  { path: '/debt',             icon: TrendingDown, label: 'Debt Payoff',     subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
-  { path: '/safety-net',       icon: LifeBuoy,     label: 'Safety Net',      subtitle: 'How long your cash lasts and your target buffer' },
-  { path: '/fire',             icon: Flame,        label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
-  { path: '/income',           icon: Banknote,     label: 'Income Tracker',  subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
+  { path: '/split',            icon: StackPiggyBillSplitIcon, label: 'Bill Splitter', subtitle: 'Divide expenses and track who owes what' },
+  { path: '/true-cost',        icon: StackPiggyTrueCostIcon, label: 'True Cost', subtitle: 'Calculate the real price of purchases over time' },
+  { path: '/debt',             icon: StackPiggyDebtPayoffIcon, label: 'Debt Payoff', subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
+  { path: '/safety-net',       icon: StackPiggySafetyNetIcon, label: 'Safety Net', subtitle: 'How long your cash lasts and your target buffer' },
+  { path: '/fire',             icon: StackPiggyFireIcon, label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
+  { path: '/income',           icon: StackPiggyIncomeIcon, label: 'Income Tracker', subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
 ];
 
 function DesktopNavItem({ path, icon: Icon, label, locked }: {
@@ -239,7 +237,7 @@ export default function Navigation() {
                 {theme === 'light' ? 'Dark' : 'Light'}
               </button>
             </div>
-            <DesktopNavItem path="/settings" icon={Settings} label="Settings" />
+            <DesktopNavItem path="/settings" icon={StackPiggySettingsIcon} label="Settings" />
             {email && <p className="px-3 pt-2 text-[10px] font-bold text-text-muted truncate" title={email}>{email}</p>}
             <button
               type="button"
@@ -267,11 +265,7 @@ export default function Navigation() {
               end={tab.path === '/'}
               className={tabClass}
             >
-              {/* Larger and lighter beats small and heavy: a 3px stroke on a 19px
-                  glyph is 16% of its width, which closes the counters and turns
-                  shapes into blobs. Weight is constant across states so the icon
-                  does not swell on select — the yellow pill carries that already. */}
-              <tab.icon size={22} strokeWidth={2} className="shrink-0" />
+              <tab.icon size={22} className="shrink-0" />
               <span className={tabLabel}>{tab.label}</span>
             </NavLink>
           ))}
@@ -287,7 +281,7 @@ export default function Navigation() {
                 : 'border-transparent text-text-muted hover:text-text-main'
             }`}
           >
-            <Ellipsis size={22} strokeWidth={2} className="shrink-0" />
+            <StackPiggyMoreIcon size={22} className="shrink-0" />
             <span className={tabLabel}>More</span>
           </button>
         </div>

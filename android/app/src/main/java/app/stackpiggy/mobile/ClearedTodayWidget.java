@@ -42,7 +42,7 @@ public class ClearedTodayWidget extends AppWidgetProvider {
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.cleared_today_widget);
             String amount = hidden ? "••••" : valid ? snapshot.optString("amountText", "—") : "—";
-            String detail = snapshot == null ? "Open Pocket CFO to get started"
+            String detail = snapshot == null ? "Open StackPiggy to get started"
                 : hidden ? "Amount hidden"
                 : !valid ? "Open to refresh today's amount"
                 : "Updated " + android.text.format.DateFormat.getTimeFormat(context)
