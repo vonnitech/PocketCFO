@@ -91,6 +91,18 @@ export function captureEvent(name: string, properties: Record<string, unknown> =
   }
 }
 
+// Errors caught by a React error boundary never reach window.onerror, so the
+// unhandled-error capture configured above does not see them. The boundary
+// reports them here instead. The component stack holds component names only.
+export function captureError(error: unknown, properties: Record<string, unknown> = {}): void {
+  if (!client) return;
+  try {
+    client.captureException(error, properties);
+  } catch {
+    // Reporting a crash must never cause a second one.
+  }
+}
+
 // Routes in this app are static and carry no account identifiers, so the path
 // is safe to record. PostHog reads the current URL itself at capture time.
 export function capturePageview(): void {
