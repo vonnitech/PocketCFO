@@ -87,7 +87,7 @@ function DesktopNavItem({ path, icon: Icon, label, locked }: {
         }`
       }
     >
-      <Icon size={17} strokeWidth={2} className="shrink-0" />
+      <Icon size={20} className="shrink-0" />
       <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wider leading-none">{label}</span>
       {locked && (
         <span className="ml-auto inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest opacity-70">
@@ -113,7 +113,7 @@ function SheetLink({ path, icon: Icon, label, onClick }: {
         }`
       }
     >
-      <Icon size={15} strokeWidth={2} className="shrink-0" />
+      <Icon size={22} className="shrink-0" />
       <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
     </NavLink>
   );
@@ -137,7 +137,7 @@ function ToolSheetLink({ path, icon: Icon, label, subtitle, onClick, locked }: {
       {({ isActive }) => (
         <>
           {/* Neutral idle icons keep the yellow fill reserved for selection. */}
-          <Icon size={18} strokeWidth={2} className={`shrink-0 ${isActive ? 'text-primary-contrast' : 'text-text-main'}`} />
+          <Icon size={26} className={`shrink-0 ${isActive ? 'text-primary-contrast' : 'text-text-main'}`} />
           <div className="flex-1 min-w-0">
             <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${isActive ? 'text-primary-contrast' : 'text-text-main'}`}>{label}</p>
             <p className={`text-[10px] font-bold mt-1 leading-snug ${isActive ? 'text-primary-contrast/60' : 'text-text-muted'}`}>
@@ -265,7 +265,7 @@ export default function Navigation() {
               end={tab.path === '/'}
               className={tabClass}
             >
-              <tab.icon size={22} className="shrink-0" />
+              <tab.icon size={24} className="shrink-0" />
               <span className={tabLabel}>{tab.label}</span>
             </NavLink>
           ))}
@@ -281,7 +281,7 @@ export default function Navigation() {
                 : 'border-transparent text-text-muted hover:text-text-main'
             }`}
           >
-            <StackPiggyMoreIcon size={22} className="shrink-0" />
+            <StackPiggyMoreIcon size={24} className="shrink-0" />
             <span className={tabLabel}>More</span>
           </button>
         </div>
@@ -310,9 +310,7 @@ export default function Navigation() {
 
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-action-primary border-2 border-black rounded-md flex items-center justify-center">
-                    <span className="text-black text-[10px] font-black">$</span>
-                  </div>
+                  <img src="/stackpiggy-mark.svg" alt="" width={24} height={24} className="w-6 h-6 shrink-0" />
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main">More</p>
                 </div>
                 <button

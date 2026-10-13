@@ -154,6 +154,25 @@
   }
 }
 
+/* Duotone icons (StackPiggyIcons): on a highlighted, theme-coloured background the
+   fixed accent tone can match the background and vanish. There, the second tone
+   becomes a softer shade of the icon's own colour so it reads on every theme. */
+/* Scoped to the navigation rather than applied globally: bg-action-primary is
+   used 78 times across the app, on pills, badges and buttons that have nothing
+   to do with these icons. Left unscoped, the first StackPiggy icon dropped into
+   a yellow badge anywhere would silently pick up the tab treatment. */
+nav .bg-action-primary,
+aside .bg-action-primary,
+nav [aria-current="page"],
+aside [aria-current="page"] {
+  /* A see-through wash of the icon's own colour: always a shade darker than a light
+     tab and a shade lighter than a dark one, so it never vanishes, while the solid
+     details (like the Home smile) keep full contrast on top of it. */
+  --icon-tone: color-mix(in srgb, currentColor 30%, transparent);
+  /* Details on top of the tone follow the tab's own text colour here. */
+  --icon-detail: currentColor;
+}
+
 @layer utilities {
   .btn-brutal {
     @apply border-[3px] border-current bg-surface px-6 py-3 font-black uppercase tracking-wider transition-all
