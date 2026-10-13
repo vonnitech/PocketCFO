@@ -7,10 +7,10 @@ import { supabase } from '../core/supabase';
 import { logProductEvent } from '../core/telemetry';
 
 // Modes:
-//  login   Ã¢â‚¬â€ email + password sign in (+ forgot-password link)
-//  signup  Ã¢â‚¬â€ email + password + first name new account
-//  reset   Ã¢â‚¬â€ user typed their email and asked us to send a recovery link
-//  recover Ã¢â‚¬â€ user clicked the recovery link from the email; set a new password
+//  login   — email + password sign in (+ forgot-password link)
+//  signup  — email + password + first name new account
+//  reset   — user typed their email and asked us to send a recovery link
+//  recover — user clicked the recovery link from the email; set a new password
 type Mode = 'login' | 'signup' | 'reset' | 'recover';
 
 interface Props {
@@ -18,7 +18,7 @@ interface Props {
   onRecoveryDone?: () => void;
 }
 
-// Multicolour Google "G" Ã¢â‚¬â€ kept as an inline SVG so it renders identically in
+// Multicolour Google "G" — kept as an inline SVG so it renders identically in
 // light and dark themes (no dependency on a logo asset).
 function GoogleIcon() {
   return (
@@ -108,12 +108,12 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
 
       } else if (mode === 'reset') {
         if (!email.trim()) return;
-        // The redirect URL must be allow-listed under Supabase Auth Ã¢â€ â€™ URL Configuration.
+        // The redirect URL must be allow-listed under Supabase Auth → URL Configuration.
         const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: authRedirectUrl(),
         });
         // Always show the same generic message regardless of whether the email
-        // exists Ã¢â‚¬â€ prevents account enumeration via the reset endpoint.
+        // exists — prevents account enumeration via the reset endpoint.
         setNotice('If an account exists for that email, a reset link is on its way.');
         setPassword('');
         // Keep the response identical for registered and unregistered addresses,
@@ -129,7 +129,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         if (authError) throw authError;
         setNotice('Password updated. Welcome back.');
         setPassword('');
-        // Hand control back to App.tsx Ã¢â‚¬â€ it'll re-evaluate routing and load the app.
+        // Hand control back to App.tsx — it'll re-evaluate routing and load the app.
         setTimeout(() => onRecoveryDone?.(), 600);
       }
     } catch {
@@ -228,7 +228,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
             </p>
           )}
 
-          {/* First Name Ã¢â‚¬â€ signup only */}
+          {/* First Name — signup only */}
           {showName && (
             <div className="relative">
               <User
@@ -313,7 +313,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
             </div>
           )}
 
-          {/* Forgot password link Ã¢â‚¬â€ only in login mode */}
+          {/* Forgot password link — only in login mode */}
           {mode === 'login' && (
             <div className="flex justify-end -mt-1">
               <button
@@ -361,10 +361,10 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
             whileTap={{ scale: 0.97 }}
             className="w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2.5 shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-brutal-sm"
           >
-            {loading ? <span className="animate-pulse">WorkingÃ¢â‚¬Â¦</span> : submitLabel}
+            {loading ? <span className="animate-pulse">Working…</span> : submitLabel}
           </motion.button>
 
-          {/* Google OAuth Ã¢â‚¬â€ login & signup only */}
+          {/* Google OAuth — login & signup only */}
           {(mode === 'login' || mode === 'signup') && (
             <>
               <div className="flex items-center gap-3">
@@ -391,7 +391,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
                 onClick={() => { setMode('signup'); setFirstName(''); clearMessages(); }}
                 className="text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
               >
-                Ã¢â€ â€™ Create new account
+                → Create new account
               </button>
             )}
             {mode === 'signup' && (
@@ -400,7 +400,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
                 onClick={() => { setMode('login'); setFirstName(''); clearMessages(); }}
                 className="text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
               >
-                Ã¢â€ Â Back to sign in
+                ← Back to sign in
               </button>
             )}
             {mode === 'reset' && (
