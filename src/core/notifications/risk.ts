@@ -119,7 +119,7 @@ export function assessRisk(state: NotificationStateSlice, now: Date): RiskAssess
     : state.safeSpendLimit > 0 ? state.safeSpendLimit
     : 0;
 
-  const daysToPayday = state.nextPayday ? calculateDaysUntilPayday(state.nextPayday) : 0;
+  const daysToPayday = state.nextPayday ? calculateDaysUntilPayday(state.nextPayday, now) : 0;
 
   // Asked against the UNSHAPED figure. Velocity moves money between days
   // without changing how much there is, so a deliberately thin Tuesday funding

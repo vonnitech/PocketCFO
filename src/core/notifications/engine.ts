@@ -141,13 +141,15 @@ export function clearInbox(): void {
 
 // ── Evaluation ───────────────────────────────────────────────────────────────
 
-export function toStateSlice(state: StoreState): NotificationStateSlice {
+// `now` is threaded in so the capacity figure is measured at the moment being
+// evaluated rather than whenever this happened to run.
+export function toStateSlice(state: StoreState, now?: Date): NotificationStateSlice {
   return {
     isConfigured:           state.isConfigured,
     hasCompletedOnboarding: state.hasCompletedOnboarding,
     monthlyTakeHome:        state.monthlyTakeHome,
     safeSpendLimit:         state.safeSpendLimit,
-    flatSafeSpendLimit:     calculateFlatSafeSpend(state),
+    flatSafeSpendLimit:     calculateFlatSafeSpend(state, now),
     liquidAssets:           state.liquidAssets,
     upcomingBills:          state.upcomingBills ?? 0,
     nextPayday:             state.nextPayday,
@@ -294,7 +296,7 @@ export function tick(state: StoreState, now: Date = new Date()): TickResult {
 
   initForUser(state.userId);
 
-  const { records, nextLog } = evaluate(toStateSlice(state), prefs, log, now);
+  const { records, nextLog } = evaluate(toStateSlice(state, now), prefs, log, now);
 
   // Memory and cooldown changes are worth persisting even when nothing was
   // emitted, because silent baseline writes happen on those ticks.

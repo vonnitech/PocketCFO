@@ -59,11 +59,13 @@ export const isCashInflow = (category: string | undefined | null): boolean =>
 
 const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
-export const calculateDaysUntilPayday = (nextPayday: string): number => {
+// `now` defaults to the real clock, but callers that are evaluating "as of" some
+// other moment must pass theirs. Reading the wall clock here regardless meant a
+// caller could be told one time and silently compute against another.
+export const calculateDaysUntilPayday = (nextPayday: string, now: Date = new Date()): number => {
   if (!nextPayday) return 1;
   const [year, month, day] = nextPayday.split('-').map(Number);
   const payday = new Date(year, month - 1, day);
-  const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffMs = payday.getTime() - today.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
@@ -99,9 +101,9 @@ export const calculatePayCycleLength = (nextPayday: string): number => {
   return days > 0 ? days : 30;
 };
 
-export const calculateRawSafeSpend = (state: AppState): number => {
+export const calculateRawSafeSpend = (state: AppState, now?: Date): number => {
   if (!state.nextPayday) return 0;
-  const days = calculateDaysUntilPayday(state.nextPayday);
+  const days = calculateDaysUntilPayday(state.nextPayday, now);
 
   // Bills due before payday are always reserved out of current cash. Reserving them
   // only when the balance could cover them (the previous rule) created a cliff: at
@@ -137,8 +139,8 @@ export const calculateRawSafeSpend = (state: AppState): number => {
  * this. The Velocity screen in particular: feeding it the paced result would
  * apply the trim to an already-trimmed figure.
  */
-export const calculateFlatSafeSpend = (state: AppState): number => {
-  const raw = calculateRawSafeSpend(state);
+export const calculateFlatSafeSpend = (state: AppState, now?: Date): number => {
+  const raw = calculateRawSafeSpend(state, now);
   const cap = state.hardDailyCap ?? 0;
   return cap > 0 ? Math.min(raw, cap) : raw;
 };
