@@ -5,7 +5,13 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import App from './App.tsx';
 import { initAnalytics } from './core/analytics';
+import { captureAttribution } from './core/attribution';
 import './index.css';
+
+// Read the campaign parameters before anything navigates away from them. Runs
+// whether or not analytics is switched on, so a visit that arrives before a key
+// is configured still has its source recorded for when one is.
+captureAttribution();
 
 // No-op unless VITE_POSTHOG_KEY is set. Runs on native too: funnel drop-off in
 // the phone builds matters as much as on the web.
