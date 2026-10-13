@@ -6,7 +6,6 @@ import { useStore } from '../store/useStore';
 import { currencySymbol } from '../lib/currency';
 import { PreviewChip } from '../components/PreviewChip';
 import { ProAction } from '../components/ProAction';
-import { PaydayNotePrompt } from '../components/PaydayNotePrompt';
 
 // ── Math helpers ──────────────────────────────────────────────────────────────
 const R = 0.07 / 12;
@@ -143,7 +142,6 @@ export default function IncomeTracker() {
 
   // Form state
   const [showForm, setShowForm]   = useState(false);
-  const [askForNote, setAskForNote] = useState(false);
   const [formAmount, setFormAmount] = useState('');
   const [formLabel, setFormLabel]   = useState('');
   const [formDate, setFormDate]     = useState(() => new Date().toISOString().slice(0, 10));
@@ -178,9 +176,6 @@ export default function IncomeTracker() {
     setFormAmount('');
     setFormLabel('');
     setShowForm(false);
-    // Money has just landed, which is the only moment the note is worth asking
-    // for. Offered once, never chased.
-    setAskForNote(true);
   };
 
   if (!isConfigured) {
@@ -398,12 +393,6 @@ export default function IncomeTracker() {
         </button>
 
         <AnimatePresence initial={false}>
-          {askForNote && (
-            <div className="mb-4">
-              <PaydayNotePrompt onDone={() => setAskForNote(false)} />
-            </div>
-          )}
-
           {showForm && (
             <motion.div
               key="form"

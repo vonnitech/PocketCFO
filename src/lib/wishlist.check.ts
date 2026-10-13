@@ -1,7 +1,6 @@
-// Regression checks for the wishlist lens and the payday note's visibility rule.
+// Regression checks for the wishlist lens.
 // Run: npx tsx src/lib/wishlist.check.ts
 import { daysOfCleared, describeDays, daysSince } from './wishlist';
-import { shouldSurfaceNote } from './paydayNote';
 
 let failed = 0;
 const expect = (name: string, actual: unknown, expected: unknown) => {
@@ -43,28 +42,6 @@ expect('added yesterday is 1 day', daysSince('2026-10-12', today), 1);
 expect('added a fortnight ago', daysSince('2026-09-29', today), 14);
 expect('a future date never goes negative', daysSince('2026-10-20', today), 0);
 expect('a malformed date is treated as today', daysSince('not-a-date', today), 0);
-
-// ── when the payday note is allowed on screen ───────────────────────────────
-// It appears as the day gets thin, and goes quiet once the day is overspent,
-// because there it would read as a reproach rather than a reminder.
-expect('a full day does not surface it', shouldSurfaceNote(100, 100), false);
-expect('half the day left does not surface it', shouldSurfaceNote(50, 100), false);
-expect('the last quarter surfaces it', shouldSurfaceNote(25, 100), true);
-expect('nearly nothing left surfaces it', shouldSurfaceNote(1, 100), true);
-expect('exactly nothing left still surfaces it', shouldSurfaceNote(0, 100), true);
-expect('overspent stays silent', shouldSurfaceNote(-1, 100), false);
-expect('heavily overspent stays silent', shouldSurfaceNote(-500, 100), false);
-expect('no daily figure means nothing to say', shouldSurfaceNote(0, 0), false);
-
-// The rule that matters most: there is no amount of overspending that brings
-// the note back. Being over must never surface it.
-let rebuke = 0;
-for (let i = 0; i < 5000; i++) {
-  const limit = Math.random() * 500 + 1;
-  const over = -(Math.random() * 1000) - 0.01;
-  if (shouldSurfaceNote(over, limit)) rebuke++;
-}
-expect('5000 overspent days never surface the note', rebuke, 0);
 
 console.log(failed === 0 ? '\nALL PASSED' : `\n${failed} FAILED`);
 if (failed > 0) process.exit(1);

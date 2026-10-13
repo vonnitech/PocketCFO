@@ -11,7 +11,9 @@ import {
   NAME_MAX_LENGTH, REASON_MAX_LENGTH,
   type WishlistItem,
 } from '../lib/wishlist';
-import { readWishlist, writeWishlist } from '../lib/personalStorage';
+import {
+  fetchWishlist, addWishlistItem, setWishlistState, removeWishlistItem,
+} from '../core/personalData';
 
 /**
  * A holding list for things you want, priced in days of your own cleared amount.
@@ -26,8 +28,9 @@ import { readWishlist, writeWishlist } from '../lib/personalStorage';
  */
 export default function Wishlist() {
   const navigate = useNavigate();
-  const { safeSpendLimit, privacyMode, addVault } = useStore(
+  const { userId, safeSpendLimit, privacyMode, addVault } = useStore(
     useShallow((s) => ({
+      userId:         s.userId,
       safeSpendLimit: s.safeSpendLimit,
       privacyMode:    s.privacyMode,
       addVault:       s.addVault,
@@ -40,46 +43,53 @@ export default function Wishlist() {
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
 
-  useEffect(() => { setItems(readWishlist()); }, []);
-
-  const persist = (next: WishlistItem[]) => {
-    setItems(next);
-    writeWishlist(next);
-  };
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void fetchWishlist(userId).then((rows) => { if (!cancelled) setItems(rows); });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const wanted  = useMemo(() => items.filter((i) => i.state === 'wanted'), [items]);
   const decided = useMemo(() => items.filter((i) => i.state !== 'wanted'), [items]);
 
   const money = (v: number) => formatCurrency(v, privacyMode);
 
-  const submit = () => {
+  const submit = async () => {
     const value = parseFloat(amount);
-    if (!name.trim() || !Number.isFinite(value) || value <= 0) return;
-    persist([
-      {
-        id: crypto.randomUUID(),
-        name: name.trim().slice(0, NAME_MAX_LENGTH),
-        amount: value,
-        reason: reason.trim().slice(0, REASON_MAX_LENGTH) || undefined,
-        addedOn: toLocalDateKey(new Date()),
-        state: 'wanted',
-      },
-      ...items,
-    ]);
+    if (!userId || !name.trim() || !Number.isFinite(value) || value <= 0) return;
+    const created = await addWishlistItem(
+      userId,
+      name.trim().slice(0, NAME_MAX_LENGTH),
+      value,
+      reason.trim().slice(0, REASON_MAX_LENGTH) || undefined,
+      toLocalDateKey(new Date()),
+    );
+    // The row is the source of truth, so the list only grows once the write has
+    // succeeded. Adding locally first would show an item that is not there.
+    if (!created) return;
+    setItems([created, ...items]);
     setName(''); setAmount(''); setReason(''); setAdding(false);
   };
 
-  const setState = (id: string, state: WishlistItem['state']) =>
-    persist(items.map((i) => (i.id === id ? { ...i, state } : i)));
+  const setState = async (id: string, state: WishlistItem['state']) => {
+    if (!userId) return;
+    setItems(items.map((i) => (i.id === id ? { ...i, state } : i)));
+    await setWishlistState(userId, id, state);
+  };
 
-  const remove = (id: string) => persist(items.filter((i) => i.id !== id));
+  const remove = async (id: string) => {
+    if (!userId) return;
+    setItems(items.filter((i) => i.id !== id));
+    await removeWishlistItem(userId, id);
+  };
 
   // Turning a want into a plan. The vault is the thing the app already knows how
   // to fill, so this hands the item over rather than inventing a second way to
   // save for something.
   const saveForIt = async (item: WishlistItem) => {
     await addVault(item.name, item.amount, 'SINKING_FUND');
-    setState(item.id, 'bought');
+    await setState(item.id, 'bought');
     navigate('/vaults');
   };
 
@@ -125,7 +135,7 @@ export default function Wishlist() {
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              onClick={submit}
+              onClick={() => void submit()}
               className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none flex h-12 items-center justify-center rounded-2xl border-4 border-black bg-black text-[11px] font-black uppercase tracking-widest text-action-primary shadow-[4px_4px_0px_0px_var(--color-action-primary)] transition-all hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
             >
               Add to list
@@ -182,7 +192,7 @@ export default function Wishlist() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {lens && (
                 <span className="inline-flex rounded-full border-2 border-black bg-action-primary px-3 py-1 font-mono text-[10px] font-black uppercase tracking-widest text-black">
-                  {lens} of your cleared amount
+                  {lens}
                 </span>
               )}
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-muted">
@@ -200,7 +210,7 @@ export default function Wishlist() {
               </button>
               <button
                 type="button"
-                onClick={() => setState(item.id, 'bought')}
+                onClick={() => void setState(item.id, 'bought')}
                 className="flex h-10 items-center justify-center rounded-xl border-[3px] border-border bg-input text-[10px] font-black uppercase tracking-widest text-text-main"
               >
                 Got it
@@ -208,7 +218,7 @@ export default function Wishlist() {
               {/* No praise here. Dropping something is ordinary, not a win. */}
               <button
                 type="button"
-                onClick={() => setState(item.id, 'dropped')}
+                onClick={() => void setState(item.id, 'dropped')}
                 className="flex h-10 items-center justify-center rounded-xl border-[3px] border-border bg-input text-[10px] font-black uppercase tracking-widest text-text-muted"
               >
                 Dropped
@@ -242,7 +252,7 @@ export default function Wishlist() {
                 <button
                   type="button"
                   aria-label={`Remove ${item.name}`}
-                  onClick={() => remove(item.id)}
+                  onClick={() => void remove(item.id)}
                   className="text-text-muted transition-colors hover:text-action-bleed"
                 >
                   <Trash2 size={15} strokeWidth={3} />
@@ -254,7 +264,7 @@ export default function Wishlist() {
       )}
 
       <p className="pt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-muted">
-        This list stays on this device.{' '}
+        Saved to your account.{' '}
         <Link to="/vaults" className="underline">Vaults</Link> is where saving for something happens.
       </p>
     </section>

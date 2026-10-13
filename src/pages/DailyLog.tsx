@@ -5,6 +5,7 @@ import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
 import { useStore } from '../store/useStore';
+import { DailyJournal } from '../components/DailyJournal';
 import {
   calculateTrueSafeSpend,
   calculateDailySurplus,
@@ -708,6 +709,10 @@ const chooseWorthIt = (id: WorthIt) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* The day's line, kept beside the day's numbers rather than in a
+          separate diary nobody opens. */}
+      <DailyJournal />
 
     </div>
   );
