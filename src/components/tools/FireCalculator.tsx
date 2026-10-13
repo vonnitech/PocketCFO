@@ -5,16 +5,15 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { userKey } from '../../lib/userScopedStorage';
 import { currencySymbol } from '../../lib/currency';
+import { computeFire, summaryRows, fmt, fmtFull, clampPct, DEFAULT_REAL_RETURN, MIN_AGE, MAX_AGE, type FireStrategy } from '../../lib/fireMath';
 import { amountFitClass, amountTextSize } from '../../lib/amountDisplay';
 import { PreviewChip } from '../PreviewChip';
 import { ProAction } from '../ProAction';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const R = 0.07 / 12;
-const SWR = 25;
+// Annual growth after inflation, in percent. Users can override it; this is the starting value.
 
 // ── Strategy config ──────────────────────────────────────────────────────────
-type FireStrategy = 'STANDARD' | 'FAT' | 'LEAN' | 'BARISTA' | 'COAST';
 
 const STRATEGIES: { id: FireStrategy; label: string; tag: string; desc: string }[] = [
   { id: 'STANDARD', label: 'Standard', tag: 'FIRE',         desc: 'Full financial independence · your investments permanently cover 100% of your living expenses forever.' },
@@ -23,80 +22,6 @@ const STRATEGIES: { id: FireStrategy; label: string; tag: string; desc: string }
   { id: 'BARISTA',  label: 'Barista',  tag: 'BARISTA FIRE', desc: 'Semi-retire with part-time work covering some expenses. Your portfolio only needs to replace the rest.' },
   { id: 'COAST',    label: 'Coast',    tag: 'COAST FIRE',   desc: 'Stop saving now and let compounding take over. Calculates the lump sum you need invested today to coast to your FIRE number by 65 with zero future contributions.' },
 ];
-
-// ── Math helpers ─────────────────────────────────────────────────────────────
-function fv(assets: number, monthly: number, months: number): number {
-  if (months <= 0) return assets;
-  const g = Math.pow(1 + R, months);
-  return monthly === 0 ? assets * g : assets * g + monthly * (g - 1) / R;
-}
-
-// Month-by-month simulation when income grows over time
-function fvWithGrowth(assets: number, monthlyStart: number, months: number, annualGrowth: number): number {
-  if (annualGrowth === 0 || months <= 0) return fv(assets, monthlyStart, months);
-  let portfolio = assets;
-  for (let m = 0; m < months; m++) {
-    portfolio = portfolio * (1 + R) + monthlyStart * Math.pow(1 + annualGrowth, m / 12);
-  }
-  return portfolio;
-}
-
-function yearsToFireWithGrowth(assets: number, monthlyStart: number, target: number, annualGrowth: number): number | null {
-  if (annualGrowth === 0) return yearsToFire(assets, monthlyStart, target);
-  for (let y = 0; y <= 80; y++) {
-    if (fvWithGrowth(assets, monthlyStart, y * 12, annualGrowth) >= target) return y;
-  }
-  return null;
-}
-
-function yearsToFire(assets: number, monthly: number, target: number): number | null {
-  for (let y = 0; y <= 80; y++) {
-    if (fv(assets, monthly, y * 12) >= target) return y;
-  }
-  return null;
-}
-
-function neededMonthly(assets: number, target: number, months: number): number {
-  if (months <= 0) return Infinity;
-  const g = Math.pow(1 + R, months);
-  const needed = target - assets * g;
-  if (needed <= 0) return 0;
-  return needed * R / (g - 1);
-}
-
-function neededMonthlyWithGrowth(
-  assets: number,
-  target: number,
-  months: number,
-  annualGrowth: number,
-): number {
-  if (annualGrowth === 0) return neededMonthly(assets, target, months);
-  if (months <= 0) return Infinity;
-
-  const assetsAtTarget = fvWithGrowth(assets, 0, months, annualGrowth);
-  if (assetsAtTarget >= target) return 0;
-
-  const growingContributionFactor = fvWithGrowth(0, 1, months, annualGrowth);
-  return growingContributionFactor > 0
-    ? (target - assetsAtTarget) / growingContributionFactor
-    : Infinity;
-}
-
-function fmt(n: number): string {
-  const s = currencySymbol();
-  if (n >= 1_000_000) return `${s}${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${s}${(n / 1_000).toFixed(0)}K`;
-  return `${s}${n.toFixed(0)}`;
-}
-
-function fmtFull(n: number): string {
-  return currencySymbol() + Math.round(n).toLocaleString();
-}
-
-function targetProgress(current: number, target: number): number {
-  if (target <= 0) return 0;
-  return Math.min(100, Math.max(0, (current / target) * 100));
-}
 
 // Calculates the next stepping-stone milestone above the current balance.
 // Steps scale with magnitude so milestones always feel close enough to chase.
@@ -185,7 +110,7 @@ function FireChart({ data, fireNumber, targetAge, currentAge, fireAge }: ChartPr
             x={nearEdge ? Number(crossX) + 8 : Number(crossX)}
             y={Number(fireY) - 9}
             textAnchor={nearEdge ? 'start' : 'middle'}
-            fontSize="8" fontFamily="monospace" fontWeight="bold" fill="var(--color-action-primary)"
+            fontSize="8" fontFamily="monospace" fontWeight="bold" fill="var(--color-primary-readable)"
           >
             {currentAge + fireAge}
           </text>
@@ -234,7 +159,7 @@ function LiveBadge() {
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
-const DEFAULTS = { currentAge: '28', targetAge: '45', annualExpenses: '40000', partTimeIncome: '20000', externalInvestments: '' };
+const DEFAULTS = { currentAge: '28', targetAge: '45', annualExpenses: '40000', partTimeIncome: '20000', externalInvestments: '', realReturn: '' };
 const SS_BASE = 'pocket-cfo-fire-inputs-v1';
 
 function loadSaved(): typeof DEFAULTS & { strategy: FireStrategy } {
@@ -277,6 +202,11 @@ export function FireCalculator() {
   const totalVaulted = vaultsTotal + externalInvestments;
   const monthlyContrib   = monthlyOverride !== '' ? (parseFloat(monthlyOverride) || 0) : monthlyContribBase;
   const incomeGrowthRate = incomeGrowthRaw !== '' ? (parseFloat(incomeGrowthRaw) || 0) / 100 : 0;
+  const [realReturnRaw, setRealReturnRaw] = useState(() => clampPct(loadSaved().realReturn ?? '', 20));
+  const setRealReturn = (v: string) => { setRealReturnRaw(v); saveField('realReturn', v); };
+  const realReturnPct = realReturnRaw !== '' ? Math.min(20, parseFloat(realReturnRaw) || 0) : DEFAULT_REAL_RETURN;
+  const r = realReturnPct / 100 / 12;
+  const returnLabel = `${parseFloat(realReturnPct.toFixed(2))}%`;
 
   // Init from Supabase fireConfig first, then sessionStorage, then defaults
   const [ca, setCaRaw]           = useState(() => useStore.getState().fireConfig?.currentAge    ?? loadSaved().currentAge);
@@ -300,6 +230,7 @@ export function FireCalculator() {
     setStrategyRaw('STANDARD');
     setMonthlyOverride('');
     setIncomeGrowthRaw('');
+    setRealReturnRaw('');
   };
 
   const handleLockIn = () => {
@@ -324,106 +255,14 @@ export function FireCalculator() {
 
   const currentStrategy = STRATEGIES.find(s => s.id === strategy)!;
 
-  const calc = useMemo(() => {
-    const currentAge     = parseInt(ca) || 0;
-    const annualExpenses = parseFloat(ae) || 0;
-    if (currentAge <= 0 || annualExpenses <= 0) return null;
+  const calc = useMemo(
+    () => computeFire({ ca, ta, ae, ptIncome, strategy, totalVaulted, monthlyContrib, incomeGrowthRate, r }),
+    [ca, ta, ae, strategy, ptIncome, totalVaulted, monthlyContrib, incomeGrowthRate, r],
+  );
 
-    const partIncome        = parseFloat(ptIncome) || 0;
-    const effectiveExpenses = strategy === 'FAT'
-      ? annualExpenses * 1.5
-      : strategy === 'LEAN'
-      ? annualExpenses * 0.7
-      : strategy === 'BARISTA'
-      ? Math.max(0, annualExpenses - partIncome)
-      : annualExpenses;
+  const growthPct = `${parseFloat((incomeGrowthRate * 100).toFixed(2))}%`;
 
-    const fireNumber = effectiveExpenses * SWR;
-
-    // ── Coast FIRE ───────────────────────────────────────────────────────────
-    if (strategy === 'COAST') {
-      const yearsTo65    = Math.max(1, 65 - currentAge);
-      const coastFactor  = Math.pow(1 + R, yearsTo65 * 12);
-      const coastNumber  = fireNumber / coastFactor;
-      const onCoast      = totalVaulted >= coastNumber;
-      const projAtTarget = fv(totalVaulted, 0, yearsTo65 * 12);
-      const surplus      = onCoast ? projAtTarget - fireNumber : 0;
-      const shortfall    = onCoast ? 0 : coastNumber - totalVaulted;
-      const progressPct  = targetProgress(totalVaulted, coastNumber);
-      const projPct      = targetProgress(projAtTarget, fireNumber);
-      const coastYTF     = yearsToFire(totalVaulted, 0, fireNumber);
-
-      const displayYears = yearsTo65 + 5;
-      const chartData = Array.from({ length: displayYears + 1 }, (_, i) => ({
-        age:   currentAge + i,
-        value: fv(totalVaulted, 0, i * 12),
-      }));
-
-      return {
-        isCoast:          true as const,
-        fireNumber,
-        coastNumber,
-        effectiveExpenses,
-        onTrack:          onCoast,
-        surplus,
-        shortfall,
-        progressPct,
-        projAtTarget,
-        projPct,
-        fireAge:          coastYTF !== null ? currentAge + coastYTF : null,
-        reqMonthly:       null as number | null,
-        chartData,
-        currentAge,
-        targetAge:        65,
-        yearsToFIRE:      coastYTF,
-      };
-    }
-
-    // ── Standard / Fat / Lean / Barista ─────────────────────────────────────
-    const targetAge = parseInt(ta) || 0;
-    if (targetAge <= currentAge) return null;
-
-    const yearsToTarget = targetAge - currentAge;
-    const projAtTarget  = fvWithGrowth(totalVaulted, monthlyContrib, yearsToTarget * 12, incomeGrowthRate);
-    const progressPct   = targetProgress(totalVaulted, fireNumber);
-    const projPct       = targetProgress(projAtTarget, fireNumber);
-    const onTrack       = projAtTarget >= fireNumber;
-    const yearsToFIRE   = yearsToFireWithGrowth(totalVaulted, monthlyContrib, fireNumber, incomeGrowthRate);
-    const fireAge       = yearsToFIRE !== null ? currentAge + yearsToFIRE : null;
-    const reqMonthly    = neededMonthlyWithGrowth(
-      totalVaulted,
-      fireNumber,
-      yearsToTarget * 12,
-      incomeGrowthRate,
-    );
-    const surplus       = onTrack ? projAtTarget - fireNumber : 0;
-
-    const displayYears = Math.min(80, Math.max(yearsToTarget + 12, yearsToFIRE ? yearsToFIRE + 5 : yearsToTarget + 20, 20));
-    const chartData = Array.from({ length: displayYears + 1 }, (_, i) => ({
-      age:   currentAge + i,
-      value: fvWithGrowth(totalVaulted, monthlyContrib, i * 12, incomeGrowthRate),
-    }));
-
-    return {
-      isCoast:          false as const,
-      fireNumber,
-      coastNumber:      0,
-      effectiveExpenses,
-      projAtTarget,
-      progressPct,
-      projPct,
-      onTrack,
-      fireAge,
-      reqMonthly,
-      surplus,
-      shortfall:        0,
-      chartData,
-      currentAge,
-      targetAge,
-      yearsToFIRE,
-    };
-  }, [ca, ta, ae, strategy, ptIncome, totalVaulted, monthlyContrib, incomeGrowthRate]);
-
+  // Label/value rows for the verdict panel (non-Coast strategies)
   const investedText = fmtFull(totalVaulted);
   const contributionText = fmtFull(monthlyContrib);
 
@@ -436,7 +275,7 @@ export function FireCalculator() {
             FIRE CALCULATOR
           </h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
-            Financial Independence · 4% Safe Withdrawal · 7% Real Return
+            Financial Independence · 4% Safe Withdrawal · {returnLabel} Real Return
           </p>
         </div>
         <div className="bg-surface border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
@@ -471,7 +310,7 @@ export function FireCalculator() {
             FIRE CALCULATOR
           </h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
-            {currentStrategy.tag} · {strategy === 'COAST' ? '7% Growth · No Contributions' : '7% Growth · 4% SWR · 25× Rule'}
+            {currentStrategy.tag} · {strategy === 'COAST' ? `${returnLabel} Growth · No Contributions` : `${returnLabel} Growth · 4% SWR · 25× Rule`}
           </p>
           {fireConfig && !isDirty && (
             <div className="flex items-center gap-1.5 mt-2">
@@ -595,18 +434,20 @@ export function FireCalculator() {
             </div>
             <p className={`${amountFitClass} ${amountTextSize(investedText)} font-black italic tracking-tighter text-text-main tabular-nums`}>{investedText}</p>
             <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted mt-1">
-              {vaults.length} investment vault{vaults.length !== 1 ? 's' : ''}
+              {vaults.length === 0 && externalInvestments > 0
+                ? 'Entered manually'
+                : `${vaults.length} investment vault${vaults.length !== 1 ? 's' : ''}${externalInvestments > 0 ? ` + ${fmtFull(externalInvestments)} entered manually` : ''}`}
             </p>
           </div>
 
           <div className="min-w-0 overflow-hidden bg-input border-4 border-black rounded-2xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
-              <Zap size={12} strokeWidth={2.5} className="text-action-primary shrink-0" />
+              <Zap size={12} strokeWidth={2.5} className="text-primary-readable shrink-0" />
               <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">
                 {monthlyOverride !== '' ? 'Override' : monthlySavingsGoal > 0 ? 'Savings Goal' : 'Est. Savings'}
               </p>
             </div>
-            <p className={`${amountFitClass} ${amountTextSize(contributionText)} font-black italic tracking-tighter tabular-nums ${monthlyOverride !== '' ? 'text-action-primary' : 'text-text-main'}`}>{contributionText}</p>
+            <p className={`${amountFitClass} ${amountTextSize(contributionText)} font-black italic tracking-tighter tabular-nums ${monthlyOverride !== '' ? 'text-primary-readable' : 'text-text-main'}`}>{contributionText}</p>
             <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted mt-1">per month</p>
           </div>
         </div>
@@ -697,8 +538,9 @@ export function FireCalculator() {
             />
           </div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
-            401(k), IRA, brokerage, crypto · anything not tracked in your app vaults
-            {externalInvestments > 0 && ` · combined starting balance: ${fmtFull(totalVaulted)}`}
+            {vaults.length > 0 && externalInvestments > 0
+              ? `Total with your vaults: ${fmtFull(totalVaulted)}`
+              : 'Retirement, tax-free, brokerage, crypto · anything outside your vaults'}
           </p>
         </div>
 
@@ -719,34 +561,60 @@ export function FireCalculator() {
             />
           </div>
           {monthlyOverride !== '' && Math.round(parseFloat(monthlyOverride)) !== Math.round(monthlyContribBase) && (
-            <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary mt-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-primary-readable mt-1.5">
               Overriding profile goal of {fmtFull(monthlyContribBase)}/mo
             </p>
           )}
         </div>
 
         <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Annual Income Growth Rate</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Annual Contribution Increase</p>
           <div className="relative">
             <input
               type="number"
-              title="Annual income growth rate"
+              title="Annual contribution increase"
               inputMode="decimal"
               min="0"
-              max="100"
+              max="20"
               value={incomeGrowthRaw}
               placeholder="0"
-              onChange={e => setIncomeGrowthRaw(e.target.value.replace(/[^0-9.]/g, ''))}
+              onChange={e => setIncomeGrowthRaw(clampPct(e.target.value, 20))}
               onFocus={e => e.target.select()}
               className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-9 pl-4 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none text-lg">%</span>
           </div>
-          {incomeGrowthRate > 0 && (
-            <p className="text-[10px] font-bold uppercase tracking-wide text-action-primary mt-1.5">
-              Contributions grow {incomeGrowthRaw}% per year. The required monthly amount uses the same assumption.
-            </p>
-          )}
+          <p className={`text-[10px] font-bold uppercase tracking-wide mt-1.5 ${incomeGrowthRate > 0.05 ? 'text-primary-readable' : 'text-text-muted'}`}>
+            {incomeGrowthRate === 0
+              ? 'On top of inflation · 0 keeps it flat in today\'s money'
+              : incomeGrowthRate > 0.05
+              ? `High · ${growthPct} a year on top of inflation, every year`
+              : `Grows ${growthPct} a year on top of inflation`}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1.5">Investment Growth After Inflation (Yearly)</p>
+          <div className="relative">
+            <input
+              type="number"
+              title="Investment growth after inflation (yearly)"
+              inputMode="decimal"
+              min="0"
+              max="20"
+              value={realReturnRaw}
+              placeholder={String(DEFAULT_REAL_RETURN)}
+              onChange={e => setRealReturn(clampPct(e.target.value, 20))}
+              onFocus={e => e.target.select()}
+              className="w-full bg-input border-4 border-black rounded-2xl py-3 pr-9 pl-4 font-black text-xl text-text-main outline-none focus:border-action-capture transition-colors tabular-nums placeholder:text-text-muted"
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-text-muted pointer-events-none text-lg">%</span>
+          </div>
+          <p className={`text-[10px] font-bold uppercase tracking-wide mt-1.5 ${realReturnPct > 8 ? 'text-primary-readable' : 'text-text-muted'}`}>
+            {realReturnPct > 8
+              ? 'High · most portfolios have earned less over long periods'
+              : 'Shares about 7% · balanced fund about 4-5%'}
+          </p>
         </div>
 
         {strategy === 'BARISTA' && (
@@ -835,7 +703,7 @@ export function FireCalculator() {
           ] : [
             {
               label: 'FIRE Age',
-              value: calc.fireAge !== null ? String(calc.fireAge) : '80+',
+              value: calc.fireAge !== null ? String(calc.fireAge) : `${MAX_AGE}+`,
               sub: calc.fireAge !== null ? `in ${calc.fireAge - calc.currentAge}y` : 'increase savings',
               accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
@@ -846,9 +714,11 @@ export function FireCalculator() {
               accent: calc.onTrack ? 'text-capture-readable' : 'text-action-bleed',
             },
             {
-              label: 'Required / Mo',
+              label: incomeGrowthRate > 0 && calc.reqMonthly ? 'Starting / Mo' : 'Required / Mo',
               value: calc.reqMonthly !== null && isFinite(calc.reqMonthly) ? fmt(calc.reqMonthly) : 'N/A',
-              sub: calc.onTrack
+              sub: incomeGrowthRate > 0 && calc.reqMonthly && calc.reqMonthlyFlat !== null && isFinite(calc.reqMonthly)
+                ? `rising ${growthPct} a year · or ${fmt(calc.reqMonthlyFlat)}/mo flat`
+                : calc.onTrack
                 ? (calc.reqMonthly === 0
                     ? `${fmt(monthlyContrib)} monthly plan · no minimum needed`
                     : `${fmt(monthlyContrib)} monthly plan · ${fmt(Math.max(0, monthlyContrib - (calc.reqMonthly ?? 0)))} above minimum`)
@@ -894,37 +764,32 @@ export function FireCalculator() {
                     }
                   </p>
                 </>
-              ) : calc.onTrack ? (
-                <>
-                  <p className="font-black uppercase text-sm tracking-tight text-text-main leading-snug">
-                    {calc.fireAge !== null && calc.fireAge < calc.targetAge
-                      ? `Based on your vault deposits, you'll hit FIRE at age ${calc.fireAge} · ${calc.targetAge - calc.fireAge} years ahead of schedule.`
-                      : `Based on your vault deposits, you're on track to retire at ${calc.targetAge} with a ${fmt(calc.surplus)} surplus.`
-                    }
-                  </p>
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
-                    {calc.reqMonthly !== null && isFinite(calc.reqMonthly)
-                      ? (monthlyContrib >= calc.reqMonthly
-                          ? `Flat minimum needed: ${fmtFull(calc.reqMonthly)}/mo · you're saving ${fmtFull(monthlyContrib)}/mo · ${fmtFull(monthlyContrib - calc.reqMonthly)} above minimum.`
-                          : `You're saving ${fmtFull(monthlyContrib)}/mo today · less than the ${fmtFull(calc.reqMonthly)}/mo flat minimum, but your income growth scales your contributions enough to clear the goal.`)
-                      : `Keep your ${fmtFull(monthlyContrib)}/mo savings rate consistent · compounding does the heavy lifting from here.`
-                    }
-                  </p>
-                </>
               ) : (
                 <>
                   <p className="font-black uppercase text-sm tracking-tight text-text-main leading-snug">
-                    {calc.fireAge !== null
-                      ? `Based on your vault deposits, you'll reach FIRE at age ${calc.fireAge} · ${calc.fireAge - calc.targetAge} years past your target.`
-                      : `At your current savings rate, you won't reach FIRE within 80 years.`
+                    {calc.onTrack
+                      ? (calc.fireAge !== null && calc.fireAge < calc.targetAge
+                          ? `FIRE at age ${calc.fireAge} · ${calc.targetAge - calc.fireAge} years ahead of your target.`
+                          : `On track to retire at ${calc.targetAge} with a ${fmt(calc.surplus)} surplus.`)
+                      : (calc.fireAge !== null
+                          ? `FIRE at age ${calc.fireAge} · ${calc.fireAge - calc.targetAge} years past your target.`
+                          : `At this rate you won't reach FIRE before age ${MAX_AGE}.`)
                     }
                   </p>
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
-                    {calc.reqMonthly !== null && isFinite(calc.reqMonthly)
-                      ? `To retire by ${calc.targetAge}, vault ${fmtFull(calc.reqMonthly)}/mo · ${fmtFull(calc.reqMonthly - monthlyContrib)} more than your current goal.`
-                      : `Your target age is too close given your starting assets · extend your horizon or increase contributions.`
-                    }
-                  </p>
+                  {calc.reqMonthly !== null && isFinite(calc.reqMonthly) ? (
+                    <dl className="mt-3 border-t-2 border-border/15">
+                      {summaryRows(calc, monthlyContrib, incomeGrowthRate).map(row => (
+                        <div key={row.label} className="flex items-baseline justify-between gap-3 py-1.5 border-b-2 border-border/15">
+                          <dt className="text-[10px] font-bold uppercase tracking-widest text-text-muted shrink-0">{row.label}</dt>
+                          <dd className={`text-[12px] font-black uppercase tracking-tight tabular-nums text-right ${row.accent ?? 'text-text-main'}`}>{row.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : (
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
+                      Your target age is too close for your starting balance · move it later or contribute more.
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -935,7 +800,19 @@ export function FireCalculator() {
       {!calc && (
         <div className="text-center py-12 bg-surface border-4 border-dashed border-border rounded-3xl">
           <Flame size={40} className="mx-auto mb-3 text-action-primary opacity-60" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Enter your age and retirement target to calculate your FIRE trajectory.</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+            {(parseInt(ca) || 0) > 0 && ((parseInt(ca) || 0) < MIN_AGE || (parseInt(ca) || 0) >= MAX_AGE)
+              ? `Current age needs to be between ${MIN_AGE} and ${MAX_AGE - 1}.`
+              : strategy !== 'COAST' && (parseInt(ta) || 0) > MAX_AGE
+              ? `Target retire age can be at most ${MAX_AGE}.`
+              : strategy === 'BARISTA' && (parseFloat(ae) || 0) > 0 && (parseFloat(ptIncome) || 0) >= (parseFloat(ae) || 0)
+              ? `Your part-time income (${fmtFull(parseFloat(ptIncome))}/yr) covers all your expenses (${fmtFull(parseFloat(ae))}/yr), so you don't need investments for Barista FIRE while that work continues. Switch to Standard to plan for stopping work completely.`
+              : strategy === 'COAST' && (parseInt(ca) || 0) >= 65
+              ? 'Coast FIRE is for people under 65 · pick another strategy.'
+              : strategy !== 'COAST' && (parseInt(ca) || 0) > 0 && (parseInt(ta) || 0) > 0 && parseInt(ta) <= parseInt(ca)
+              ? 'Your target retire age needs to be later than your current age.'
+              : 'Enter your age and retirement target to calculate your FIRE trajectory.'}
+          </p>
         </div>
       )}
     </div>

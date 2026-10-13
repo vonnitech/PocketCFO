@@ -3,41 +3,11 @@ import { Users, CheckCircle2, Trash2, Plus, Pencil, Check, X, Send } from 'lucid
 import { useStore, IouEntry } from '../store/useStore';
 import { saveSplitTransaction } from '../db';
 import { SplitTransaction, CustomSplitPreset } from '../types/split';
-import { calculateTacticalSplit, UNIVERSAL_FLIP_RATE } from '../core/math';
+import { UNIVERSAL_FLIP_RATE } from '../core/math';
+import { evalAmount, splitEven, toCents } from '../lib/splitMath';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { ProAction } from '../components/ProAction';
-
-// Mini-calculator for the per-person fields: type "12+8+5" and it sums. Supports
-// + - * / and decimals, evaluated safely with no eval() (the app's CSP blocks it).
-function evalAmount(expr: string): number {
-  if (!expr) return 0;
-  const tokens = expr.match(/(\d+\.?\d*|\.\d+|[+\-*/])/g);
-  if (!tokens) return 0;
-  // Pass 1: resolve * and / left-to-right.
-  const pass1: (number | string)[] = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (t === '*' || t === '/') {
-      const prev = (pass1.pop() as number) ?? 0;
-      const next = parseFloat(tokens[++i] ?? '0') || 0;
-      pass1.push(t === '*' ? prev * next : (next === 0 ? 0 : prev / next));
-    } else if (t === '+' || t === '-') {
-      pass1.push(t);
-    } else {
-      pass1.push(parseFloat(t) || 0);
-    }
-  }
-  // Pass 2: resolve + and -.
-  let result = typeof pass1[0] === 'number' ? (pass1[0] as number) : 0;
-  for (let i = 1; i < pass1.length; i += 2) {
-    const op = pass1[i];
-    const val = (pass1[i + 1] as number) ?? 0;
-    if (op === '+') result += val;
-    else if (op === '-') result -= val;
-  }
-  return isNaN(result) ? 0 : result;
-}
 
 export const BillSplitter: React.FC = () => {
   const {
@@ -83,38 +53,46 @@ export const BillSplitter: React.FC = () => {
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
   const totalBill = parseFloat(currentInput) || 0;
+  const billTextSize = currentInput.length <= 7 ? 'text-4xl sm:text-5xl' : currentInput.length <= 11 ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
+  // Only people still in the squad count: someone removed under Manage drops out of the split
+  const activeSquad = squad.filter(m => activeMembers.has(m.id));
   // +1 for "You" (always included)
-  const totalPeople = activeMembers.size + 1;
+  const totalPeople = activeSquad.length + 1;
   const isCustom = splitMode === 'custom';
 
   // Tip is a % of the bill, split proportionally (everyone's share scales by the same
-  // multiplier). grandTotal is what actually gets paid to the restaurant.
+  // multiplier). grandTotal is what actually gets paid to the restaurant, in whole cents.
   const tipMult    = 1 + (tipPct || 0) / 100;
-  const grandTotal = totalBill * tipMult;
+  const grandTotal = toCents(totalBill * tipMult) / 100;
   const tipAmount  = grandTotal - totalBill;
 
-  const customOwed = (id: string) => evalAmount(customAmounts[id] ?? '');
+  // What each person owes, in whole cents (custom amounts scale with the tip)
+  const customOwed = (id: string) => toCents(evalAmount(customAmounts[id] ?? '') * tipMult) / 100;
 
-  // Even mode: grand total ÷ people. Custom mode: each member owes the amount you typed
-  // (scaled by tip); YOUR share is whatever's left, and your flip is 20% of that.
-  const metrics = useMemo(() => {
-    if (!isCustom) return calculateTacticalSplit(grandTotal, totalPeople);
-    const others = squad
-      .filter(m => activeMembers.has(m.id))
-      .reduce((s, m) => s + evalAmount(customAmounts[m.id] ?? ''), 0) * tipMult;
-    const yourShare = Math.max(0, grandTotal - others);
-    const flip = yourShare * UNIVERSAL_FLIP_RATE;
+  // Even mode: everyone else pays the same share and you cover any leftover cent.
+  // Custom mode: each member owes the amount you typed; YOUR share is whatever's left.
+  // Your flip is 20% of your share either way.
+  const { theirShare, metrics } = useMemo(() => {
+    const even = splitEven(grandTotal, totalPeople);
+    const others = isCustom
+      ? activeSquad.reduce((s, m) => s + toCents(evalAmount(customAmounts[m.id] ?? '') * tipMult), 0) / 100
+      : 0;
+    const yourShare = isCustom ? Math.max(0, toCents(grandTotal - others) / 100) : even.yourShare;
+    const flip = toCents(yourShare * UNIVERSAL_FLIP_RATE) / 100;
     return {
-      activeMemberCount: totalPeople,
-      baseSharePerPerson: yourShare,
-      flipObligationPerPerson: flip,
-      totalHitPerPerson: yourShare + flip,
+      theirShare: even.theirShare,
+      metrics: {
+        activeMemberCount: totalPeople,
+        baseSharePerPerson: yourShare,
+        flipObligationPerPerson: flip,
+        totalHitPerPerson: toCents(yourShare + flip) / 100,
+      },
     };
-  }, [isCustom, grandTotal, tipMult, totalPeople, activeMembers, customAmounts, squad]);
+  }, [isCustom, grandTotal, tipMult, totalPeople, activeSquad, customAmounts]);
 
   const othersTotal = isCustom
-    ? squad.filter(m => activeMembers.has(m.id)).reduce((s, m) => s + customOwed(m.id), 0) * tipMult
-    : metrics.baseSharePerPerson * activeMembers.size;
+    ? toCents(activeSquad.reduce((s, m) => s + customOwed(m.id), 0)) / 100
+    : toCents(theirShare * activeSquad.length) / 100;
   // Data-entry guard: in custom mode the assigned amounts can't exceed the bill.
   const overBill = isCustom && grandTotal > 0 && othersTotal > grandTotal + 0.005;
 
@@ -196,7 +174,7 @@ export const BillSplitter: React.FC = () => {
       presetUsed: activePreset ? activePreset.name : 'CUSTOM',
       // grandTotal = bill + tip — the real amount you front to the restaurant.
       totalBill: grandTotal,
-      participants: squad.filter(m => activeMembers.has(m.id)),
+      participants: activeSquad,
       breakdown: metrics,
       personalDeduction: metrics.baseSharePerPerson,
       personalFlipCaptured: metrics.flipObligationPerPerson,
@@ -204,13 +182,12 @@ export const BillSplitter: React.FC = () => {
     };
     try {
       addSplitTransaction(splitData);
-      const iouEntries: IouEntry[] = squad
-        .filter(m => activeMembers.has(m.id))
+      const iouEntries: IouEntry[] = activeSquad
         .map(m => ({
           id: crypto.randomUUID(),
           memberName: m.name,
           memberId: m.id,
-          amount: isCustom ? customOwed(m.id) * tipMult : metrics.baseSharePerPerson,
+          amount: isCustom ? customOwed(m.id) : theirShare,
           splitId: splitData.id,
           date: splitData.timestamp,
         }))
@@ -266,8 +243,8 @@ export const BillSplitter: React.FC = () => {
               <p className="text-lg sm:text-xl font-black italic text-capture-readable tabular-nums">+{money(s.flip)}</p>
             </div>
             <div className="bg-action-primary border-4 border-black rounded-2xl p-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-black/60 mb-1">Total Hit</p>
-              <p className="text-lg sm:text-xl font-black italic text-text-main tabular-nums">{money(s.total)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-primary-contrast opacity-60 mb-1">Total Hit</p>
+              <p className="text-lg sm:text-xl font-black italic text-primary-contrast tabular-nums">{money(s.total)}</p>
             </div>
           </div>
 
@@ -311,27 +288,30 @@ export const BillSplitter: React.FC = () => {
           ))}
         </div>
 
-        <div className="flex justify-between items-end gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">Total Bill</p>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-4xl sm:text-5xl font-black italic tracking-tighter text-text-main shrink-0">{sym}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                placeholder="0"
-                aria-label="Total bill amount"
-                value={currentInput}
-                onChange={e => setCurrentInput(e.target.value)}
-                onFocus={e => e.target.select()}
-                className="w-full min-w-0 bg-transparent text-4xl sm:text-5xl font-black italic tracking-tighter text-text-main tabular-nums outline-none placeholder:text-text-muted pl-0.5"
-              />
-            </div>
+        {/* Bill gets the full width so long amounts stay readable; type steps down as it grows */}
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">Total Bill</p>
+          <div className="flex items-baseline gap-2">
+            <span className={`${billTextSize} font-black italic text-text-main shrink-0`}>{sym}</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              placeholder="0"
+              aria-label="Total bill amount"
+              value={currentInput}
+              onChange={e => setCurrentInput(e.target.value)}
+              onFocus={e => e.target.select()}
+              className={`w-full min-w-0 bg-transparent ${billTextSize} font-black italic tracking-tight text-text-main tabular-nums outline-none placeholder:text-text-muted`}
+            />
           </div>
-          <div className="text-right shrink-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{isCustom ? 'Your Share' : `${totalPeople} people`}</p>
-            <p className="text-xl sm:text-2xl font-black italic text-text-main tabular-nums">{money(metrics.baseSharePerPerson)}{isCustom ? '' : ' each'}</p>
+          <div className="flex items-baseline justify-between gap-3 mt-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted shrink-0">
+              {isCustom ? 'Your Share' : activeSquad.length === 0 ? 'Just you' : `${totalPeople} people`}
+            </p>
+            <p className="min-w-0 truncate text-lg sm:text-2xl font-black italic text-text-main tabular-nums">
+              {isCustom || activeSquad.length === 0 ? money(metrics.baseSharePerPerson) : `${money(theirShare)} each`}
+            </p>
           </div>
         </div>
 
@@ -379,7 +359,7 @@ export const BillSplitter: React.FC = () => {
                 placeholder="Tip %"
                 aria-label="Custom tip percent"
                 value={tipPct ? String(tipPct) : ''}
-                onChange={e => setTipPct(Math.max(0, parseFloat(e.target.value) || 0))}
+                onChange={e => setTipPct(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
                 onFocus={e => e.target.select()}
                 className="w-24 bg-input border-2 border-black rounded-xl px-3 py-1.5 font-black tabular-nums text-sm text-text-main outline-none focus:border-action-capture"
               />
@@ -390,18 +370,16 @@ export const BillSplitter: React.FC = () => {
 
         {totalBill > 0 && (
           <div className="flex gap-3 pt-2 border-t-2 border-border">
-            <div className="flex-1 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-tight">{isCustom ? 'Others Owe' : 'They Owe'}</p>
-              <p className="font-black text-text-main tabular-nums">{money(isCustom ? othersTotal : metrics.baseSharePerPerson)}</p>
-            </div>
-            <div className="flex-1 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-capture-readable leading-tight">Your Vault</p>
-              <p className="font-black text-capture-readable tabular-nums">+{money(metrics.flipObligationPerPerson)}</p>
-            </div>
-            <div className="flex-1 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-tight">Your Total</p>
-              <p className="font-black text-text-main tabular-nums">{money(metrics.totalHitPerPerson)}</p>
-            </div>
+            {[
+              { label: isCustom ? 'Others Owe' : 'They Owe', value: money(isCustom ? othersTotal : theirShare), tone: 'text-text-main', labelTone: 'text-text-muted' },
+              { label: 'Your Vault', value: `+${money(metrics.flipObligationPerPerson)}`, tone: 'text-capture-readable', labelTone: 'text-capture-readable' },
+              { label: 'Your Total', value: money(metrics.totalHitPerPerson), tone: 'text-text-main', labelTone: 'text-text-muted' },
+            ].map(col => (
+              <div key={col.label} className="flex-1 min-w-0 text-center">
+                <p className={`text-[11px] font-bold uppercase tracking-wide leading-tight ${col.labelTone}`}>{col.label}</p>
+                <p className={`font-black tabular-nums break-all ${col.tone} ${col.value.length <= 9 ? 'text-base' : col.value.length <= 14 ? 'text-sm' : 'text-xs'}`}>{col.value}</p>
+              </div>
+            ))}
           </div>
         )}
 
@@ -536,7 +514,7 @@ export const BillSplitter: React.FC = () => {
                   {isActive && <Check size={11} strokeWidth={3} />}
                 </div>
                 <span className={`font-black uppercase text-sm flex-1 text-left ${isActive ? 'text-text-main' : 'text-text-muted'}`}>{member.name}</span>
-                {isActive && <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">{money(metrics.baseSharePerPerson)}</span>}
+                {isActive && <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">{money(theirShare)}</span>}
               </button>
             );
           })}
@@ -667,7 +645,7 @@ export const BillSplitter: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <p className="font-black uppercase text-sm text-text-main">{entry.memberName}</p>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted">
-                    Owes · {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    Owes · {new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                   </p>
                 </div>
                 <span className="font-black tabular-nums text-text-main shrink-0">{money(entry.amount)}</span>
