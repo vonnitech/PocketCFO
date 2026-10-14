@@ -25,8 +25,19 @@ nothing else.
 - savings vaults and their targets
 - your reconciliation history
 
-This is stored in our database so the app works across your devices. It is tied to
-your account and is visible only to you.
+**What you write.** Two parts of the app are for your own words rather than
+numbers, and both are stored with your account:
+
+- your daily notes, including the mood you pick and whether you mark a day as
+  no-spend
+- your wishlist: what you want, what it costs, and the reason you gave
+
+Nobody reads these to build a profile of you, they are not used for advertising,
+and they are not sent to our analytics. They are there so you can look back at
+them. If you would rather not keep them, leave them empty or delete the entries.
+
+This is all stored in our database so the app works across your devices. It is
+tied to your account and is visible only to you.
 
 **Your PIN or fingerprint.** If you lock the app, that stays on your device. It is
 never sent to us. We cannot see it and cannot recover it for you.

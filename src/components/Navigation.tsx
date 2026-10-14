@@ -16,6 +16,7 @@ import {
   StackPiggySettingsIcon,
   StackPiggyBillSplitIcon,
   StackPiggyTrueCostIcon,
+  StackPiggyWishlistIcon,
   StackPiggyDebtPayoffIcon,
   StackPiggySafetyNetIcon,
   StackPiggyFireIcon,
@@ -69,6 +70,7 @@ const calculatorTools: { path: string; icon: React.ElementType; label: string; s
   { path: '/debt',             icon: StackPiggyDebtPayoffIcon, label: 'Debt Payoff', subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
   { path: '/safety-net',       icon: StackPiggySafetyNetIcon, label: 'Safety Net', subtitle: 'How long your cash lasts and your target buffer' },
   { path: '/fire',             icon: StackPiggyFireIcon, label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
+  { path: '/wishlist',         icon: StackPiggyWishlistIcon, label: 'Wishlist', subtitle: 'Things you want, priced in days of your cleared amount' },
   { path: '/income',           icon: StackPiggyIncomeIcon, label: 'Income Tracker', subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
 ];
 

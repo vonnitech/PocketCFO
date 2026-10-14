@@ -265,7 +265,13 @@ aside [aria-current="page"] {
   @media (max-width: 419px) {
     h1 {
       max-width: 100%;
-      overflow-wrap: anywhere;
+      /* break-word, not anywhere. `anywhere` also shrinks the heading's
+         min-content width to a single character, so a flex or grid sibling can
+         squeeze it until an ordinary word splits: "Vaults" rendered as "Vault"
+         over "s". `break-word` still rescues a genuinely unbreakable word that
+         cannot fit a line, which is what this rule was added for, without
+         letting the box collapse below the longest word. */
+      overflow-wrap: break-word;
     }
   }
 
