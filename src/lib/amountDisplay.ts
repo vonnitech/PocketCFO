@@ -39,4 +39,19 @@ export function amountTextSize(text: string, scale: AmountDisplayScale = 'compac
           : 'text-[9px] min-[420px]:text-[10px]';
 }
 
-export const amountFitClass = 'block max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none';
+/**
+ * Keeps a formatted amount on one line inside a fixed-width card.
+ *
+ * The right padding is for the slant. Nineteen of the twenty places this class
+ * is used render the amount in italic, and an italic glyph leans past the width
+ * the browser reserves for it. `overflow-hidden` clips at the padding edge, so
+ * without that sliver the last character of a right-aligned figure loses its
+ * tail: $289.00 rendered with the final zero shaved off. It reads as a cut-off
+ * number rather than a font artefact, which is worse than it sounds on a screen
+ * whose whole job is showing people money.
+ *
+ * Expressed in em so it tracks the type size, which this module steps up and
+ * down. It is deliberately smaller than a space and does not shift the figure
+ * enough to see.
+ */
+export const amountFitClass = 'block max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none pr-[0.08em]';
