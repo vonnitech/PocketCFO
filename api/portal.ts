@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+﻿import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { requireUser } from './_auth';
+import { requireUser } from './_auth.js';
 
 // Returns a signed LemonSqueezy Customer Portal URL so a customer can manage /
 // cancel / update their subscription and view receipts.

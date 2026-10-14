@@ -12,8 +12,21 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "types": ["node"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    // NodeNext, not bundler. Nothing bundles these files: Vercel compiles each
+    // one and Node loads the result directly, and because package.json sets
+    // "type": "module" that result is ESM, where a relative import must carry
+    // its file extension.
+    //
+    // "bundler" accepts extensionless relative imports, so `./_auth` typechecked
+    // cleanly, built cleanly, and then failed at runtime with ERR_MODULE_NOT_FOUND
+    // on every request. Every billing and account-deletion endpoint was down in
+    // production while the lint stayed green, because the lint was describing a
+    // bundler that does not exist in this path.
+    //
+    // NodeNext makes the typecheck model the loader that actually runs, so a
+    // missing extension is now a compile error rather than a 500.
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "skipLibCheck": true,
 
     "strict": true,
