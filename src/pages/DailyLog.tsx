@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, CheckCircle2, ArrowRightLeft, ShieldCheck, Zap } from 'lucide-react';
+import { ChevronRight, CheckCircle2, AlertTriangle, ArrowRightLeft, ShieldCheck, Zap } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
@@ -193,6 +193,9 @@ const chooseWorthIt = (id: WorthIt) => {
 
   if (alreadyDoneToday || completed) {
     const todayEntry = reconHistory.find(e => toLocalDateKey(e.date) === todayKey);
+    // Read from the saved entry rather than recomputing, so the card describes
+    // the day that was actually reviewed and not the state since.
+    const dayWentOver = (todayEntry?.surplus ?? 0) < 0;
     return (
       <div className="space-y-6">
         <div>
@@ -248,10 +251,16 @@ const chooseWorthIt = (id: WorthIt) => {
           </div>
         )}
 
-        <div className="bg-surface border-4 border-action-capture rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
+        {/* The review being finished is worth confirming, but the green ring
+            and tick are the app's "this went well" signal and were shown on
+            every completed day, including one that went over. Reviewing an
+            overspent day is still complete; it is not a success. */}
+        <div className={`bg-surface border-4 ${dayWentOver ? 'border-action-bleed' : 'border-action-capture'} rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5`}>
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-action-capture border-4 border-black flex items-center justify-center">
-              <CheckCircle2 size={32} className="text-text-main" strokeWidth={3} />
+            <div className={`w-14 h-14 rounded-full ${dayWentOver ? 'bg-action-bleed' : 'bg-action-capture'} border-4 border-black flex items-center justify-center`}>
+              {dayWentOver
+                ? <AlertTriangle size={30} className="text-white" strokeWidth={3} />
+                : <CheckCircle2 size={32} className="text-text-main" strokeWidth={3} />}
             </div>
             <div>
               <h2 className="text-2xl font-black italic tracking-tighter uppercase text-text-main">Review Complete</h2>
@@ -286,9 +295,22 @@ const chooseWorthIt = (id: WorthIt) => {
                   <span className="text-text-main">{formatCurrency(todayEntry.rawSpend + todayEntry.taxAmount, privacyMode)}</span>
                 </div>
               )}
+              {/* A negative surplus is not a surplus. Nothing was stashed and
+                  nothing rolled over: the day went past its number and the
+                  difference comes out of the days before payday. Labelling that
+                  "Surplus → Rolled Over" and printing it in the capture green
+                  told the user the opposite of what happened. */}
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                <span className="text-text-muted">Surplus {todayEntry.action === 'stash' ? '→ Vault' : '→ Rolled Over'}</span>
-                <span className="text-capture-readable">{formatCurrency(todayEntry.surplus, privacyMode)}</span>
+                <span className="text-text-muted">
+                  {todayEntry.surplus < 0
+                    ? 'Over Today'
+                    : `Surplus ${todayEntry.action === 'stash' ? '→ Vault' : '→ Rolled Over'}`}
+                </span>
+                <span className={todayEntry.surplus < 0 ? 'text-action-bleed' : 'text-capture-readable'}>
+                  {todayEntry.surplus < 0
+                    ? formatCurrency(Math.abs(todayEntry.surplus), privacyMode)
+                    : formatCurrency(todayEntry.surplus, privacyMode)}
+                </span>
               </div>
             </div>
           )}
