@@ -62,10 +62,10 @@ export function initAnalytics(): void {
         // Without an identify() call this keeps events pseudonymous: they are
         // tied to a browser, not to an account.
         person_profiles: 'identified_only',
-        // Nothing in this app reads a feature flag, and the flag request is a
-        // round trip on every load that also has to be allowed through the CSP.
-        // Off until something actually needs it.
-        advanced_disable_feature_flags: true,
+        // Feature flags stay on because in-app surveys need them: PostHog decides
+        // who sees a survey (and hides it from anyone who already answered or
+        // dismissed it) through a flag it creates for each survey. The flag
+        // request goes to us.i.posthog.com, which the CSP already allows.
       });
       client = posthog;
       const queued = pending;
