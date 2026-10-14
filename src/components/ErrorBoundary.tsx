@@ -1,4 +1,5 @@
-import { Component, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
+import { captureError } from '../core/analytics';
 
 interface Props { children: ReactNode; }
 interface State { hasError: boolean; error?: Error; }
@@ -8,6 +9,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    captureError(error, {
+      source: 'error_boundary',
+      component_stack: info.componentStack ?? undefined,
+      path: window.location.pathname,
+    });
   }
 
   render() {

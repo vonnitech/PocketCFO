@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireUser } from './_auth';
+﻿import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { requireUser } from './_auth.js';
 
 // Creates a LemonSqueezy Checkout for a Pro plan and returns its hosted URL.
 // Env (set in Vercel): LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID,

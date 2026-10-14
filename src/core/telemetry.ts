@@ -5,6 +5,7 @@
 // the analytics provider can see account balances or reserved bill amounts.
 
 import { captureEvent } from './analytics';
+import { readAttribution } from './attribution';
 
 export type SecurityEvent =
   | { type: 'pin.lockout';      attempts: number; cooldownSec: number }
@@ -67,7 +68,10 @@ export function logProductEvent(event: ProductEvent): void {
   // here, before the event reaches the console or the analytics provider, so
   // amounts never leave the device. daysUntilPayday and billCount are kept:
   // they make the funnel readable without exposing balances.
-  const payload: Record<string, unknown> = { ts: new Date().toISOString() };
+  // Campaign labels ride along so the funnel can be read by source. They are
+  // what the visitor was sent with, not anything about them, so they do not
+  // widen what these events say about a person.
+  const payload: Record<string, unknown> = { ts: new Date().toISOString(), ...readAttribution() };
   for (const [key, value] of Object.entries(event)) {
     if (key !== 'safeSpend' && key !== 'billsReserved') payload[key] = value;
   }

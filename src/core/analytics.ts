@@ -62,10 +62,10 @@ export function initAnalytics(): void {
         // Without an identify() call this keeps events pseudonymous: they are
         // tied to a browser, not to an account.
         person_profiles: 'identified_only',
-        // Nothing in this app reads a feature flag, and the flag request is a
-        // round trip on every load that also has to be allowed through the CSP.
-        // Off until something actually needs it.
-        advanced_disable_feature_flags: true,
+        // Feature flags stay on because in-app surveys need them: PostHog decides
+        // who sees a survey (and hides it from anyone who already answered or
+        // dismissed it) through a flag it creates for each survey. The flag
+        // request goes to us.i.posthog.com, which the CSP already allows.
       });
       client = posthog;
       const queued = pending;
@@ -88,6 +88,18 @@ export function captureEvent(name: string, properties: Record<string, unknown> =
     client.capture(name, properties);
   } catch {
     // Reporting an event is never worth interrupting what the user is doing.
+  }
+}
+
+// Errors caught by a React error boundary never reach window.onerror, so the
+// unhandled-error capture configured above does not see them. The boundary
+// reports them here instead. The component stack holds component names only.
+export function captureError(error: unknown, properties: Record<string, unknown> = {}): void {
+  if (!client) return;
+  try {
+    client.captureException(error, properties);
+  } catch {
+    // Reporting a crash must never cause a second one.
   }
 }
 
