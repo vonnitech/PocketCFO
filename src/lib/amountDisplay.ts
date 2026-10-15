@@ -49,14 +49,19 @@ export function amountTextSize(text: string, scale: AmountDisplayScale = 'compac
  * is showing people money, that reads as a broken number rather than a font
  * artefact.
  *
- * Solved with `overflow-clip-margin` rather than padding. Padding fixes it by
- * making the box narrower, which shifts every right-aligned figure left by a
- * visible amount and still guesses at how far the ink leans. This instead keeps
- * the box exactly where it was and permits ink to paint a little beyond the
- * edge before clipping starts, which is precisely what the property is for.
+ * Fixed with right padding, which moves the ink inward, and NOT with
+ * `overflow-clip-margin`, which was tried first and does not work here.
  *
- * `clip` rather than `hidden` because `overflow-clip-margin` only applies to
- * `clip`. Ellipsis still works, and browsers without the property fall back to
- * clipping at the edge, which is today's behaviour rather than a regression.
+ * The reason is worth recording so nobody reaches for it again. These amounts
+ * sit inside a wrapper that carries its own `overflow-hidden`, in eighteen
+ * places across the app. A clip margin only relaxes clipping on the element it
+ * is set on; the ancestor still clips at its own edge, so the glyph was shaved
+ * exactly as before. Padding is immune to that, because the text never reaches
+ * the ancestor's edge in the first place.
+ *
+ * 0.2em clears a heavy italic's lean with room to spare, and in em so it tracks
+ * the type size this module steps up and down. The cost is that right-aligned
+ * figures sit a few pixels further left, which is a fair trade for not printing
+ * a cut-off number in a money app.
  */
-export const amountFitClass = 'block max-w-full min-w-0 overflow-clip [overflow-clip-margin:0.35em] text-ellipsis whitespace-nowrap leading-none';
+export const amountFitClass = 'block max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none pr-[0.2em]';
