@@ -6,7 +6,7 @@ import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { PreviewChip } from '../components/PreviewChip';
 import { ProAction } from '../components/ProAction';
-import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
+import { amountFitClass, amountTextSizeInCard } from '../lib/amountDisplay';
 
 const DEBT_PALETTES = [
   { borderClass: '[border-left-color:#E8174B]', bgClass: 'bg-[#E8174B]', color: '#E8174B' },
@@ -122,9 +122,12 @@ export const DebtPayoff: React.FC = () => {
 
       {/* Headline stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+        {/* @container so the figure is sized by this card rather than the window.
+            Beside the sidebar these three cards are far narrower than the
+            viewport implies, and viewport sizing truncated the amount. */}
+        <div className="@container min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Total Debt</p>
-          <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${totalDebt.toLocaleString()}`)} font-black italic tracking-tighter text-text-main tabular-nums mt-1`}>
+          <p className={`${amountFitClass} ${amountTextSizeInCard(`${currencySymbol()}${totalDebt.toLocaleString()}`)} font-black italic tracking-tighter text-text-main tabular-nums mt-1`}>
             {currencySymbol()}{totalDebt.toLocaleString()}
           </p>
         </div>
@@ -134,9 +137,9 @@ export const DebtPayoff: React.FC = () => {
             {plan.months >= 600 ? '60y+' : (yrs > 0 ? `${yrs}y ${mos}m` : `${mos}m`)}
           </p>
         </div>
-        <div className="min-w-0 overflow-hidden bg-surface border-4 border-action-bleed rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+        <div className="@container min-w-0 overflow-hidden bg-surface border-4 border-action-bleed rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-action-bleed">Interest Cost</p>
-          <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${Math.round(plan.totalInterest).toLocaleString()}`)} font-black italic tracking-tighter text-action-bleed tabular-nums mt-1`}>
+          <p className={`${amountFitClass} ${amountTextSizeInCard(`${currencySymbol()}${Math.round(plan.totalInterest).toLocaleString()}`)} font-black italic tracking-tighter text-action-bleed tabular-nums mt-1`}>
             {currencySymbol()}{Math.round(plan.totalInterest).toLocaleString()}
           </p>
         </div>
