@@ -24,6 +24,24 @@ const MAX_PENDING = 50;
 let pending: Array<[string, Record<string, unknown>]> = [];
 let loading = false;
 
+/**
+ * Says out loud when analytics breaks.
+ *
+ * Every failure here used to be swallowed by an empty catch. That is the right
+ * instinct for the app, since no measurement is worth interrupting someone
+ * mid-task, but it was applied so thoroughly that a completely dead pipeline
+ * looked identical to a healthy one with no users yet. The dashboard was empty
+ * either way, so the only available reading was the flattering one.
+ *
+ * It cost days of looking in the wrong places. The pipeline now reports its own
+ * death to the console, which costs a user nothing and means the next person
+ * finds the cause in the time it takes to open DevTools.
+ */
+function reportFault(stage: string, err: unknown): void {
+  // eslint-disable-next-line no-console
+  console.error(`[analytics] ${stage} failed. Events are NOT being sent.`, err);
+}
+
 export function initAnalytics(): void {
   const key = import.meta.env.VITE_POSTHOG_KEY;
   if (!key || client || loading) return;
@@ -35,7 +53,14 @@ export function initAnalytics(): void {
 
   // Loaded on demand so the SDK stays out of the bundle's critical path and
   // never runs at all for deployments without a key.
+  // init is awaited separately from the import so a configuration error is not
+  // reported as a failure to load the SDK. The two have completely different
+  // fixes and were previously indistinguishable.
   void import('posthog-js')
+    .catch((err) => {
+      reportFault('loading posthog-js', err);
+      throw err;
+    })
     .then(({ default: posthog }) => {
       posthog.init(key, {
         api_host: host,
@@ -72,10 +97,16 @@ export function initAnalytics(): void {
       pending = [];
       for (const [name, properties] of queued) captureEvent(name, properties);
     })
-    .catch(() => {
-      // Blocked by an extension, offline, or a bad key. Analytics stays off and
-      // anything queued is discarded rather than held for the whole session.
+    .catch((err) => {
+      // Blocked by an extension, offline, a bad key, or a config the SDK
+      // rejects. Whichever it is, analytics is now off for the whole session,
+      // so say so rather than letting the dashboard imply nobody showed up.
+      //
+      // loading goes back to false deliberately: leaving it true kept
+      // captureEvent queueing into an array that would never be flushed.
+      loading = false;
       pending = [];
+      reportFault('initialising posthog', err);
     });
 }
 
@@ -86,8 +117,11 @@ export function captureEvent(name: string, properties: Record<string, unknown> =
   }
   try {
     client.capture(name, properties);
-  } catch {
-    // Reporting an event is never worth interrupting what the user is doing.
+  } catch (err) {
+    // Still swallowed as far as the user is concerned: reporting an event is
+    // never worth interrupting what they are doing. But it is no longer
+    // swallowed as far as anyone debugging is concerned.
+    reportFault(`capturing ${name}`, err);
   }
 }
 
@@ -98,8 +132,11 @@ export function captureError(error: unknown, properties: Record<string, unknown>
   if (!client) return;
   try {
     client.captureException(error, properties);
-  } catch {
-    // Reporting a crash must never cause a second one.
+  } catch (err) {
+    // Reporting a crash must never cause a second one, so this is still caught.
+    // It is logged because a crash report that silently fails to send is the
+    // worst of both worlds: the app knows something broke and nobody is told.
+    reportFault('capturing an exception', err);
   }
 }
 
