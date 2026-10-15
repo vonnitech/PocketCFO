@@ -312,7 +312,13 @@ export default function Vaults() {
             the sidebar at tablet widths these cards are ~141px wide while the
             viewport is past `sm`, and viewport sizing picked 36px type for a
             109px box, truncating "$4,004.00" to "$4…". */}
-        <div className="@container col-span-2 sm:col-span-1 min-w-0 overflow-hidden bg-action-primary border-4 border-black rounded-2xl p-4 shadow-brutal">
+        {/* The span starts at 420px because that is where the second column does.
+            Spanning two columns of a one-column grid makes the browser invent an
+            implicit column, and implicit columns are sized from their contents.
+            `container-type` says to size this card without looking at its
+            contents, so that invented column collapsed to border plus padding,
+            leaving a 40px sliver of the Available card on phones. */}
+        <div className="@container min-[420px]:col-span-2 sm:col-span-1 min-w-0 overflow-hidden bg-action-primary border-4 border-black rounded-2xl p-4 shadow-brutal">
           <p className="text-[10px] font-black uppercase tracking-widest text-black/60 mb-1">Total Vaulted</p>
           <p className={`${amountFitClass} ${amountTextSizeInCard(formatCurrency(totalVaulted, privacyMode))} font-black italic tabular-nums text-black`}>
             {formatCurrency(totalVaulted, privacyMode)}
