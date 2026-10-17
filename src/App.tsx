@@ -7,7 +7,7 @@ import { AnimatePresence } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useStore, INITIAL_STATE } from './store/useStore';
 import { useProStatus } from './lib/pro';
-import { DEFAULT_THEME, shouldRevertProTheme } from './core/themes';
+import { fallbackTheme, shouldRevertProTheme } from './core/themes';
 import { initDB } from './db';
 import { queueSnapshotSave, cancelQueuedSnapshotSave, clearSnapshot } from './db/storage';
 import { supabase, isSupabaseConfigured } from './core/supabase';
@@ -139,6 +139,7 @@ function App() {
   const hydrateFromCache      = useStore(s => s.hydrateFromCache);
   const theme                 = useStore(s => s.theme);
   const themeColors           = useStore(s => s.themeColors);
+  const themeUnlock           = useStore(s => s.themeUnlock);
   const { isPro: isProUser, isLoading: proLoading } = useProStatus();
   const userId                = useStore(s => s.userId);
   const hasCompletedOnboarding = useStore(s => s.hasCompletedOnboarding);
@@ -234,9 +235,12 @@ function App() {
       dataFresh,
       primary: themeColors?.primary,
       capture: themeColors?.secondary,
+      unlock: themeUnlock,
     })) return;
-    void useStore.getState().setThemeColors(DEFAULT_THEME.primary, DEFAULT_THEME.capture);
-  }, [proLoading, isProUser, dataFresh, themeColors]);
+    // Back to the account's own free pick when it has one, otherwise Original.
+    const fallback = fallbackTheme(themeUnlock);
+    void useStore.getState().setThemeColors(fallback.primary, fallback.capture);
+  }, [proLoading, isProUser, dataFresh, themeColors, themeUnlock]);
 
   // Establish session on mount and subscribe to auth changes
   useEffect(() => {

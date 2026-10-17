@@ -8,13 +8,19 @@ import { formatCurrency } from '../lib/utils';
 import { logProductEvent } from '../core/telemetry';
 import { NotificationPrimer } from './NotificationPrimer';
 import { getPrefs, initForUser, permissionState } from '../core/notifications';
+import { COLOR_THEMES, findPreset } from '../core/themes';
+import { useIsPro } from '../lib/pro';
 
+// 'colour' is the free plan's one colour pick. It comes after the Safe-to-Spend
+// number on purpose: personalising is a reward for finishing setup, and putting
+// it first would stand between a new user and the number the app is for.
+//
 // 'notify' is the permission ask, and it is deliberately LAST. Asking before the
 // user has seen a Safe-to-Spend figure is asking a stranger for their attention;
 // asking after it is asking someone who has just been shown something useful.
 // It is also skipped outright whenever the answer is already known, so nobody
 // gets a step that cannot do anything.
-type Step = 'basics' | 'bills' | 'notify';
+type Step = 'basics' | 'bills' | 'colour' | 'notify';
 
 interface DraftBill {
   id: string;
@@ -58,6 +64,13 @@ export function OnboardingModal() {
   const [billAmount, setBillAmount] = useState('');
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
+  const pickTheme = useStore(s => s.pickTheme);
+  const isPro     = useIsPro();
+  // Starts on whatever is already applied, which for a new account is Original.
+  const [colourPick, setColourPick] = useState(() => {
+    const tc = useStore.getState().themeColors;
+    return findPreset(tc?.primary, tc?.secondary)?.id ?? 'default';
+  });
 
   const numBalance  = parseFloat(balance) || 0;
   const numTakeHome = parseFloat(takeHome) || 0;
@@ -106,8 +119,8 @@ export function OnboardingModal() {
     initForUser(useStore.getState().userId);
     return permissionState() === 'default' && getPrefs().primer === 'unasked';
   });
-  const totalSteps = askNotifications ? 3 : 2;
-  const stepNumber = step === 'basics' ? 1 : step === 'bills' ? 2 : 3;
+  const totalSteps = askNotifications ? 4 : 3;
+  const stepNumber = step === 'basics' ? 1 : step === 'bills' ? 2 : step === 'colour' ? 3 : 4;
 
   const startedRef   = useRef(false);
   const previewedRef = useRef(false);
@@ -190,15 +203,15 @@ export function OnboardingModal() {
       return;
     }
 
-    // `hasCompletedOnboarding` is deliberately NOT set here when a notification
-    // step follows: flipping it unmounts this modal (see the guard at the top of
-    // the component). The profile row is already marked complete, so abandoning
-    // on step 3 costs the user nothing but the ask.
+    // `hasCompletedOnboarding` is deliberately NOT set here: the colour step
+    // (and possibly the notification ask) still follows, and flipping it
+    // unmounts this modal (see the guard at the top of the component). The
+    // profile row is already marked complete, so abandoning a later step costs
+    // the user nothing but that step.
     setState({
       firstName:               resolvedFirstName,
       monthlyTakeHome:         numTakeHome,
       isConfigured:            true,
-      ...(askNotifications ? {} : { hasCompletedOnboarding: true }),
     });
     // Properly computes safeSpendLimit, bill queue, and all derived values.
     // Bills collected on step 2 are passed straight through, so the very first
@@ -223,10 +236,36 @@ export function OnboardingModal() {
       billCount: parsedBills.length,
     });
 
-    if (askNotifications) {
-      setLoading(false);
-      setStep('notify');
+    setLoading(false);
+    setStep('colour');
+  };
+
+  // Live preview only. The store, the profile row and the free pick are not
+  // touched until the user confirms.
+  const previewColour = (themeId: string) => {
+    const preset = COLOR_THEMES.find(t => t.id === themeId);
+    if (!preset) return;
+    setColourPick(themeId);
+    document.documentElement.style.setProperty('--color-action-primary', preset.primary);
+    document.documentElement.style.setProperty('--color-action-capture', preset.capture);
+  };
+
+  const handleColour = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    // Choosing Original spends nothing: the pick stays open for later, in
+    // Settings. A new account has no pick yet, so any other preset becomes it.
+    const outcome = await pickTheme(colourPick, { isPro, context: 'onboarding' });
+    if (outcome.kind !== 'apply') {
+      // Only reachable for an account that already used its pick and swap
+      // before finishing setup. Put back what it is entitled to and move on.
+      const tc = useStore.getState().themeColors;
+      if (tc?.primary) document.documentElement.style.setProperty('--color-action-primary', tc.primary);
+      if (tc?.secondary) document.documentElement.style.setProperty('--color-action-capture', tc.secondary);
     }
+    setLoading(false);
+    if (askNotifications) setStep('notify');
+    else finishOnboarding();
   };
 
   // Both answers to the primer land here. Declining is a complete, valid way to
@@ -258,6 +297,7 @@ export function OnboardingModal() {
           onSubmit={
             step === 'basics' ? handleContinue
             : step === 'bills' ? handleSubmit
+            : step === 'colour' ? handleColour
             : (e: React.FormEvent) => e.preventDefault()
           }
           className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4 overflow-hidden"
@@ -268,6 +308,7 @@ export function OnboardingModal() {
               <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-none truncate">
                 {step === 'basics' ? 'Set Up Your Account'
                   : step === 'bills' ? 'Your Fixed Bills'
+                  : step === 'colour' ? 'Make It Yours'
                   : "You're All Set"}
               </h1>
               <span className="text-[10px] font-black uppercase tracking-widest text-text-muted shrink-0">
@@ -279,7 +320,9 @@ export function OnboardingModal() {
                 ? 'You can update these any time in Settings.'
                 : step === 'bills'
                   ? "Bills due before your next payday. Add them so they are committed before today's amount is cleared."
-                  : 'One last thing, and it is optional.'}
+                  : step === 'colour'
+                    ? 'Pick one colour pairing to keep for free.'
+                    : 'One last thing, and it is optional.'}
             </p>
           </div>
 
@@ -492,6 +535,43 @@ export function OnboardingModal() {
                   </p>
                 </div>
               </motion.div>
+            ) : step === 'colour' ? (
+              <motion.div
+                key="colour"
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{ duration: 0.18 }}
+                className="space-y-3"
+              >
+                {/* Tapping previews live on the app behind the modal; nothing
+                    is saved until the button below is pressed. */}
+                <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1 -mr-1 pt-1">
+                  {COLOR_THEMES.map(t => {
+                    const selected = t.id === colourPick;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => previewColour(t.id)}
+                        aria-pressed={selected}
+                        className={`relative swatch-${t.id} flex flex-col items-center gap-1 p-2 rounded-xl border-4 transition-all ${selected ? 'border-black shadow-brutal-sm bg-input' : 'border-transparent hover:border-border'}`}
+                      >
+                        <div className="flex gap-0.5">
+                          <div className="swatch-dot-primary w-4 h-4 rounded-full border-2 border-black/30" />
+                          <div className="swatch-dot-capture w-4 h-4 rounded-full border-2 border-black/30" />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-wide leading-tight text-center text-text-muted">
+                          {t.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug">
+                  Original is always yours too, and you can swap your pick once in Settings. Pro unlocks every pairing.
+                </p>
+              </motion.div>
             ) : (
               <motion.div
                 key="notify"
@@ -538,13 +618,15 @@ export function OnboardingModal() {
           {step !== 'notify' && (
             <motion.button
               type="submit"
-              disabled={loading || !canSubmit}
+              disabled={loading || (step !== 'colour' && !canSubmit)}
               whileTap={{ scale: 0.97 }}
               className={submitClass}
             >
               {loading
                 ? <span className="animate-pulse">Saving…</span>
-                : step === 'basics' ? 'Next: Your Bills →' : 'Get Started →'
+                : step === 'basics' ? 'Next: Your Bills →'
+                : step === 'bills' ? 'Get Started →'
+                : colourPick === 'default' ? 'Keep Original →' : 'Make It Mine →'
               }
             </motion.button>
           )}
