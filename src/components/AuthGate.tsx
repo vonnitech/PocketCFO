@@ -40,6 +40,9 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
   const [notice, setNotice]       = useState('');
+  // Set when sign-in fails only because the address has not been confirmed yet,
+  // so the form can offer to resend the confirmation link.
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState('');
 
   // If App flips recoveryMode on after mount (e.g. user opens the email link
   // while AuthGate is already up), force the recover view.
@@ -47,7 +50,38 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
     if (recoveryMode) { setMode('recover'); setError(''); setNotice(''); }
   }, [recoveryMode]);
 
-  const clearMessages = () => { setError(''); setNotice(''); };
+  const clearMessages = () => { setError(''); setNotice(''); setUnconfirmedEmail(''); };
+
+  // Supabase only reports an unconfirmed email after the password has been
+  // checked, so telling the user this reveals nothing to someone without it.
+  const isUnconfirmedEmail = (err: unknown) => {
+    const e = err as { code?: string; message?: string } | null;
+    return e?.code === 'email_not_confirmed' || /email not confirmed/i.test(e?.message ?? '');
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!unconfirmedEmail) return;
+    setLoading(true);
+    setError('');
+    setNotice('');
+    try {
+      const { error: authError } = await supabase.auth.resend({
+        type: 'signup',
+        email: unconfirmedEmail,
+        options: { emailRedirectTo: authRedirectUrl() },
+      });
+      if (authError && authError.status === 429) {
+        setError('WAIT A MINUTE, THEN ASK FOR ANOTHER EMAIL');
+        return;
+      }
+      setNotice('New confirmation link sent. Check your inbox and spam folder.');
+      setUnconfirmedEmail('');
+    } catch {
+      setError('EMAIL COULD NOT BE SENT. TRY AGAIN');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const safeFailure = (activeMode: Mode) => {
     if (activeMode === 'login') return 'EMAIL OR PASSWORD IS INCORRECT';
@@ -132,7 +166,12 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
         // Hand control back to App.tsx — it'll re-evaluate routing and load the app.
         setTimeout(() => onRecoveryDone?.(), 600);
       }
-    } catch {
+    } catch (err) {
+      if (mode === 'login' && isUnconfirmedEmail(err)) {
+        setUnconfirmedEmail(email.trim());
+        setError('CONFIRM YOUR EMAIL FIRST. TAP THE LINK WE SENT YOU');
+        return;
+      }
       // Provider errors can reveal project configuration, password policy and
       // account state. Show only the action the user can safely take.
       setError(safeFailure(mode));
@@ -353,6 +392,17 @@ export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {mode === 'login' && unconfirmedEmail && (
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={loading}
+              className="w-full h-11 bg-surface border-2 border-black rounded-2xl text-text-main font-black uppercase text-[11px] tracking-widest flex items-center justify-center gap-2 hover:bg-action-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Mail size={13} strokeWidth={3} /> Resend confirmation email
+            </button>
+          )}
 
           {/* Submit */}
           <motion.button
