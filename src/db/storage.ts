@@ -55,6 +55,7 @@ const PERSISTED_KEYS = [
   'reconHistory',
   'rolloverPool',
   'themeColors',
+  'themeUnlock',
   'firstName',
   'privacyMode',
   'currency',

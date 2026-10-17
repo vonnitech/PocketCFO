@@ -15,6 +15,8 @@ export { FREE_VAULT_CAP } from '../core/vaults';
 import { proSnapshot } from '../lib/pro';
 import { FREE_VAULT_CAP, lockedVaultIds } from '../core/vaults';
 import { defaultDashboardWidgets } from '../core/widgets';
+import { COLOR_THEMES, DEFAULT_THEME_UNLOCK, decideThemePick, normalizeThemeUnlock, type ThemePickOutcome, type ThemeUnlock } from '../core/themes';
+import { logProductEvent } from '../core/telemetry';
 import { SpendTierId } from '../core/math';
 
 // Prevents concurrent processPayday calls from double-crediting income when
@@ -127,6 +129,20 @@ async function pushTierLock(userId: string | null, next: TierLockState): Promise
   }
 }
 
+// Written on its own, not folded into another profile update, so a database
+// that has not had migration 025 yet fails this one write and nothing else.
+async function pushThemeUnlock(userId: string | null, next: ThemeUnlock): Promise<void> {
+  if (!userId) return;
+  try {
+    const { error } = await (supabase.from('profiles') as any)
+      .update({ theme_unlock: next })
+      .eq('id', userId);
+    if (error) console.error('[themeUnlock] update failed:', error);
+  } catch (err) {
+    console.error('[themeUnlock] threw:', err);
+  }
+}
+
 export interface AppState {
   // Auth
   userId: string | null;
@@ -172,6 +188,8 @@ export interface AppState {
     primary?: string;
     secondary?: string;
   };
+  /** Free-tier colour pick and swap count (profiles.theme_unlock). */
+  themeUnlock: ThemeUnlock;
   firstName: string;
   privacyMode: boolean;
   currency: string;
@@ -373,6 +391,7 @@ export const INITIAL_STATE: AppState = {
   hardDailyCap: 0,
   velocityConfig: DEFAULT_VELOCITY_CONFIG,
   tierLock: DEFAULT_TIER_LOCK,
+  themeUnlock: DEFAULT_THEME_UNLOCK,
   lastSweepDate: '',
   billQueue: [],
   recurringBills: [],
@@ -395,6 +414,15 @@ interface StoreActions {
   togglePrivacyMode: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setThemeColors: (primary: string, capture: string) => Promise<void>;
+  /**
+   * Apply a preset under the free-plan rules (Original plus one pick, one swap).
+   * Returns what happened so the caller can ask before a swap or show the
+   * upsell when the preset is locked. Nothing is applied unless kind is 'apply'.
+   */
+  pickTheme: (
+    themeId: string,
+    opts: { isPro: boolean; context: 'onboarding' | 'settings'; confirmSwap?: boolean },
+  ) => Promise<ThemePickOutcome>;
   setCurrency: (code: string) => Promise<void>;
   setVelocityConfig: (config: VelocityConfig) => Promise<void>;
   setSpendTier: (tierId: SpendTierId) => Promise<void>;
@@ -637,6 +665,11 @@ export const useStore = create<StoreState>()(
             hardDailyCap:          Number(profile.hard_daily_cap ?? 0),
             velocityConfig:        normalizeVelocityConfig(profile.velocity_config),
             tierLock:              normalizeTierLock(profile.tier_lock),
+            themeUnlock:           normalizeThemeUnlock(
+              profile.theme_unlock,
+              profile.theme_primary_color ? String(profile.theme_primary_color) : undefined,
+              profile.theme_capture_color ? String(profile.theme_capture_color) : undefined,
+            ),
             lastSweepDate:         String(profile.last_sweep_date ?? ''),
             extraCashPool:         Number(profile.extra_cash_pool ?? 0),
             rolloverPool:          Number(profile.rollover_pool ?? 0),
@@ -781,6 +814,27 @@ export const useStore = create<StoreState>()(
         theme_primary_color: primary,
         theme_capture_color: capture,
       }).eq('id', userId);
+    },
+
+    pickTheme: async (themeId, { isPro, context, confirmSwap }) => {
+      const { userId, themeUnlock } = get() as StoreState;
+      const preset = COLOR_THEMES.find(t => t.id === themeId);
+      if (!preset) return { kind: 'locked' };
+      const outcome = decideThemePick({ themeId, isPro, unlock: themeUnlock, confirmSwap });
+      if (outcome.kind !== 'apply') return outcome;
+
+      const changed = outcome.unlock.freeThemeId !== themeUnlock.freeThemeId
+        || outcome.unlock.swapsUsed !== themeUnlock.swapsUsed;
+      if (changed) {
+        // The pick lands in state before the colours do, so the lapsed-Pro
+        // revert in App.tsx never sees the new colours without the pick that
+        // allows them.
+        set((state: any) => ({ ...state, themeUnlock: outcome.unlock }));
+        logProductEvent({ type: 'theme_picked', themeId, context: outcome.usedSwap ? 'swap' : context });
+        void pushThemeUnlock(userId, outcome.unlock);
+      }
+      await (get() as StoreState & StoreActions).setThemeColors(preset.primary, preset.capture);
+      return outcome;
     },
 
     setCurrency: async (code) => {

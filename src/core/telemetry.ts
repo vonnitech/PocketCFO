@@ -61,7 +61,11 @@ export type ProductEvent =
   // Fired once the profile write succeeds and the app is usable.
   | { type: 'activation_completed'; safeSpend: number; daysUntilPayday: number; billsReserved: number; billCount: number }
   // Fired when the user commits to paying, before the redirect to LemonSqueezy.
-  | { type: 'payment_intent';      plan: 'monthly' | 'annual' | 'lifetime' };
+  | { type: 'payment_intent';      plan: 'monthly' | 'annual' | 'lifetime' }
+  // The free plan's one colour pick: made during onboarding, made later in
+  // Settings, or changed using the one free swap. Shows which presets people
+  // choose, and how many reach for a second one (the Pro upsell moment).
+  | { type: 'theme_picked';        themeId: string; context: 'onboarding' | 'settings' | 'swap' };
 
 export function logProductEvent(event: ProductEvent): void {
   // safeSpend and billsReserved are the user's actual money. They are dropped

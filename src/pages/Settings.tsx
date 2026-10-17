@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
-import { COLOR_THEMES, FREE_THEME_IDS } from '../core/themes';
+import { COLOR_THEMES, DEFAULT_THEME_UNLOCK, FREE_SWAPS, themeName } from '../core/themes';
 import { DASHBOARD_WIDGETS } from '../core/widgets';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { supabase } from '../core/supabase';
@@ -303,6 +303,22 @@ export default function Settings() {
     }
   };
   const [accentOpen, setAccentOpen] = useState(false);
+  // Free plan: a tap on a second pairing asks before spending the one swap.
+  const [pendingSwap, setPendingSwap] = useState<{ from: string; to: string } | null>(null);
+  const themeUnlock = state.themeUnlock ?? DEFAULT_THEME_UNLOCK;
+  const swapLeft = themeUnlock.swapsUsed < FREE_SWAPS;
+
+  const choosePreset = async (themeId: string, confirmSwap = false) => {
+    const outcome = await state.pickTheme(themeId, { isPro, context: 'settings', confirmSwap });
+    if (outcome.kind === 'confirm_swap') { setPendingSwap({ from: outcome.from, to: outcome.to }); return; }
+    setPendingSwap(null);
+    if (outcome.kind === 'locked') {
+      window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'theme' } }));
+      return;
+    }
+    const preset = COLOR_THEMES.find(t => t.id === themeId);
+    if (preset) { setPrimaryColor(preset.primary); setCaptureColor(preset.capture); }
+  };
 
   const [firstName, setFirstName] = useState(state.firstName || '');
   const [firstNameSaved, setFirstNameSaved] = useState(false);
@@ -864,18 +880,57 @@ export default function Settings() {
                     Reset defaults
                   </button>
                 </div>
+                {proLocked && (
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3 leading-snug">
+                    {!themeUnlock.freeThemeId
+                      ? 'Free plan: Original plus 1 pairing of your choice. Tap one to make it yours.'
+                      : swapLeft
+                        ? `Your free pairing: ${themeName(themeUnlock.freeThemeId)}. You can swap it once.`
+                        : `Your free pairing: ${themeName(themeUnlock.freeThemeId)}. Every other pairing comes with Pro.`}
+                  </p>
+                )}
+                {pendingSwap && (
+                  <div className="mb-4 bg-input border-4 border-black rounded-2xl p-3 space-y-3">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-text-main leading-snug">
+                      Swap {themeName(pendingSwap.from)} for {themeName(pendingSwap.to)}?
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug">
+                      You get one free swap. After this, other pairings need Pro.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void choosePreset(pendingSwap.to, true)}
+                        className="flex-1 h-10 bg-black text-action-primary border-4 border-black rounded-xl text-[11px] font-black uppercase tracking-widest"
+                      >
+                        Swap
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingSwap(null)}
+                        className="flex-1 h-10 border-4 border-black rounded-xl text-[11px] font-black uppercase tracking-widest text-text-main"
+                      >
+                        Keep mine
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
                   {COLOR_THEMES.map(t => {
                     const isActive = primaryColor === t.primary && captureColor === t.capture;
-                    const locked = proLocked && !FREE_THEME_IDS.has(t.id);
+                    const isMine = proLocked && t.id === themeUnlock.freeThemeId;
+                    // Only drawn once the pick is made AND the swap is spent.
+                    // Before that, any pairing can still be chosen for free.
+                    const locked = proLocked
+                      && t.id !== 'default'
+                      && !!themeUnlock.freeThemeId
+                      && t.id !== themeUnlock.freeThemeId
+                      && !swapLeft;
                     return (
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => {
-                          if (locked) { window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'theme' } })); return; }
-                          setPrimaryColor(t.primary); setCaptureColor(t.capture); setThemeColors(t.primary, t.capture);
-                        }}
+                        onClick={() => void choosePreset(t.id)}
                         className={`relative swatch-${t.id} flex flex-col items-center gap-1.5 p-3 rounded-xl border-4 transition-all ${isActive ? 'border-black shadow-brutal-sm' : 'border-transparent hover:border-border'}`}
                       >
                         <div className={`flex gap-1 ${locked ? 'opacity-40' : ''}`}>
@@ -885,6 +940,9 @@ export default function Settings() {
                         <span className={`text-[9px] font-black uppercase tracking-wide leading-tight text-center ${locked ? 'text-text-muted' : 'text-text-muted'}`}>{t.name}</span>
                         {locked && (
                           <div className="absolute top-1 right-1 text-text-muted"><Lock size={10} strokeWidth={3} /></div>
+                        )}
+                        {isMine && (
+                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-black text-action-primary text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md">Yours</div>
                         )}
                       </button>
                     );
