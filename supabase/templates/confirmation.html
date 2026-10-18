@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light">
+    <title>Confirm your StackPiggy email</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f2f1ee;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f2f1ee;font-size:1px;line-height:1px;">One tap to confirm your email and see what you can spend today.</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f2f1ee" style="background:#f2f1ee;">
+      <tr>
+        <td align="center" style="padding:28px 14px 36px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:480px;">
+            <tr>
+              <td bgcolor="#111111" style="background:#111111;border-radius:22px 22px 0 0;padding:18px 22px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+                  <td valign="middle" style="padding-right:10px;"><img src="https://www.stackpiggy.com/email/stackpiggy-icon.png" width="38" height="38" alt="" style="display:block;width:38px;height:38px;border-radius:10px;border:0;"></td>
+                  <td valign="middle" style="font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#ffffff;">stack<span style="color:#facc15;">piggy</span></td>
+                </tr></table>
+              </td>
+            </tr>
+            <tr>
+              <td bgcolor="#facc15" style="background:#facc15;border:4px solid #111111;border-top:0;border-radius:0 0 22px 22px;padding:26px 22px 28px;">
+                <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:900;letter-spacing:2px;color:#111111;text-transform:uppercase;">{{ if .Data.first_name }}Welcome, {{ .Data.first_name }}{{ else }}Welcome{{ end }}</div>
+                <div style="font-family:Arial Black,Arial,Helvetica,sans-serif;font-size:34px;font-weight:900;font-style:italic;line-height:36px;letter-spacing:-1px;color:#111111;text-transform:uppercase;padding-top:10px;">One tap and you're in.</div>
+                <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;padding-top:12px;">Confirm your email and we'll work out what you can safely spend today.</div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:22px;">
+                  <tr>
+                    <td align="center" bgcolor="#111111" style="background:#111111;border-radius:14px;">
+                      <a href="{{ .ConfirmationURL }}" style="display:block;padding:17px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:900;letter-spacing:1.5px;color:#facc15;text-decoration:none;text-transform:uppercase;border-radius:14px;">Confirm my email</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+              <tr>
+                <td style="padding:22px 8px 0;">
+                  <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:900;letter-spacing:2px;color:#5f5d58;text-transform:uppercase;padding-bottom:8px;">What happens next</div>
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td width="34" valign="middle" style="padding:5px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="26" height="26" align="center" valign="middle" bgcolor="#111111" style="width:26px;height:26px;background:#111111;border-radius:8px;color:#facc15;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:900;line-height:26px;">1</td></tr></table>
+                        </td>
+                        <td valign="middle" style="padding:5px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#111111;">Add your balance and payday</td>
+                      </tr>
+                      <tr>
+                        <td width="34" valign="middle" style="padding:5px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="26" height="26" align="center" valign="middle" bgcolor="#111111" style="width:26px;height:26px;background:#111111;border-radius:8px;color:#facc15;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:900;line-height:26px;">2</td></tr></table>
+                        </td>
+                        <td valign="middle" style="padding:5px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#111111;">List the bills due before payday</td>
+                      </tr>
+                      <tr>
+                        <td width="34" valign="middle" style="padding:5px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="26" height="26" align="center" valign="middle" bgcolor="#00cc55" style="width:26px;height:26px;background:#00cc55;border-radius:8px;color:#111111;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:900;line-height:26px;">3</td></tr></table>
+                        </td>
+                        <td valign="middle" style="padding:5px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#111111;">See what's cleared for today</td>
+                      </tr>
+                  </table>
+                </td>
+              </tr>
+            <tr>
+              <td style="padding:22px 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#5f5d58;">Didn't sign up? You can ignore this email. Questions? Just reply, we read everything.</td>
+            </tr>
+            <tr>
+              <td style="padding:18px 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#8a877f;">StackPiggy &middot; <a href="https://www.stackpiggy.com" style="color:#8a877f;text-decoration:underline;">stackpiggy.com</a></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
