@@ -440,7 +440,12 @@ interface StoreActions {
   fetchMoreTransactions: () => Promise<number>; // returns count fetched, 0 = end of history
 
   // CFO Actions
-  setHorizon: (capital: number, nextPayday: string, upcomingBills: number, newHardDailyCap?: number, newBillQueue?: BillQueueItem[]) => void;
+  /**
+   * `deferOnboardingComplete` keeps hasCompletedOnboarding as it is locally.
+   * Onboarding passes it because steps still follow the horizon save, and
+   * flipping the flag here unmounts the onboarding modal before they show.
+   */
+  setHorizon: (capital: number, nextPayday: string, upcomingBills: number, newHardDailyCap?: number, newBillQueue?: BillQueueItem[], opts?: { deferOnboardingComplete?: boolean }) => void;
   payBillFromQueue: (id: string) => void;
   collectIou: (id: string) => void;
   appendIouEntries: (entries: IouEntry[]) => void;
@@ -987,7 +992,7 @@ export const useStore = create<StoreState>()(
 
     // ── Horizon ──────────────────────────────────────────────────────────────
 
-    setHorizon: async (capital, nextPayday, _upcomingBills, newHardDailyCap, newBillQueue) => {
+    setHorizon: async (capital, nextPayday, _upcomingBills, newHardDailyCap, newBillQueue, opts) => {
       const {
         userId, hardDailyCap, recurringBills, vaults: currentVaults, lastSweepDate,
         nextPayday: currentNextPayday, paydayAnchorDay: currentPaydayAnchorDay,
@@ -1102,7 +1107,7 @@ export const useStore = create<StoreState>()(
           paidBillKeys:          nextPaidKeys,
           billQueue:             freshQueue,
           isConfigured:          true,
-          hasCompletedOnboarding: true,
+          hasCompletedOnboarding: opts?.deferOnboardingComplete ? state.hasCompletedOnboarding : true,
           hardDailyCap:          capToUse,
         };
         return { ...baseNext, safeSpendLimit: calculateTrueSafeSpend(baseNext) };

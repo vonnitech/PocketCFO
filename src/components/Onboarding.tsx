@@ -226,7 +226,10 @@ export function OnboardingModal() {
         .map(b => billKey({ name: b.name, amount: b.amount })),
     });
 
-    setHorizon(numBalance, payday, 0, 0, parsedBills);
+    // Deferred: the colour step (and maybe the reminders ask) still has to show.
+    // Without this, setHorizon marks onboarding complete locally, the modal
+    // unmounts and both steps are silently skipped. finishOnboarding sets it.
+    setHorizon(numBalance, payday, 0, 0, parsedBills, { deferOnboardingComplete: true });
 
     logProductEvent({
       type: 'activation_completed',
