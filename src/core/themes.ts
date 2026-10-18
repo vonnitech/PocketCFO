@@ -59,24 +59,117 @@ export const COLOR_THEMES: ColorTheme[] = [
   { id: 'lavender-purple',   name: 'Lavender & Purple',   primary: '#B8A8D8', capture: '#7733BB' },
 ];
 
-// Free tier: 3 preset themes (Original + 2). All other presets and the custom
-// colour studio are Pro. Change which two accompany 'default' here.
-export const FREE_THEME_IDS = new Set(['default', 'pink-sky', 'orange-royal']);
-
 export const DEFAULT_THEME: ColorTheme =
   COLOR_THEMES.find(t => t.id === 'default') ?? COLOR_THEMES[0];
 
-// True when the applied colours are one of the free presets. Anything else is a
-// Pro preset or a custom colour-studio pair, both of which are Pro-only.
+// Free tier: the Original palette plus ONE preset of the account's choosing,
+// picked at the end of onboarding (or later in Settings), with FREE_SWAPS
+// changes of mind after that. Every other preset and the custom colour studio
+// are Pro. The pick is stored on the profile (theme_unlock, migration 025).
+export const FREE_SWAPS = 1;
+
+export interface ThemeUnlock {
+  /** The one non-default preset this account keeps on the free plan. */
+  freeThemeId: string | null;
+  /** How many times the pick has been changed. Capped at FREE_SWAPS. */
+  swapsUsed: number;
+}
+
+export const DEFAULT_THEME_UNLOCK: ThemeUnlock = { freeThemeId: null, swapsUsed: 0 };
+
+const sameHex = (a?: string, b?: string) =>
+  !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+/** The preset whose colours are applied, or undefined for a custom pair. */
+export const findPreset = (primary?: string, capture?: string): ColorTheme | undefined =>
+  COLOR_THEMES.find(t => sameHex(t.primary, primary) && sameHex(t.capture, capture));
+
+export const themeName = (id: string | null | undefined): string =>
+  COLOR_THEMES.find(t => t.id === id)?.name ?? 'Original';
+
+// Read side for the theme_unlock column. Every field is validated because the
+// row is client-written.
+//
+// A missing value means the account has never made a pick through this flow.
+// That covers everyone from before it existed: Pink & Sky and Orange & Royal
+// used to be free for all, and a lapsed Pro account may still be wearing a Pro
+// preset. In each case the preset already applied becomes the pick, so nobody
+// loses the colours they are looking at the day this ships.
+export const normalizeThemeUnlock = (
+  raw: unknown,
+  primary?: string,
+  capture?: string,
+): ThemeUnlock => {
+  if (raw && typeof raw === 'object') {
+    const r = raw as Record<string, unknown>;
+    const id = typeof r.freeThemeId === 'string'
+      && r.freeThemeId !== 'default'
+      && COLOR_THEMES.some(t => t.id === r.freeThemeId)
+      ? r.freeThemeId
+      : null;
+    const swaps = Number(r.swapsUsed);
+    return {
+      freeThemeId: id,
+      swapsUsed: Number.isFinite(swaps) ? Math.min(FREE_SWAPS, Math.max(0, Math.floor(swaps))) : 0,
+    };
+  }
+  const applied = findPreset(primary, capture);
+  return {
+    freeThemeId: applied && applied.id !== 'default' ? applied.id : null,
+    swapsUsed: 0,
+  };
+};
+
+// True when the applied colours are allowed on the free plan: the Original
+// palette or this account's own pick. Anything else is a Pro preset or a custom
+// colour-studio pair, both of which are Pro-only.
 export const isFreeThemeColors = (
   primary?: string,
   capture?: string,
+  unlock: ThemeUnlock = DEFAULT_THEME_UNLOCK,
 ): boolean => {
   // Nothing applied yet means the default palette is in effect.
   if (!primary && !capture) return true;
-  return COLOR_THEMES.some(
-    t => FREE_THEME_IDS.has(t.id) && t.primary === primary && t.capture === capture,
-  );
+  const preset = findPreset(primary, capture);
+  if (!preset) return false;
+  return preset.id === 'default' || preset.id === unlock.freeThemeId;
+};
+
+// What happens when someone taps a preset. Kept pure so Settings and
+// onboarding apply exactly the same rules.
+//
+//   apply        - go ahead; `unlock` is the value to store (unchanged unless
+//                  this tap made or changed the free pick).
+//   confirm_swap - a free account changing its pick while a swap remains. The
+//                  UI asks first, then calls again with confirmSwap.
+//   locked       - the swap is spent; this preset needs Pro.
+export type ThemePickOutcome =
+  | { kind: 'apply'; unlock: ThemeUnlock; usedSwap: boolean }
+  | { kind: 'confirm_swap'; from: string; to: string }
+  | { kind: 'locked' };
+
+export const decideThemePick = (input: {
+  themeId: string;
+  isPro: boolean;
+  unlock: ThemeUnlock;
+  confirmSwap?: boolean;
+}): ThemePickOutcome => {
+  const { themeId, isPro, unlock } = input;
+  // Pro choices never touch the free pick, so a lapsed subscriber falls back to
+  // whatever they chose while free, not to their last Pro colour.
+  if (isPro || themeId === 'default' || themeId === unlock.freeThemeId) {
+    return { kind: 'apply', unlock, usedSwap: false };
+  }
+  if (!unlock.freeThemeId) {
+    return { kind: 'apply', unlock: { ...unlock, freeThemeId: themeId }, usedSwap: false };
+  }
+  if (unlock.swapsUsed >= FREE_SWAPS) return { kind: 'locked' };
+  if (!input.confirmSwap) return { kind: 'confirm_swap', from: unlock.freeThemeId, to: themeId };
+  return {
+    kind: 'apply',
+    unlock: { freeThemeId: themeId, swapsUsed: unlock.swapsUsed + 1 },
+    usedSwap: true,
+  };
 };
 
 // Whether an applied theme must be reverted because Pro has ended.
@@ -96,7 +189,13 @@ export const shouldRevertProTheme = (input: {
   dataFresh: boolean;
   primary?: string;
   capture?: string;
+  unlock?: ThemeUnlock;
 }): boolean => {
   if (input.isLoading || input.isPro || !input.dataFresh) return false;
-  return !isFreeThemeColors(input.primary, input.capture);
+  return !isFreeThemeColors(input.primary, input.capture, input.unlock);
 };
+
+// Where a lapsed account lands when its Pro colours are reverted: its own free
+// pick if it has one, otherwise Original.
+export const fallbackTheme = (unlock: ThemeUnlock): ColorTheme =>
+  COLOR_THEMES.find(t => t.id === unlock.freeThemeId) ?? DEFAULT_THEME;
