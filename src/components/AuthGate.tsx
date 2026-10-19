@@ -16,6 +16,8 @@ type Mode = 'login' | 'signup' | 'reset' | 'recover';
 interface Props {
   recoveryMode?: boolean;
   onRecoveryDone?: () => void;
+  /** Which form to open on: the landing page's "Create account" sends 'signup'. */
+  initialMode?: 'login' | 'signup';
 }
 
 // Multicolour Google "G" — kept as an inline SVG so it renders identically in
@@ -31,8 +33,8 @@ function GoogleIcon() {
   );
 }
 
-export function AuthGate({ recoveryMode, onRecoveryDone }: Props) {
-  const [mode, setMode]           = useState<Mode>(recoveryMode ? 'recover' : 'login');
+export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }: Props) {
+  const [mode, setMode]           = useState<Mode>(recoveryMode ? 'recover' : initialMode);
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);

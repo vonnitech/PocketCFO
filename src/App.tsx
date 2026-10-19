@@ -20,10 +20,13 @@ import { ProUpsellPopover } from './components/ProUpsellPopover';
 import { runPaydayCheck } from './core/lifecycle';
 import { NotificationToaster } from './components/NotificationCenter';
 import { useNotificationEngine } from './hooks/useNotifications';
-import { clearAuthCallbackUrl } from './native/platform';
+import { clearAuthCallbackUrl, isNative } from './native/platform';
 
 // Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const LandingPage = lazy(() =>
+  import('./landing/LandingPage').then(module => ({ default: module.LandingPage }))
+);
 const BillSplitter = lazy(() =>
   import('./pages/BillSplitter').then(module => ({ default: module.BillSplitter }))
 );
@@ -424,6 +427,18 @@ function App() {
   // No authenticated session OR mid-recovery → show login/signup gate.
   // In recovery mode AuthGate locks into "set new password" until the
   // updateUser call completes and we toggle recoveryMode back to false.
+  const installedApp = isNative
+    || (typeof window !== 'undefined' && (
+      window.matchMedia?.('(display-mode: standalone)').matches
+      || (navigator as Navigator & { standalone?: boolean }).standalone === true
+    ));
+  const showLanding = !installedApp;
+  const authScreen = (initialMode: 'login' | 'signup') => (
+    <div className="min-h-screen bg-base dot-bg text-text-main font-sans overflow-x-hidden p-4">
+      <AuthGate key={initialMode} initialMode={initialMode} recoveryMode={false} onRecoveryDone={() => setRecoveryMode(false)} />
+    </div>
+  );
+
   if (!session || recoveryMode) {
     return (
       <ErrorBoundary>
@@ -432,12 +447,21 @@ function App() {
           {recoveryMode ? (
             <AuthGate recoveryMode onRecoveryDone={() => setRecoveryMode(false)} />
           ) : (
-            <div className="min-h-screen bg-base dot-bg text-text-main font-sans overflow-x-hidden p-4">
-              <Routes>
-                <Route path="/" element={<AuthGate recoveryMode={false} onRecoveryDone={() => setRecoveryMode(false)} />} />
-                <Route path="*" element={withPageWrapper(<NotFound />)} />
-              </Routes>
-            </div>
+            <Routes>
+              {/* Web visitors get the landing page. The installed app (home
+                  screen PWA or native shell) opens straight on sign-in, since
+                  someone who installed StackPiggy does not need the pitch. */}
+              <Route path="/" element={showLanding ? (
+                <Suspense fallback={<SyncFallback />}><LandingPage /></Suspense>
+              ) : authScreen('login')} />
+              <Route path="/login" element={authScreen('login')} />
+              <Route path="/signup" element={authScreen('signup')} />
+              <Route path="*" element={
+                <div className="min-h-screen bg-base dot-bg text-text-main font-sans overflow-x-hidden p-4">
+                  {withPageWrapper(<NotFound />)}
+                </div>
+              } />
+            </Routes>
           )}
         </Router>
       </ErrorBoundary>
