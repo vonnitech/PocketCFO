@@ -452,8 +452,26 @@ export function FireCalculator() {
           </div>
         </div>
 
-        {vaults.length > 0 && (
+        {/* Says which vaults feed this number, and where the rest come from.
+            Only Investment vaults count; savings for a trip or an emergency
+            fund are spent or held, not invested. */}
+        {vaults.length === 0 ? (
+          <Link to="/vaults" className="flex items-center justify-between mt-3 px-3 py-2 bg-input border-2 border-border rounded-xl">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+              No investment vaults yet. Make one in Vaults and it counts here.
+            </p>
+            <LinkIcon size={11} strokeWidth={2.5} className="text-text-muted shrink-0" />
+          </Link>
+        ) : (
           <div className="mt-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">
+                Counted toward FIRE
+              </p>
+              <Link to="/vaults" className="text-[9px] font-black uppercase tracking-widest text-text-muted underline">
+                Vaults
+              </Link>
+            </div>
             {vaults.map(v => {
               const pct = totalVaulted > 0 ? (v.current / totalVaulted) * 100 : 0;
               return (

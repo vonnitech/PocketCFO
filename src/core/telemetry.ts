@@ -65,7 +65,11 @@ export type ProductEvent =
   // The free plan's one colour pick: made during onboarding, made later in
   // Settings, or changed using the one free swap. Shows which presets people
   // choose, and how many reach for a second one (the Pro upsell moment).
-  | { type: 'theme_picked';        themeId: string; context: 'onboarding' | 'settings' | 'swap' };
+  | { type: 'theme_picked';        themeId: string; context: 'onboarding' | 'settings' | 'swap' }
+  // Sent once per session, half a minute in, for accounts at least a week old.
+  // The feedback survey triggers on this event, so nobody is asked how the app
+  // is working for them on the day they signed up.
+  | { type: 'settled_in';          accountAgeDays: number };
 
 export function logProductEvent(event: ProductEvent): void {
   // safeSpend and billsReserved are the user's actual money. They are dropped

@@ -12,7 +12,7 @@ import {
   type WishlistItem,
 } from '../lib/wishlist';
 import {
-  fetchWishlist, addWishlistItem, setWishlistState, removeWishlistItem,
+  fetchWishlist, addWishlistItem, setWishlistState, removeWishlistItem, linkWishlistToVault,
 } from '../core/personalData';
 
 /**
@@ -87,9 +87,20 @@ export default function Wishlist() {
   // Turning a want into a plan. The vault is the thing the app already knows how
   // to fill, so this hands the item over rather than inventing a second way to
   // save for something.
+  //
+  // On the free plan at its vault cap, addVault declines. This used to mark the
+  // item bought and jump to Vaults anyway, so the item vanished from the list
+  // with no vault to show for it. Now it stays put and the upgrade prompt says
+  // why.
   const saveForIt = async (item: WishlistItem) => {
-    await addVault(item.name, item.amount, 'SINKING_FUND');
-    await setState(item.id, 'bought');
+    if (!userId) return;
+    const vaultId = await addVault(item.name, item.amount, 'SINKING_FUND');
+    if (!vaultId) {
+      window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'vault_cap' } }));
+      return;
+    }
+    setItems(items.map((i) => (i.id === item.id ? { ...i, state: 'bought', vaultId } : i)));
+    await linkWishlistToVault(userId, item.id, vaultId);
     navigate('/vaults');
   };
 
@@ -243,9 +254,15 @@ export default function Wishlist() {
                 <p className="truncate text-xs font-black uppercase tracking-wide text-text-muted">
                   {item.name}
                 </p>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                  {item.state === 'bought' ? 'Got it' : 'Dropped'}
-                </p>
+                {item.vaultId ? (
+                  <Link to="/vaults" className="font-mono text-[10px] font-bold uppercase tracking-widest text-capture-readable underline">
+                    Saving in a vault
+                  </Link>
+                ) : (
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                    {item.state === 'bought' ? 'Got it' : 'Dropped'}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span className="font-mono text-xs font-bold text-text-muted">{money(item.amount)}</span>

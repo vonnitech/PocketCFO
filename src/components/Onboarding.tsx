@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Wallet, TrendingUp, AlertCircle, User, Receipt, Plus, X, ArrowLeft } from 'lucide-react';
 import { supabase } from '../core/supabase';
 import { useStore } from '../store/useStore';
-import { calculateRawSafeSpend, calculateDaysUntilPayday, billKey } from '../core/math';
+import { calculateTrueSafeSpend, calculateDaysUntilPayday, billKey } from '../core/math';
 import { formatCurrency } from '../lib/utils';
+import { CURRENCIES, guessCurrency } from '../lib/currency';
 import { logProductEvent } from '../core/telemetry';
 import { NotificationPrimer } from './NotificationPrimer';
 import { getPrefs, initForUser, permissionState } from '../core/notifications';
@@ -78,7 +79,36 @@ export function OnboardingModal() {
     ? `${payYear}-${payMonth.padStart(2, '0')}-${payDay.padStart(2, '0')}`
     : '';
   const resolvedFirstName = firstName.trim() || existingFirstName.trim();
-  const canSubmit = numBalance >= 0 && numTakeHome > 0 && !!payday && !!userId && (!askName || !!resolvedFirstName);
+  // A payday that has already happened is not a next payday. It used to be
+  // accepted, and the days-until-payday floor of 1 then spread the whole
+  // balance over a single day, which produced a wildly inflated first number.
+  const paydayInPast = (() => {
+    if (!payday) return false;
+    const [y, m, d] = payday.split('-').map(Number);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return new Date(y, m - 1, d).getTime() <= today.getTime();
+  })();
+  const canSubmit = numBalance >= 0 && numTakeHome > 0 && !!payday && !paydayInPast && !!userId && (!askName || !!resolvedFirstName);
+
+  // Said under a disabled Next button, so a grey button always comes with the
+  // reason it is grey. Lists only what is still missing, in form order.
+  const missingHint = (() => {
+    if (paydayInPast) return 'Next payday has to be a date after today.';
+    const missing: string[] = [];
+    if (askName && !resolvedFirstName) missing.push('your first name');
+    if (balance.trim() === '') missing.push('your bank balance');
+    if (numTakeHome <= 0) missing.push('your take-home pay');
+    if (!payday) missing.push('your next payday');
+    if (missing.length === 0) return '';
+    const list = missing.length === 1
+      ? missing[0]
+      : missing.slice(0, -1).join(', ') + ' and ' + missing[missing.length - 1];
+    return 'Add ' + list + ' to continue.';
+  })();
+
+  const currency    = useStore(s => s.currency);
+  const setCurrency = useStore(s => s.setCurrency);
 
   const parsedBills = useMemo(
     () => bills
@@ -97,19 +127,26 @@ export function OnboardingModal() {
   // simplified estimate that would quietly disagree with it.
   const daysUntilPayday = payday ? calculateDaysUntilPayday(payday) : 0;
 
+  // Mirrors what setHorizon stores, field for field. Bills ticked as paid are
+  // out of the cash already, so they leave upcomingBills, but they still recur
+  // every month, so they stay in fixedBills, which feeds the monthly budget.
+  // The preview used to drop paid bills from both, which made the setup number
+  // higher than the dashboard showed a second later (720 against 503 with rent
+  // ticked off). calculateTrueSafeSpend is the same function the dashboard hero
+  // uses, so tier and pacing are applied here too.
   const previewSafeSpend = useMemo(() => {
     if (!canSubmit) return 0;
-    return calculateRawSafeSpend({
+    return calculateTrueSafeSpend({
       ...(useStore.getState() as any),
       liquidAssets:    numBalance,
       nextPayday:      payday,
       upcomingBills:   billsTotal,
-      fixedBills:      billsTotal,
-      fixedBurn:       billsTotal,
+      fixedBills:      billsAllTotal,
+      fixedBurn:       billsAllTotal,
       monthlyTakeHome: numTakeHome,
       hardDailyCap:    0,
     });
-  }, [canSubmit, numBalance, numTakeHome, payday, billsTotal]);
+  }, [canSubmit, numBalance, numTakeHome, payday, billsTotal, billsAllTotal]);
 
   // Decided once, on mount, so the flow cannot grow or lose a step underneath
   // the user. There is nothing to ask if the browser has no support, if the
@@ -130,6 +167,19 @@ export function OnboardingModal() {
     startedRef.current = true;
     logProductEvent({ type: 'onboarding_started' });
   }, [hasCompletedOnboarding]);
+
+  // Every new profile starts on the database default, USD, so someone in
+  // Johannesburg saw dollar signs until they found the setting. Guess from the
+  // device once, at the start of setup, and only while the account is still on
+  // that untouched default. The picker on the first step can override it.
+  const currencyGuessedRef = useRef(false);
+  useEffect(() => {
+    if (hasCompletedOnboarding || currencyGuessedRef.current || !userId) return;
+    currencyGuessedRef.current = true;
+    if (currency !== 'USD') return;
+    const guess = guessCurrency();
+    if (guess !== 'USD') void setCurrency(guess);
+  }, [hasCompletedOnboarding, userId, currency, setCurrency]);
 
   useEffect(() => {
     if (existingFirstName.trim() && !firstName.trim()) {
@@ -436,6 +486,24 @@ export function OnboardingModal() {
                     </select>
                   </div>
                 </div>
+
+                {/* Currency. Pre-set from the device; shown so a wrong guess
+                    is one tap to fix rather than a hunt through Settings. */}
+                <div className="flex items-center justify-between gap-3 overflow-hidden">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-text-muted shrink-0">
+                    Currency
+                  </span>
+                  <select
+                    title="Currency"
+                    value={currency}
+                    onChange={e => void setCurrency(e.target.value)}
+                    className="min-w-0 max-w-[65%] bg-transparent border-2 border-border rounded-xl px-2 py-1.5 font-mono font-bold text-xs text-text-main outline-none focus:bg-input cursor-pointer"
+                  >
+                    {CURRENCIES.map(c => (
+                      <option key={c.code} value={c.code}>{c.code} · {c.name}</option>
+                    ))}
+                  </select>
+                </div>
               </motion.div>
             ) : step === 'bills' ? (
               <motion.div
@@ -549,7 +617,10 @@ export function OnboardingModal() {
               >
                 {/* Tapping previews live on the app behind the modal; nothing
                     is saved until the button below is pressed. */}
-                <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1 -mr-1 pt-1">
+                {/* The list scrolls. The fade at the bottom edge says there is
+                    more below; without it the grid looked like the full set. */}
+                <div className="relative">
+                <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1 -mr-1 pt-1 pb-6">
                   {COLOR_THEMES.map(t => {
                     const selected = t.id === colourPick;
                     return (
@@ -571,8 +642,10 @@ export function OnboardingModal() {
                     );
                   })}
                 </div>
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-surface to-transparent" />
+                </div>
                 <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug">
-                  Original is always yours too, and you can swap your pick once in Settings. Pro unlocks every pairing.
+                  Scroll for more pairings. Original is always yours too, and you can swap your pick once in Settings. Pro unlocks every pairing.
                 </p>
               </motion.div>
             ) : (
@@ -632,6 +705,14 @@ export function OnboardingModal() {
                 : colourPick === 'default' ? 'Keep Original →' : 'Make It Mine →'
               }
             </motion.button>
+          )}
+
+          {/* Why the button is grey. Without this a disabled Next gave no clue
+              which field was holding it back. */}
+          {(step === 'basics' || step === 'bills') && !loading && !canSubmit && missingHint && (
+            <p role="status" className="text-center text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug -mt-1">
+              {missingHint}
+            </p>
           )}
 
           {step === 'bills' && (
