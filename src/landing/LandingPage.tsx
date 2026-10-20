@@ -28,7 +28,10 @@ const FEATURES: Record<Feature, { kicker: string; title: string; copy: string }>
   },
 };
 
-const PACES: Record<Pace, { label: string; note: string; values: string[]; heights: string[]; amount: string; caption: string }> = {
+// `swept` (vault only) is the share of each bar, from the top, that went unspent
+// and moved to a vault. The bar height is the day's cleared amount; the label
+// under it is what was actually spent.
+const PACES: Record<Pace, { label: string; note: string; values: string[]; heights: string[]; swept?: string[]; amount: string; caption: string }> = {
   flat: {
     label: 'FLAT PACE', note: 'Same number every day. Simple on purpose.',
     values: ['$60', '$60', '$60', '$60', '$60', '$60', '$60'],
@@ -42,10 +45,11 @@ const PACES: Record<Pace, { label: string; note: string; values: string[]; heigh
     amount: '$48', caption: 'Weekdays trimmed for a bigger weekend',
   },
   vault: {
-    label: 'SWEEP TO VAULT', note: 'Underspend does not disappear. It moves toward a goal.',
-    values: ['$55', '$55', '$55', '$55', '$55', '$55', '$55'],
-    heights: ['53%', '53%', '53%', '53%', '53%', '53%', '53%'],
-    amount: '$55', caption: 'Leftover money sweeps into a vault',
+    label: 'SWEEP TO VAULT', note: 'Green is what you did not spend. It moves to a vault.',
+    values: ['$42', '$55', '$36', '$60', '$48', '$60', '$53'],
+    heights: ['58%', '58%', '58%', '58%', '58%', '58%', '58%'],
+    swept:   ['30%', '8%', '40%', '0%', '20%', '0%', '12%'],
+    amount: '$60', caption: 'Leftover money sweeps into a vault',
   },
 };
 
@@ -301,9 +305,11 @@ export function LandingPage() {
               <div className="pace-board-top"><span>9 DAYS TO PAYDAY</span><strong>{p.label}</strong></div>
               <div className="day-bars">
                 {DAYS.map((d, i) => (
-                  <div key={i} className={i >= 5 ? 'weekend' : undefined}>
+                  <div key={i} className={pace === 'weekend' && i >= 5 ? 'weekend' : undefined}>
                     <span>{d}</span>
-                    <i style={{ ['--h' as string]: p.heights[i] }} />
+                    <i style={{ ['--h' as string]: p.heights[i] }}>
+                      {p.swept && p.swept[i] !== '0%' && <b style={{ height: p.swept[i] }} />}
+                    </i>
                     <strong>{p.values[i]}</strong>
                   </div>
                 ))}
