@@ -523,6 +523,13 @@ export function OnboardingModal() {
                         <span className={`flex-1 min-w-0 truncate text-[11px] font-black uppercase tracking-wide ${b.paid ? 'text-text-muted line-through' : 'text-text-main'}`}>
                           {b.name}
                         </span>
+                        {/* Amount before the Paid toggle, not after it. With the
+                            amount last, a longer figure (R 6 500,00 against
+                            R 399,00) pushed each row's toggle to a different
+                            spot, so the column of Paid buttons zig-zagged. */}
+                        <span className={`font-mono font-bold text-xs shrink-0 tabular-nums text-right ${b.paid ? 'text-text-muted line-through' : 'text-text-main'}`}>
+                          {formatCurrency(b.amount)}
+                        </span>
                         <button
                           type="button"
                           onClick={() => togglePaid(b.id)}
@@ -535,9 +542,6 @@ export function OnboardingModal() {
                         >
                           Paid
                         </button>
-                        <span className={`font-mono font-bold text-xs shrink-0 ${b.paid ? 'text-text-muted line-through' : 'text-text-main'}`}>
-                          {formatCurrency(b.amount)}
-                        </span>
                         <button
                           type="button"
                           onClick={() => removeBill(b.id)}

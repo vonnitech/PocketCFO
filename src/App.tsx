@@ -312,7 +312,11 @@ function App() {
     const uid = session?.user?.id;
     if (!uid) return;
     void hydrateFromCache(uid);
-    fetchUserData(uid);
+    // The name typed at sign-up lives in the session's metadata. Handed over
+    // here because this is where the session is known to be present.
+    const meta = session?.user?.user_metadata as Record<string, unknown> | undefined;
+    fetchUserData(uid, typeof meta?.first_name === 'string' ? meta.first_name : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, fetchUserData, hydrateFromCache]);
 
   // Keep the snapshot current. Local mutations already write through to

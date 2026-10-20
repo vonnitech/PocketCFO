@@ -61,10 +61,33 @@ interface Props {
   onDismiss: () => void;
 }
 
+function StepContent({ step, isLast }: { step: typeof STEPS[number]; isLast: boolean }) {
+  const Icon = step.icon;
+  return (
+    <div className="space-y-4">
+      <div className={`w-12 h-12 ${step.color} border-4 border-black rounded-2xl flex items-center justify-center shadow-brutal-sm`}>
+        <Icon size={20} strokeWidth={3} className="text-black" />
+      </div>
+      <div>
+        <h2 className="text-xl font-black uppercase italic tracking-tighter text-text-main leading-tight mb-1.5">
+          {step.title}
+        </h2>
+        <p className="text-[14px] font-bold text-text-muted leading-relaxed">
+          {step.body}
+        </p>
+        {isLast && (
+          <p className="text-[11px] font-bold text-text-muted/80 leading-relaxed mt-3">
+            Each page shows you a short tip the first time you open it.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function FeatureTour({ onDismiss }: Props) {
   const [step, setStep] = useState(0);
   const current = STEPS[step];
-  const Icon = current.icon;
   const isLast = step === STEPS.length - 1;
 
   return (
@@ -105,46 +128,44 @@ export function FeatureTour({ onDismiss }: Props) {
             </button>
           </div>
 
-          {/* Step content */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -24 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 38 }}
-              className="space-y-4 mb-6"
-            >
-              <div className={`w-12 h-12 ${current.color} border-4 border-black rounded-2xl flex items-center justify-center shadow-brutal-sm`}>
-                <Icon size={20} strokeWidth={3} className="text-black" />
-              </div>
-              <div>
-                <h2 className="text-xl font-black uppercase italic tracking-tighter text-text-main leading-tight mb-1.5">
-                  {current.title}
-                </h2>
-                <p className="text-[14px] font-bold text-text-muted leading-relaxed">
-                  {current.body}
-                </p>
-                {isLast && (
-                  <p className="text-[11px] font-bold text-text-muted/80 leading-relaxed mt-3">
-                    Each page shows you a short tip the first time you open it.
-                  </p>
-                )}
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Navigation */}
-          <div className="flex gap-2.5">
-            {step > 0 && (
-              <button
-                type="button"
-                onClick={() => setStep(s => s - 1)}
-                className="h-11 px-4 border-2 border-border rounded-2xl text-[10px] font-black uppercase tracking-widest text-text-muted hover:bg-input transition-colors"
+          {/* Step content. The cards have different amounts of text, and the
+              sheet used to take each card's own height, so it jumped up or
+              down on every Next and the buttons never sat in the same place.
+              Every card is now laid out invisibly in the same grid cell, which
+              sizes the box to the tallest one; the visible card sits on top. */}
+          <div className="relative mb-6">
+            <div aria-hidden className="invisible grid">
+              {STEPS.map((s, i) => (
+                <div key={i} className="[grid-area:1/1]">
+                  <StepContent step={s} isLast={i === STEPS.length - 1} />
+                </div>
+              ))}
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -24 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 38 }}
+                className="absolute inset-0"
               >
-                Back
-              </button>
-            )}
+                <StepContent step={current} isLast={isLast} />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Navigation. The left button is Skip on the first card and Back
+              after it, at one fixed width, so Next is the same width and in
+              the same place on all three cards. */}
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={step === 0 ? onDismiss : () => setStep(s => s - 1)}
+              className="h-11 w-20 shrink-0 border-2 border-border rounded-2xl text-[10px] font-black uppercase tracking-widest text-text-muted hover:bg-input transition-colors"
+            >
+              {step === 0 ? 'Skip' : 'Back'}
+            </button>
             <button
               type="button"
               onClick={isLast ? onDismiss : () => setStep(s => s + 1)}
