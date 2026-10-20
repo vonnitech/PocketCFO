@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Home, Smartphone, Play } from 'lucide-react';
 import { PRICING } from '../lib/pricing';
 import './landing.css';
 
@@ -253,9 +254,9 @@ export function LandingPage() {
               <div className="visual-panel swap-in" key={feature} aria-hidden="true">
                 {feature === 'bills' && (
                   <>
-                    <div className="bill-row"><span className="bill-icon">⌂</span><span>Rent</span><strong>$680</strong><i /></div>
-                    <div className="bill-row"><span className="bill-icon">◌</span><span>Phone</span><strong>$45</strong><i /></div>
-                    <div className="bill-row"><span className="bill-icon">▶</span><span>Streaming</span><strong>$16</strong><i /></div>
+                    <div className="bill-row"><span className="bill-icon"><Home size={12} strokeWidth={2.5} aria-hidden /></span><span>Rent</span><strong>$680</strong><i /></div>
+                    <div className="bill-row"><span className="bill-icon"><Smartphone size={12} strokeWidth={2.5} aria-hidden /></span><span>Phone</span><strong>$45</strong><i /></div>
+                    <div className="bill-row"><span className="bill-icon"><Play size={11} strokeWidth={2.5} aria-hidden /></span><span>Streaming</span><strong>$16</strong><i /></div>
                     <div className="reserved-total"><span>RESERVED BEFORE PAYDAY</span><strong>$741</strong></div>
                   </>
                 )}
