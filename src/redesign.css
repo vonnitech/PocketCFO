@@ -75,10 +75,11 @@ h1, h2, h3 {
 
 /* Larger text that was set in spaced capitals (names in lists, setting titles,
    the greeting) reads as content, not as a label, so it goes back to normal
-   case in the body face. Buttons keep the mono capitals of the landing CTAs. */
+   case in the body face. Buttons keep the mono capitals of the landing CTAs,
+   and muted text keeps them too: at any size, grey spaced capitals are a label. */
 .uppercase:is(.tracking-widest, .tracking-wider, .tracking-wide):is(
   .text-\[11px\], .text-\[12px\], .text-\[13px\], .text-xs, .text-sm, .text-base, .text-lg
-):not(button):not(a):not([role="button"]) {
+):not(button):not(a):not([role="button"]):not(.text-text-muted) {
   text-transform: none;
   font-family: var(--font-sans);
   font-weight: 700;

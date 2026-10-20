@@ -411,7 +411,7 @@ const chooseWorthIt = (id: WorthIt) => {
                   type="number"
                   min="0"
                   title="Reviewed Total Spent Today"
-                  className="w-full bg-input border-4 border-black rounded-2xl p-5 pl-12 text-3xl font-black italic outline-none text-center focus:border-action-primary focus:bg-surface transition-colors text-text-main"
+                  className="w-full bg-input border-4 border-black rounded-2xl p-5 pl-12 text-3xl font-black italic outline-none tabular-nums focus:border-action-primary focus:bg-surface transition-colors text-text-main"
                   placeholder="0.00"
                   value={displayRawSpend}
                   onFocus={e => e.target.select()}
