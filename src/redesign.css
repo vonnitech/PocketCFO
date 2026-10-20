@@ -29,18 +29,21 @@
   /* 4.9:1 on the cream page, 4.6:1 on the input fill. */
   --text-secondary: #635F56;
   --shadow-color: rgba(17, 17, 15, 0.06);
-  --dot-color: rgba(17, 17, 15, 0.07);
+  /* Same strength as before the restyle; the dots are part of the look. */
+  --dot-color: rgba(17, 17, 15, 0.13);
   --hairline: rgba(17, 17, 15, 0.14);
 }
 
+/* Dark mode is a warm charcoal rather than near-black, so cards still lift off
+   the page, and the dots stay visible. */
 .dark {
-  --bg-primary: #11110F;
-  --bg-secondary: #1C1C19;
-  --bg-input: #2A2A26;
-  --border-primary: rgba(255, 255, 255, 0.12);
+  --bg-primary: #1E1E1B;
+  --bg-secondary: #2A2A26;
+  --bg-input: #35352F;
+  --border-primary: rgba(255, 255, 255, 0.14);
   --text-primary: #F7F4EC;
-  --text-secondary: #B8B3A6;
-  --dot-color: rgba(255, 255, 255, 0.03);
+  --text-secondary: #BDB8AB;
+  --dot-color: rgba(255, 255, 255, 0.09);
   --hairline: rgba(255, 255, 255, 0.12);
 }
 
@@ -62,6 +65,7 @@ h1, h2, h3 {
    with uppercase plus tight tracking) goes back to the case it was written in. */
 .uppercase { text-transform: none; }
 .uppercase:is(.tracking-widest, .tracking-wider, .tracking-wide),
+.uppercase[class*="tracking-[0."],
 .label-xs {
   text-transform: uppercase;
   font-family: var(--font-mono);
@@ -131,3 +135,7 @@ h1, h2, h3 {
 :root:not(.dark) .dashboard-hero.border-action-bleed {
   box-shadow: 0 0 0 10px #11110F, 0 0 0 12px var(--color-action-bleed);
 }
+
+/* index.css gave a few dark surfaces a cool blue-grey; keep them in the warm
+   charcoal family of the restyle. */
+.dark .dashboard-hero, .dark .app-navigation { background: #2A2A26; }

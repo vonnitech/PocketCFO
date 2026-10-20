@@ -333,7 +333,7 @@ function App() {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
     // Match the browser chrome (status bar / address bar) to the app background.
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0F0F0F' : '#F2F1EE');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#1E1E1B' : '#F7F4EC');
   }, [theme]);
 
   useEffect(() => {
