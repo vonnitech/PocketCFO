@@ -21,17 +21,19 @@
   --font-sans: "Manrope", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, monospace;
 
-  --bg-primary: #F7F4EC;
-  --bg-secondary: #FFFDF7;
-  --bg-input: #EFEADF;
-  --border-primary: rgba(17, 17, 15, 0.14);
+  /* The page is a shade deeper than the landing page's cream so the paper-white
+     cards stand clear of it. At the same cream they washed into the page. */
+  --bg-primary: #EFEADD;
+  --bg-secondary: #FFFDF8;
+  --bg-input: #F1ECE1;
+  --border-primary: rgba(17, 17, 15, 0.2);
   --text-primary: #11110F;
   /* 4.9:1 on the cream page, 4.6:1 on the input fill. */
   --text-secondary: #635F56;
   --shadow-color: rgba(17, 17, 15, 0.06);
   /* Same strength as before the restyle; the dots are part of the look. */
   --dot-color: rgba(17, 17, 15, 0.13);
-  --hairline: rgba(17, 17, 15, 0.14);
+  --hairline: rgba(17, 17, 15, 0.2);
 }
 
 /* Dark mode is a warm charcoal rather than near-black, so cards still lift off
@@ -128,15 +130,23 @@ h1, h2, h3 {
 /* Today's number sits in the landing page's dark "today's plan" frame, so it is
    unmistakably the main thing on the screen. Drawn with a ring rather than a
    wrapper element so the card's own layout and states are untouched. */
-:root:not(.dark) .dashboard-hero {
+/* Repeated class: outranks the general card shadow further down, which has the
+   same reach otherwise and would win by coming later. */
+:root:not(.dark) .dashboard-hero.dashboard-hero.dashboard-hero {
   margin: 10px;
   border-color: transparent;
   box-shadow: 0 0 0 10px #11110F;
 }
-:root:not(.dark) .dashboard-hero.border-action-bleed {
+:root:not(.dark) .dashboard-hero.dashboard-hero.dashboard-hero.border-action-bleed {
   box-shadow: 0 0 0 10px #11110F, 0 0 0 12px var(--color-action-bleed);
 }
 
 /* index.css gave a few dark surfaces a cool blue-grey; keep them in the warm
    charcoal family of the restyle. */
 .dark .dashboard-hero, .dark .app-navigation { background: #2A2A26; }
+
+/* Cards get a soft lift so they read as cards, not as faint outlines. Soft and
+   downward only, unlike the old hard offset shadows. */
+:root:not(.dark) .bg-surface:is(.rounded-3xl, .rounded-2xl, .rounded-\[1\.75rem\]) {
+  box-shadow: 0 1px 0 rgba(17, 17, 15, 0.04), 0 10px 24px -14px rgba(17, 17, 15, 0.28);
+}
