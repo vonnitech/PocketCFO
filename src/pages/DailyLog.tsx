@@ -200,7 +200,7 @@ const chooseWorthIt = (id: WorthIt) => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily Review</h1>
+          <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily review</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Review complete · {todayLabel}</p>
         </div>
 
@@ -264,7 +264,7 @@ const chooseWorthIt = (id: WorthIt) => {
                 : <CheckCircle2 size={32} className="text-text-main" strokeWidth={3} />}
             </div>
             <div>
-              <h2 className="text-2xl font-black italic tracking-tighter uppercase text-text-main">Review Complete</h2>
+              <h2 className="text-2xl font-black italic tracking-tighter uppercase text-text-main">Review complete</h2>
               {todayEntry && (
                 <div className={`inline-flex px-3 py-1 mt-1 ${SPEND_TIERS.find(t => t.id === todayEntry.tier)?.color || 'bg-gray-200'} border-[3px] border-black rounded-full text-[11px] font-black uppercase tracking-widest`}>
                   {SPEND_TIERS.find(t => t.id === todayEntry.tier)?.label ?? todayEntry.tier}
@@ -352,7 +352,7 @@ const chooseWorthIt = (id: WorthIt) => {
   return (
     <div className="space-y-5 max-w-xl mx-auto">
       <div>
-        <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily Review</h1>
+        <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily review</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">{todayLabel}</p>
       </div>
 

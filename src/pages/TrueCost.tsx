@@ -168,7 +168,7 @@ export const TrueCost: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">True Cost</h1>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">True cost</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">True cost of financing</p>
         </div>
         {hasInput && (

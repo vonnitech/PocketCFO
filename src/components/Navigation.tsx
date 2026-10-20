@@ -44,19 +44,19 @@ const primaryTabs: PrimaryTab[] = [
 
 const desktopCoreLinks = [
   { path: '/',              icon: StackPiggyHomeIcon, label: 'Dashboard' },
-  { path: '/daily',         icon: StackPiggyDailyReviewIcon, label: 'Daily Review' },
+  { path: '/daily',         icon: StackPiggyDailyReviewIcon, label: 'Daily review' },
   { path: '/transactions',  icon: StackPiggySpendIcon, label: 'Ledger' },
   { path: '/vaults',        icon: StackPiggyVaultIcon, label: 'Vaults' },
   { path: '/breakdown',     icon: StackPiggyStatsIcon, label: 'Breakdown' },
   { path: '/subscriptions', icon: StackPiggySubscriptionsIcon, label: 'Subscriptions' },
-  { path: '/limit',         icon: StackPiggySpendLimitIcon, label: 'Spend Limit' },
+  { path: '/limit',         icon: StackPiggySpendLimitIcon, label: 'Spend limit' },
   { path: '/pacing',        icon: StackPiggyPacingIcon, label: 'Pacing' },
 ];
 
 // Core screens that are not one of the four tabs.
 const manageLinks = [
-  { path: '/daily',         icon: StackPiggyDailyReviewIcon, label: 'Daily Review' },
-  { path: '/limit',         icon: StackPiggySpendLimitIcon, label: 'Spend Limit' },
+  { path: '/daily',         icon: StackPiggyDailyReviewIcon, label: 'Daily review' },
+  { path: '/limit',         icon: StackPiggySpendLimitIcon, label: 'Spend limit' },
   { path: '/pacing',        icon: StackPiggyPacingIcon, label: 'Pacing' },
   { path: '/subscriptions', icon: StackPiggySubscriptionsIcon, label: 'Subscriptions' },
   { path: '/settings',      icon: StackPiggySettingsIcon, label: 'Settings' },
@@ -65,13 +65,13 @@ const manageLinks = [
 // `pro: true` marks a Tool that requires Pro. Bill Splitter (viral acquisition)
 // and True Cost (free differentiator) are deliberately left free.
 const calculatorTools: { path: string; icon: React.ElementType; label: string; subtitle: string; pro?: boolean }[] = [
-  { path: '/split',            icon: StackPiggyBillSplitIcon, label: 'Bill Splitter', subtitle: 'Divide expenses and track who owes what' },
-  { path: '/true-cost',        icon: StackPiggyTrueCostIcon, label: 'True Cost', subtitle: 'Calculate the real price of purchases over time' },
-  { path: '/debt',             icon: StackPiggyDebtPayoffIcon, label: 'Debt Payoff', subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
-  { path: '/safety-net',       icon: StackPiggySafetyNetIcon, label: 'Safety Net', subtitle: 'How long your cash lasts and your target buffer' },
-  { path: '/fire',             icon: StackPiggyFireIcon, label: 'FIRE CALCULATOR', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
+  { path: '/split',            icon: StackPiggyBillSplitIcon, label: 'Bill splitter', subtitle: 'Divide expenses and track who owes what' },
+  { path: '/true-cost',        icon: StackPiggyTrueCostIcon, label: 'True cost', subtitle: 'Calculate the real price of purchases over time' },
+  { path: '/debt',             icon: StackPiggyDebtPayoffIcon, label: 'Debt payoff', subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
+  { path: '/safety-net',       icon: StackPiggySafetyNetIcon, label: 'Safety net', subtitle: 'How long your cash lasts and your target buffer' },
+  { path: '/fire',             icon: StackPiggyFireIcon, label: 'FIRE calculator', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
   { path: '/wishlist',         icon: StackPiggyWishlistIcon, label: 'Wishlist', subtitle: 'Things you want, priced in days of your cleared amount' },
-  { path: '/income',           icon: StackPiggyIncomeIcon, label: 'Income Tracker', subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
+  { path: '/income',           icon: StackPiggyIncomeIcon, label: 'Income tracker', subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
 ];
 
 function DesktopNavItem({ path, icon: Icon, label, locked }: {

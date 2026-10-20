@@ -182,7 +182,7 @@ export default function IncomeTracker() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Income Tracker</h1>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Income tracker</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Income growth · savings rate lab</p>
         </div>
         <div className="bg-surface border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
@@ -201,7 +201,7 @@ export default function IncomeTracker() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Income Tracker</h1>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Income tracker</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
           Income growth · savings rate lab
           {!fireConfig && (

@@ -214,10 +214,10 @@ export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }
   };
 
   const headline =
-    mode === 'login'   ? 'Sign In'
-    : mode === 'signup' ? 'Create Account'
-    : mode === 'reset'  ? 'Reset Password'
-    :                     'Set New Password';
+    mode === 'login'   ? 'Sign in'
+    : mode === 'signup' ? 'Create account'
+    : mode === 'reset'  ? 'Reset password'
+    :                     'Set a new password';
 
   const submitLabel =
     mode === 'login'   ? <><LogIn size={16} strokeWidth={3} /> Sign In</>

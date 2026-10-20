@@ -104,7 +104,7 @@ export function Login({ onAuthenticated }: LoginProps) {
           className="bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4"
         >
           <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-none">
-            {mode === 'login' ? 'Sign In' : 'Create Account'}
+            {mode === 'login' ? 'Sign in' : 'Create account'}
           </h1>
 
           {/* Email */}

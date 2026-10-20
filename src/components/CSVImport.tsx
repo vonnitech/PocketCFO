@@ -206,7 +206,7 @@ export function CSVImport({ onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b-2 border-border/40 sticky top-0 bg-surface z-10">
           <div>
-            <h2 className="text-2xl font-black italic tracking-tighter uppercase text-text-main">Import CSV</h2>
+            <h2 className="text-2xl font-black italic tracking-tighter uppercase text-text-main">Import a CSV</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-0.5">
               {step === 'upload' && 'Upload your bank export'}
               {step === 'map' && 'Map columns · ' + rows.length + ' rows detected'}

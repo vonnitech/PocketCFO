@@ -229,7 +229,7 @@ export default function Ledger() {
       {/* Empty state */}
       {grouped.length === 0 && (
         <div className="bg-surface border-4 border-border rounded-3xl p-10 flex flex-col items-center gap-3 text-center">
-          <p className="text-xl font-black italic uppercase text-text-main">No Transactions</p>
+          <p className="text-xl font-black italic uppercase text-text-main">No transactions yet</p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
             {search || category !== 'ALL' ? 'Try adjusting your filters' : 'Start logging spend to see your ledger'}
           </p>

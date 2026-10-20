@@ -361,7 +361,7 @@ export default function Vaults() {
             <ShieldCheck size={32} strokeWidth={2} className="text-text-muted" />
           </div>
           <div>
-            <p className="font-black uppercase text-xl italic text-text-main">No Vaults Yet</p>
+            <p className="font-black uppercase text-xl italic text-text-main">No vaults yet</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">Create savings goals to start capturing money</p>
           </div>
         </div>
@@ -736,7 +736,7 @@ export default function Vaults() {
             <div className="w-12 h-12 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center mb-4 mx-auto">
               <AlertTriangle size={24} strokeWidth={3} className="text-text-main" />
             </div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Move to Trash?</h2>
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Move to trash?</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-1">"{vaultBeingDeleted.name}"</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-5">
               This vault will be moved to trash. You can restore it anytime.
@@ -756,7 +756,7 @@ export default function Vaults() {
             <div className="w-12 h-12 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center mb-4 mx-auto">
               <Lock size={22} strokeWidth={3} className="text-black" />
             </div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Vault Limit Reached</h2>
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Vault limit reached</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-5">
               Free keeps {FREE_VAULT_CAP} active vaults. Restore this one with Pro, or trash an active vault first to make room.
             </p>
@@ -775,7 +775,7 @@ export default function Vaults() {
             <div className="w-12 h-12 bg-action-bleed border-4 border-black rounded-2xl flex items-center justify-center mb-4 mx-auto">
               <Trash2 size={24} strokeWidth={3} className="text-white" />
             </div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-action-bleed text-center mb-2">Delete Forever?</h2>
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-action-bleed text-center mb-2">Delete for good?</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-1">"{vaultBeingPermDeleted.name}"</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-5">
               {vaultBeingPermDeleted.current > 0

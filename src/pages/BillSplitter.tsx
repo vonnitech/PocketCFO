@@ -217,13 +217,13 @@ export const BillSplitter: React.FC = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill Splitter</h1>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill splitter</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Split complete</p>
         </div>
         <div className="bg-surface border-4 border-action-capture rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
           <div className="flex items-center gap-3">
             <CheckCircle2 size={24} className="text-capture-readable" strokeWidth={3} />
-            <h2 className="text-xl font-black italic uppercase tracking-tighter text-text-main">Split Done</h2>
+            <h2 className="text-xl font-black italic uppercase tracking-tighter text-text-main">Split done</h2>
           </div>
 
           <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
@@ -264,7 +264,7 @@ export const BillSplitter: React.FC = () => {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill Splitter</h1>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill splitter</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Split bills with the squad</p>
       </div>
 

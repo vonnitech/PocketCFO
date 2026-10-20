@@ -366,10 +366,10 @@ export function OnboardingModal() {
           <div className="overflow-hidden">
             <div className="flex items-baseline justify-between gap-2">
               <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-none truncate">
-                {step === 'basics' ? 'Set Up Your Account'
-                  : step === 'bills' ? 'Your Fixed Bills'
-                  : step === 'colour' ? 'Make It Yours'
-                  : "You're All Set"}
+                {step === 'basics' ? 'Set up your account'
+                  : step === 'bills' ? 'Your bills'
+                  : step === 'colour' ? 'Make it yours'
+                  : "You're all set"}
               </h1>
               <span className="text-[10px] font-black uppercase tracking-widest text-text-muted shrink-0">
                 {stepNumber}/{totalSteps}

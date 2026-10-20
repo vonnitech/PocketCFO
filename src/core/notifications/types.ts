@@ -60,7 +60,7 @@ export const CATEGORY_META: Record<NotificationCategory, CategoryMeta> = {
     level: 'helpful',
   },
   'daily-review': {
-    label: 'Daily Review',
+    label: 'Daily review',
     description: 'An evening reminder when you have logged spending but not reviewed it.',
     level: 'helpful',
   },

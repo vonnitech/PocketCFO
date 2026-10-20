@@ -36,7 +36,7 @@ export const SafetyNet: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Safety Net</h1>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Safety net</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Know exactly when you run out of cash</p>
       </div>
 

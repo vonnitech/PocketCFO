@@ -96,7 +96,7 @@ export function NotificationPrimer({
           whileTap={{ scale: 0.97 }}
           className="w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40"
         >
-          {busy ? <span className="animate-pulse">Waiting…</span> : 'Turn On Reminders'}
+          {busy ? <span className="animate-pulse">Waiting…</span> : 'Turn on reminders'}
         </motion.button>
         <button
           type="button"

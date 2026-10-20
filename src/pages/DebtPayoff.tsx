@@ -113,7 +113,7 @@ export const DebtPayoff: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Debt Payoff</h1>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Debt payoff</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
           Smart order · highest-cost debts first
         </p>

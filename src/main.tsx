@@ -7,6 +7,7 @@ import App from './App.tsx';
 import { initAnalytics } from './core/analytics';
 import { captureAttribution } from './core/attribution';
 import './index.css';
+import './redesign.css';
 
 // Read the campaign parameters before anything navigates away from them. Runs
 // whether or not analytics is switched on, so a visit that arrives before a key

@@ -1,0 +1,133 @@
+/*
+ * App restyle to match the landing page.
+ *
+ * The app was built in a loud style: capitals, italics, 3-4px black borders and
+ * hard offset shadows on nearly everything. The landing page keeps the same
+ * yellow, black and green but is calm: sentence-case headings in Manrope, small
+ * DM Mono labels in capitals, hairline borders and flat cards.
+ *
+ * This file moves the whole app to that style in one place rather than editing
+ * hundreds of class lists. It is deliberately unlayered: Tailwind's utilities
+ * live in a cascade layer, and unlayered rules win over layered ones, so these
+ * overrides apply without !important. Screens that need more than a restyle
+ * are adjusted in their own components.
+ *
+ * The landing page (.lp) uses no Tailwind classes, so nothing here reaches it.
+ */
+
+/* ── Palette and type ─────────────────────────────────────────────────────── */
+
+:root {
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+
+  --bg-primary: #F7F4EC;
+  --bg-secondary: #FFFDF7;
+  --bg-input: #EFEADF;
+  --border-primary: rgba(17, 17, 15, 0.14);
+  --text-primary: #11110F;
+  /* 4.9:1 on the cream page, 4.6:1 on the input fill. */
+  --text-secondary: #635F56;
+  --shadow-color: rgba(17, 17, 15, 0.06);
+  --dot-color: rgba(17, 17, 15, 0.07);
+  --hairline: rgba(17, 17, 15, 0.14);
+}
+
+.dark {
+  --bg-primary: #11110F;
+  --bg-secondary: #1C1C19;
+  --bg-input: #2A2A26;
+  --border-primary: rgba(255, 255, 255, 0.12);
+  --text-primary: #F7F4EC;
+  --text-secondary: #B8B3A6;
+  --dot-color: rgba(255, 255, 255, 0.03);
+  --hairline: rgba(255, 255, 255, 0.12);
+}
+
+body { letter-spacing: -0.005em; }
+
+/* Headings: upright, sentence case as written, tight display tracking. */
+h1, h2, h3 {
+  text-transform: none;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.italic { font-style: normal; }
+.font-black { font-weight: 800; }
+
+/* Capitals stay only on small, letter-spaced labels and buttons, which become
+   the landing page's mono eyebrow style. Large text in capitals (headings set
+   with uppercase plus tight tracking) goes back to the case it was written in. */
+.uppercase { text-transform: none; }
+.uppercase:is(.tracking-widest, .tracking-wider, .tracking-wide),
+.label-xs {
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+/* Larger text that was set in spaced capitals (names in lists, setting titles,
+   the greeting) reads as content, not as a label, so it goes back to normal
+   case in the body face. Buttons keep the mono capitals of the landing CTAs. */
+.uppercase:is(.tracking-widest, .tracking-wider, .tracking-wide):is(
+  .text-\[11px\], .text-\[12px\], .text-\[13px\], .text-xs, .text-sm, .text-base, .text-lg
+):not(button):not(a):not([role="button"]) {
+  text-transform: none;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ── Borders and depth ────────────────────────────────────────────────────── */
+
+.border-4, .border-\[3px\], .border-2 { border-width: 1px; }
+.border-t-4, .border-t-2 { border-top-width: 1px; }
+.border-b-4, .border-b-2 { border-bottom-width: 1px; }
+.border-l-4, .border-l-2 { border-left-width: 1px; }
+.border-r-4, .border-r-2 { border-right-width: 1px; }
+.divide-y-2 > :not(:last-child) { border-bottom-width: 1px; }
+
+.border-black, .border-border, .divide-black > *, .border-current { border-color: var(--hairline); }
+
+/* Hard offset shadows, in every form they were written. */
+[class*="shadow-["], .shadow-brutal, .shadow-brutal-sm, .shadow-brutal-green,
+.shadow-brutal-target, .shadow-brutal-bleed, .card-brutal, .btn-brutal,
+[class*="hover:shadow-"]:hover {
+  box-shadow: none;
+}
+
+/* The press-in nudge only made sense with an offset shadow to sink into. */
+[class*="hover:translate-x-0.5"]:hover, [class*="hover:-translate-x-0.5"]:hover {
+  translate: none;
+}
+
+.btn-brutal { border-width: 1px; border-radius: 0.9rem; }
+.card-brutal { border-width: 1px; border-radius: 1rem; }
+
+/* Filled black buttons keep a solid edge rather than a grey outline. */
+.bg-black.border-black { border-color: #11110F; }
+
+/* Range slider: hairline track, soft thumb. */
+.brutal-range::-webkit-slider-runnable-track { border-width: 1px; }
+.brutal-range::-moz-range-track { border-width: 1px; }
+.brutal-range::-webkit-slider-thumb { border-width: 1px; border-color: #11110F; border-radius: 999px; }
+.brutal-range::-moz-range-thumb { border-width: 1px; border-color: #11110F; border-radius: 999px; }
+
+:focus-visible { outline-width: 2px; }
+
+/* ── Screens with their own treatment ─────────────────────────────────────── */
+
+/* Today's number sits in the landing page's dark "today's plan" frame, so it is
+   unmistakably the main thing on the screen. Drawn with a ring rather than a
+   wrapper element so the card's own layout and states are untouched. */
+:root:not(.dark) .dashboard-hero {
+  margin: 10px;
+  border-color: transparent;
+  box-shadow: 0 0 0 10px #11110F;
+}
+:root:not(.dark) .dashboard-hero.border-action-bleed {
+  box-shadow: 0 0 0 10px #11110F, 0 0 0 12px var(--color-action-bleed);
+}

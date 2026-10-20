@@ -199,7 +199,7 @@ export function ScreenLock() {
         <div className="text-center">
           <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${inCooldown ? 'text-action-bleed' : 'text-action-primary'}`}>StackPiggy</p>
           <p className="text-white text-2xl font-black uppercase italic tracking-tighter mt-0.5">
-            {inCooldown ? 'Locked Out' : 'Enter PIN'}
+            {inCooldown ? 'Locked out' : 'Enter your PIN'}
           </p>
         </div>
       </div>

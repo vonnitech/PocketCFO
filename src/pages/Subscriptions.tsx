@@ -395,7 +395,7 @@ export default function Subscriptions() {
               <div className="w-16 h-16 bg-action-bleed text-white rounded-2xl flex items-center justify-center mb-5 border-[3px] border-black rotate-6">
                 <Skull size={32} />
               </div>
-              <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-2 text-text-main">Cancel Subscription?</h2>
+              <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-2 text-text-main">Cancel this subscription?</h2>
               <p className="text-[11px] font-bold text-text-muted mb-7 leading-relaxed uppercase tracking-wide">
                 Did you actually cancel <span className="text-text-main border-b-[3px] border-action-bleed">{subToCancel.name}</span> in its app settings?
               </p>

@@ -360,7 +360,7 @@ export function FireCalculator() {
           <div className="mb-4 min-w-0">
             <div className="mb-1 flex items-start justify-between gap-3">
               <p className="min-w-0 text-[9px] min-[420px]:text-[10px] font-bold uppercase tracking-wide min-[420px]:tracking-widest text-white/50 mb-1">
-                {calc.isCoast ? 'Your Coast Number' : 'Your FIRE Number'}
+                {calc.isCoast ? 'Your coast number' : 'Your FIRE number'}
               </p>
               <div className="w-9 h-9 min-[420px]:w-10 min-[420px]:h-10 -mt-1 bg-action-primary border-[3px] border-black rounded-xl flex items-center justify-center shadow-brutal-sm shrink-0">
                 {strategy === 'COAST'
