@@ -94,7 +94,8 @@ export function OnboardingModal() {
   // Said under a disabled Next button, so a grey button always comes with the
   // reason it is grey. Lists only what is still missing, in form order.
   const missingHint = (() => {
-    if (paydayInPast) return 'Next payday has to be a date after today.';
+    // Said in red right under the date instead, where the problem is.
+    if (paydayInPast) return '';
     const missing: string[] = [];
     if (askName && !resolvedFirstName) missing.push('your first name');
     if (balance.trim() === '') missing.push('your bank balance');
@@ -147,6 +148,12 @@ export function OnboardingModal() {
       hardDailyCap:    0,
     });
   }, [canSubmit, numBalance, numTakeHome, payday, billsTotal, billsAllTotal]);
+
+  // The figure is the lower of a pay-based and a balance-based daily amount.
+  // With a large balance and a smaller pay it can look as if the balance was
+  // ignored, so the preview names which one set the number.
+  const cashDaily = daysUntilPayday > 0 ? Math.max(0, numBalance - billsTotal) / daysUntilPayday : 0;
+  const limitedByPay = previewSafeSpend > 0 && previewSafeSpend < cashDaily - 0.005;
 
   // Decided once, on mount, so the flow cannot grow or lose a step underneath
   // the user. There is nothing to ask if the browser has no support, if the
@@ -485,6 +492,11 @@ export function OnboardingModal() {
                       ))}
                     </select>
                   </div>
+                  {paydayInPast && (
+                    <p className="mt-1.5 text-[10px] font-black uppercase tracking-wide text-action-bleed">
+                      That date has passed. Pick your next payday.
+                    </p>
+                  )}
                 </div>
 
                 {/* Currency. Pre-set from the device; shown so a wrong guess
@@ -534,13 +546,16 @@ export function OnboardingModal() {
                           type="button"
                           onClick={() => togglePaid(b.id)}
                           aria-pressed={!!b.paid}
-                          className={`shrink-0 px-2 py-1 border-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                          className={`shrink-0 w-[4.75rem] py-1 border-2 rounded-full text-[9px] font-black uppercase tracking-wider text-center transition-all ${
                             b.paid
                               ? 'bg-action-capture border-black text-capture-contrast'
                               : 'border-border text-text-muted hover:border-black hover:text-text-main'
                           }`}
                         >
-                          Paid
+                          {/* A bare "Paid" read as a status, so every bill looked
+                              paid. The off state now names the action. Fixed
+                              width so both states line up. */}
+                          {b.paid ? 'Paid' : 'Mark paid'}
                         </button>
                         <button
                           type="button"
@@ -608,6 +623,13 @@ export function OnboardingModal() {
                         ? 'Holding back ' + formatCurrency(billsTotal) + ' · ' + formatCurrency(billsAllTotal - billsTotal) + ' already paid'
                         : 'After holding back ' + formatCurrency(billsTotal) + ' in bills'}
                   </p>
+                  {previewSafeSpend > 0 && (
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mt-1">
+                      {limitedByPay
+                        ? 'Set by your monthly pay. Your balance covers more, and the rest stays put.'
+                        : 'Set by your balance until payday.'}
+                    </p>
+                  )}
                 </div>
               </motion.div>
             ) : step === 'colour' ? (

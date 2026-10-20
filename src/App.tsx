@@ -314,8 +314,13 @@ function App() {
     void hydrateFromCache(uid);
     // The name typed at sign-up lives in the session's metadata. Handed over
     // here because this is where the session is known to be present.
-    const meta = session?.user?.user_metadata as Record<string, unknown> | undefined;
-    fetchUserData(uid, typeof meta?.first_name === 'string' ? meta.first_name : undefined);
+    // Email sign-up stores first_name; Google supplies given_name, or only a
+    // full name, whose first word is used.
+    const meta = (session?.user?.user_metadata ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+    const signupName = str(meta.first_name) || str(meta.given_name)
+      || (str(meta.full_name) || str(meta.name)).split(/\s+/)[0] || '';
+    fetchUserData(uid, signupName || undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, fetchUserData, hydrateFromCache]);
 
