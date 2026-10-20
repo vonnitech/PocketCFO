@@ -436,7 +436,8 @@ interface StoreActions {
 
   // Data sync
   hydrateFromCache: (userId: string) => Promise<boolean>; // true = painted from the local snapshot
-  fetchUserData: (userId: string) => Promise<void>;
+  /** `signupFirstName` is the name from the auth session's metadata, passed by the caller that holds the session. */
+  fetchUserData: (userId: string, signupFirstName?: string) => Promise<void>;
   fetchMoreTransactions: () => Promise<number>; // returns count fetched, 0 = end of history
 
   // CFO Actions
@@ -475,7 +476,8 @@ interface StoreActions {
   clearFireConfig: () => Promise<void>;
   addIncomeEntry: (amount: number, label: string, date: string) => Promise<void>;
   removeIncomeEntry: (id: string) => Promise<void>;
-  addVault: (name: string, target: number, asset_class: VaultAssetClass) => Promise<void>;
+  /** Resolves to the new vault's id, or null when the free-tier cap blocked it. */
+  addVault: (name: string, target: number, asset_class: VaultAssetClass) => Promise<string | null>;
   addFundsToVault: (vaultId: string, amount: number) => Promise<void>;
   transferVaultFunds: (sourceId: string, destinationId: string, amount: number) => Promise<void>;
   renameVault: (id: string, name: string) => void;
@@ -541,7 +543,7 @@ export const useStore = create<StoreState>()(
       return applied;
     },
 
-    fetchUserData: async (userId) => {
+    fetchUserData: async (userId, signupFirstNameArg) => {
       const initialUserId = get().userId;
       // Initial transaction load is limited to the last 60 days. That's enough for
       // the safe-spend engine (which only looks at the current pay cycle) without
@@ -579,6 +581,24 @@ export const useStore = create<StoreState>()(
       }
 
       const profile = profileRes.data as Record<string, unknown> | null;
+
+      // The sign-up form stores the first name in auth metadata, but the
+      // handle_new_user trigger only inserts the profile id, so profiles.first_name
+      // starts empty. Reading it from there alone made setup ask for the name the
+      // user had typed a minute earlier.
+      //
+      // The caller that owns the session passes the name in. Reading it here
+      // with getSession alone was unreliable straight after sign-in (it could
+      // come back without the session while auth was still settling), so that
+      // is only the fallback for callers that have no session to hand.
+      let signupFirstName = (signupFirstNameArg ?? '').trim();
+      if (!signupFirstName) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const meta = sessionData.session?.user?.user_metadata as Record<string, unknown> | undefined;
+          signupFirstName = String(meta?.first_name ?? '').trim();
+        } catch {}
+      }
 
       const transactions: Transaction[] = ((txRes.data ?? []) as Record<string, unknown>[]).map(t => ({
         id:         String(t.id),
@@ -692,7 +712,9 @@ export const useStore = create<StoreState>()(
               subscriptionsCancelled: Number(profile.stat_subscriptions_cancelled ?? 0),
               lifetimeCapture:        Number(profile.stat_lifetime_capture ?? 0),
             },
-            firstName:             String(profile.first_name ?? '').trim(),
+            firstName:             String(profile.first_name ?? '').trim()
+                                     || signupFirstName
+                                     || (state.userId === userId ? (state.firstName || '').trim() : ''),
             theme:                 (profile.theme as 'light' | 'dark') ?? 'light',
             privacyMode:           Boolean(profile.privacy_mode),
             currency:              String(profile.currency ?? 'USD'),
@@ -1912,7 +1934,7 @@ export const useStore = create<StoreState>()(
       const { isPro, loaded } = proSnapshot();
       if (loaded && !isPro && (vaults || []).length >= FREE_VAULT_CAP) {
         console.warn('[addVault] blocked: free tier is capped at', FREE_VAULT_CAP, 'vaults');
-        return;
+        return null;
       }
 
       const newVault: Vault = {
@@ -1945,6 +1967,7 @@ export const useStore = create<StoreState>()(
           deleted:     false,
         }).catch(() => {});
       }
+      return newVault.id;
     },
 
     addFundsToVault: async (vaultId, amount) => {

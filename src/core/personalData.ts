@@ -87,7 +87,14 @@ interface WishlistRow {
   reason: string | null;
   added_on: string;
   state: string;
+  // Migration 026. Absent on a database that has not run it yet.
+  vault_id?: string | null;
 }
+
+// Reads use * rather than a column list so that the optional vault_id column
+// (migration 026) is picked up when present without breaking the wishlist on a
+// database that has not run it. Naming a missing column fails the whole query.
+const WISHLIST_COLUMNS = '*';
 
 function toItem(row: WishlistRow): WishlistItem | null {
   const candidate = {
@@ -97,6 +104,7 @@ function toItem(row: WishlistRow): WishlistItem | null {
     reason:  typeof row.reason === 'string' && row.reason ? row.reason : undefined,
     addedOn: String(row.added_on),
     state:   String(row.state),
+    vaultId: typeof row.vault_id === 'string' && row.vault_id ? row.vault_id : undefined,
   };
   // Validated rather than trusted: the column is a text check constraint, and a
   // hand-edited row should be skipped rather than reach the rest of the app.
@@ -105,7 +113,7 @@ function toItem(row: WishlistRow): WishlistItem | null {
 
 export async function fetchWishlist(userId: string): Promise<WishlistItem[]> {
   const { data, error } = await (supabase.from('wishlist_items') as any)
-    .select('id, name, amount, reason, added_on, state')
+    .select(WISHLIST_COLUMNS)
     .eq('user_id', userId)
     .order('added_on', { ascending: false });
   if (error || !Array.isArray(data)) return [];
@@ -121,7 +129,7 @@ export async function addWishlistItem(
 ): Promise<WishlistItem | null> {
   const { data, error } = await (supabase.from('wishlist_items') as any)
     .insert({ user_id: userId, name, amount, reason: reason || null, added_on: addedOn, state: 'wanted' })
-    .select('id, name, amount, reason, added_on, state')
+    .select(WISHLIST_COLUMNS)
     .single();
   if (error || !data) return null;
   return toItem(data as WishlistRow);
@@ -133,6 +141,24 @@ export async function setWishlistState(
   const { error } = await (supabase.from('wishlist_items') as any)
     .update({ state }).eq('user_id', userId).eq('id', id);
   return !error;
+}
+
+/**
+ * Records that "Save for it" turned this item into a vault, and takes it off
+ * the wanted list. Returns whether the link itself was stored.
+ *
+ * If the database has not run migration 026 the combined write fails on the
+ * unknown column, so it falls back to the state change alone. The item still
+ * leaves the wanted list either way; only the vault's tag is missing.
+ */
+export async function linkWishlistToVault(
+  userId: string, id: string, vaultId: string,
+): Promise<boolean> {
+  const { error } = await (supabase.from('wishlist_items') as any)
+    .update({ state: 'bought', vault_id: vaultId }).eq('user_id', userId).eq('id', id);
+  if (!error) return true;
+  await setWishlistState(userId, id, 'bought');
+  return false;
 }
 
 export async function removeWishlistItem(userId: string, id: string): Promise<boolean> {

@@ -15,12 +15,14 @@ import { useIdleLock } from './hooks/useIdleLock';
 import { AuthGate } from './components/AuthGate';
 import { ScreenLock } from './components/ScreenLock';
 import { FeatureTour, useFeatureTour } from './components/FeatureTour';
+import { PageTip } from './components/PageTip';
 import { PaydayBanner } from './components/PaydayBanner';
 import { ProUpsellPopover } from './components/ProUpsellPopover';
 import { runPaydayCheck } from './core/lifecycle';
 import { NotificationToaster } from './components/NotificationCenter';
 import { useNotificationEngine } from './hooks/useNotifications';
 import { clearAuthCallbackUrl, isNative } from './native/platform';
+import { logProductEvent } from './core/telemetry';
 
 // Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -161,6 +163,24 @@ function App() {
   // app until they've actually set a new password.
   const [recoveryMode, setRecoveryMode] = useState(false);
 
+  // The feedback survey used to appear 20 seconds into anyone's first visit to a
+  // main page, so brand-new accounts were asked how the app was working before
+  // they had used it. It now triggers on this event instead, which is sent once
+  // per session, 30 seconds in, and only for accounts at least a week old. The
+  // delay also keeps it clear of the survey list loading at session start.
+  const settledSentRef = useRef(false);
+  useEffect(() => {
+    const createdAt = session?.user?.created_at;
+    if (!createdAt || !dataFresh || !hasCompletedOnboarding || settledSentRef.current) return;
+    const ageDays = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
+    if (!(ageDays >= 7)) return;
+    const t = window.setTimeout(() => {
+      settledSentRef.current = true;
+      logProductEvent({ type: 'settled_in', accountAgeDays: ageDays });
+    }, 30_000);
+    return () => window.clearTimeout(t);
+  }, [session?.user?.created_at, dataFresh, hasCompletedOnboarding]);
+
   useEffect(() => {
     initDB();
   }, []);
@@ -292,7 +312,16 @@ function App() {
     const uid = session?.user?.id;
     if (!uid) return;
     void hydrateFromCache(uid);
-    fetchUserData(uid);
+    // The name typed at sign-up lives in the session's metadata. Handed over
+    // here because this is where the session is known to be present.
+    // Email sign-up stores first_name; Google supplies given_name, or only a
+    // full name, whose first word is used.
+    const meta = (session?.user?.user_metadata ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+    const signupName = str(meta.first_name) || str(meta.given_name)
+      || (str(meta.full_name) || str(meta.name)).split(/\s+/)[0] || '';
+    fetchUserData(uid, signupName || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, fetchUserData, hydrateFromCache]);
 
   // Keep the snapshot current. Local mutations already write through to
@@ -519,6 +548,8 @@ function App() {
 
           <main id="main-scroll" className="w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden main-pb-safe p-4 pt-4 md:p-8 relative">
             <div className="max-w-4xl min-w-0 mx-auto">
+              {/* Held back while the tour is open so the two never stack. */}
+              <PageTip suppressed={tourVisible && tourEligible} />
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />
                 <Route path="/split"           element={withPageWrapper(<BillSplitter />)} />

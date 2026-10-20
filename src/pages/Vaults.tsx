@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldCheck, Plus, Edit2, Target, Trash2, RotateCcw,
   AlertTriangle, Check, X, Trophy, ArrowLeftRight, TrendingUp, ChevronDown, Lock,
-  ArrowUp, ArrowDown, Eye, EyeOff, SlidersHorizontal,
+  ArrowUp, ArrowDown, Eye, EyeOff, SlidersHorizontal, Heart, Flame,
 } from 'lucide-react';
+import { fetchWishlist } from '../core/personalData';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import type { VaultAssetClass } from '../store/useStore';
@@ -139,6 +140,20 @@ export default function Vaults() {
   // FREE_VAULT_CAP is deposit-locked: still visible, still withdrawable, still
   // deletable, just closed to new money until Pro returns.
   const lockedIds = lockedVaultIds(vaults, proKnownAsPro);
+
+  // Vaults started from a wishlist item, so their cards can say so. Read once
+  // per visit; empty until migration 026 is run, in which case no tag shows.
+  const userId = useStore(s => s.userId);
+  const [wishlistVaultIds, setWishlistVaultIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void fetchWishlist(userId).then(items => {
+      if (cancelled) return;
+      setWishlistVaultIds(new Set(items.map(i => i.vaultId).filter((id): id is string => !!id)));
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   // Section customization (order / hidden / collapsed), persisted per user.
   const [sectionPrefs, setSectionPrefs] = useState<SectionPrefs>(loadSectionPrefs);
@@ -405,6 +420,22 @@ export default function Vaults() {
                       className="text-[9px] font-bold text-text-muted cursor-pointer hover:text-text-muted flex items-center gap-0.5 mt-0.5 tabular-nums">
                       {formatCurrency(vault.target, privacyMode)} <Edit2 size={8} />
                     </p>
+                  )}
+                  {/* Where this vault connects to the rest of the app. Each
+                      tag opens the screen it names. */}
+                  {(vault.asset_class === 'INVESTMENT' || wishlistVaultIds.has(vault.id)) && (
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {wishlistVaultIds.has(vault.id) && (
+                        <Link to="/wishlist" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border-2 border-border bg-input text-[9px] font-black uppercase tracking-wide text-text-muted hover:border-black hover:text-text-main transition-colors">
+                          <Heart size={9} strokeWidth={3} /> From your wishlist
+                        </Link>
+                      )}
+                      {vault.asset_class === 'INVESTMENT' && (
+                        <Link to="/fire" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border-2 border-border bg-input text-[9px] font-black uppercase tracking-wide text-text-muted hover:border-black hover:text-text-main transition-colors">
+                          <Flame size={9} strokeWidth={3} /> Counts toward FIRE
+                        </Link>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

@@ -109,6 +109,12 @@ export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }
 
       } else if (mode === 'signup') {
         if (!email.trim() || !password) return;
+        // The name greets the user on the dashboard and spares setup from asking
+        // for it, so sign-up does not go ahead without one.
+        if (!firstName.trim()) {
+          setError('ENTER YOUR FIRST NAME');
+          return;
+        }
         // Logged before the call so a signup that never completes (duplicate email,
         // rejected password) shows as submitted-without-created.
         logProductEvent({ type: 'signup_submitted', method: 'password' });
@@ -281,6 +287,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }
                 type="text"
                 autoComplete="given-name"
                 placeholder="FIRST NAME"
+                required
                 value={firstName}
                 onChange={e => { setFirstName(e.target.value); clearMessages(); }}
                 className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-surface transition-colors tracking-wide"

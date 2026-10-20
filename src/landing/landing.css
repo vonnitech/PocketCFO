@@ -393,3 +393,25 @@
 /* The app's global styles uppercase and italicise headings; the landing page uses sentence case. */
 .lp h1, .lp h2, .lp h3, .lp summary { text-transform: none; font-style: normal; }
 .lp .site-footer .wordmark { font-family: var(--display); font-size: 1.08rem; }
+
+/* The shared small-label rule above sets display:block on .allocation-heading,
+   which undid its flex layout and ran "CAPITAL ALLOCATION" into "OCTOBER". */
+.lp .allocation-heading { display: flex; justify-content: space-between; gap: .8rem; }
+
+/* Hover used to paint the full selected style, so a hovered option looked
+   selected too, and both shifted 4px sideways. Selected is now the only
+   yellow one and nothing moves. */
+.lp .pace-button.is-active, .lp .pace-button:hover { transform: none; }
+.lp .pace-button:hover:not(.is-active) { color: var(--paper); background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.4); }
+
+/* Sweep to vault: the unspent top of each day's bar, in green. */
+.lp .day-bars i { position: relative; overflow: hidden; }
+.lp .day-bars i b { position: absolute; left: 0; right: 0; top: 0; display: block; background: var(--electric); border-bottom: 1px dashed var(--ink); transition: height .35s cubic-bezier(.2,.8,.2,1); }
+
+/* "of $1,000" was set in DM Mono, whose slashed zeros read as "$1,ØØØ" at this
+   size. Amounts read better in the display face. */
+.lp .vault-visual small { font: 600 .72rem var(--display); letter-spacing: 0; }
+.lp .bill-row strong, .lp .reserved-total strong, .lp .ledger-lines strong, .lp .day-bars strong {
+  font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+.lp .day-bars strong { font-size: .62rem; }
