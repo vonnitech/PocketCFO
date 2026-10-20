@@ -451,7 +451,7 @@ export default function Dashboard() {
               the second-largest type tier on the page. At the old text-4xl it also
               broke over three lines beside the notification bell, which takes ~56px
               of a 393px row. */}
-          <p className="dark:normal-case dark:font-medium dark:tracking-normal text-[13px] font-black uppercase tracking-widest text-text-main">
+          <p className="text-xl font-extrabold tracking-tight text-text-main">
             {(() => {
               const h = new Date().getHours();
               const salutation =
