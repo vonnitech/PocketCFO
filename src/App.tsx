@@ -521,6 +521,11 @@ function App() {
             <div className="max-w-4xl min-w-0 mx-auto">
               <Routes>
                 <Route path="/"                element={withPageWrapper(<Dashboard />)} />
+                {/* Signing in happens on /login or /signup since the landing page
+                    took over "/". Once signed in, those addresses would otherwise
+                    fall through to Not Found. */}
+                <Route path="/login"           element={<Navigate to="/" replace />} />
+                <Route path="/signup"          element={<Navigate to="/" replace />} />
                 <Route path="/split"           element={withPageWrapper(<BillSplitter />)} />
                 <Route path="/true-cost"       element={withPageWrapper(<TrueCost />)} />
                 <Route path="/debt"            element={withPageWrapper(<DebtPayoff />)} />
