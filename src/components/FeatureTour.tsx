@@ -1,29 +1,33 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Wallet, Zap, PiggyBank, X, ChevronRight } from 'lucide-react';
+import { X, ChevronRight } from 'lucide-react';
 import { userKey } from '../lib/userScopedStorage';
 import { useStore } from '../store/useStore';
+import { currencySymbol } from '../lib/currency';
+import { StackPiggyVaultIcon } from './StackPiggyIcons';
 
 // Three cards, one idea each. The tour used to be six cards of a paragraph
 // apiece, which is a lot to read before you have used anything. Everything it
 // dropped (subscriptions, the ledger, offsetting a regret) is now explained by a
 // one-time tip on the page itself, at the moment it is relevant.
+//
+// Each card opens with a tiny copy of the real thing it talks about (the daily
+// number, the Log spend button, a vault filling up) rather than an icon, so the
+// pieces are familiar the moment the tour closes. They use the theme colours,
+// so they match whatever pairing the account has picked.
 const STEPS = [
   {
-    icon: Wallet,
-    color: 'bg-action-capture',
+    preview: 'today',
     title: 'Your number for today',
     body: "This is what you can spend today. Bills and savings are already set aside, and whatever you don't spend rolls into tomorrow.",
   },
   {
-    icon: Zap,
-    color: 'bg-action-primary',
+    preview: 'log',
     title: 'Log as you go',
     body: 'Tap Log spend when you buy something. Then Daily review checks the day in under a minute.',
   },
   {
-    icon: PiggyBank,
-    color: 'bg-action-capture',
+    preview: 'vault',
     title: 'Give savings a home',
     body: 'Make a vault for each goal. Leftover cash and anything you save from your wishlist goes straight in.',
   },
@@ -61,12 +65,47 @@ interface Props {
   onDismiss: () => void;
 }
 
+function StepPreview({ kind }: { kind: typeof STEPS[number]['preview'] }) {
+  const sym = currencySymbol();
+  if (kind === 'today') {
+    return (
+      <div className="inline-flex flex-col gap-1 bg-[#11110F] rounded-2xl px-4 py-3">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-action-primary">Today</span>
+        <span className="text-3xl font-extrabold tracking-tight text-[#FFFDF8] tabular-nums leading-none">{sym}42.50</span>
+      </div>
+    );
+  }
+  if (kind === 'log') {
+    return (
+      <div className="flex flex-col items-start gap-2">
+        <span className="inline-flex items-center h-10 px-5 bg-action-primary border-2 border-black dark:border-action-primary rounded-2xl text-primary-contrast font-black uppercase tracking-widest text-xs">
+          + Log spend
+        </span>
+        <span className="inline-flex items-center gap-6 bg-input rounded-xl px-3 py-1.5 text-xs font-bold text-text-main">
+          Coffee <span className="tabular-nums text-text-muted">-{sym}3.50</span>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="w-56 bg-input rounded-2xl px-3.5 py-3">
+      <div className="flex items-center gap-2">
+        <StackPiggyVaultIcon size={22} />
+        <span className="flex-1 text-sm font-extrabold text-text-main">Holiday</span>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-text-muted">60%</span>
+      </div>
+      <div className="h-2 mt-2.5 bg-surface rounded-full overflow-hidden">
+        <div className="h-full w-[60%] bg-action-capture rounded-full" />
+      </div>
+    </div>
+  );
+}
+
 function StepContent({ step, isLast }: { step: typeof STEPS[number]; isLast: boolean }) {
-  const Icon = step.icon;
   return (
     <div className="space-y-4">
-      <div className={`w-12 h-12 ${step.color} border-4 border-black rounded-2xl flex items-center justify-center shadow-brutal-sm`}>
-        <Icon size={20} strokeWidth={3} className="text-black" />
+      <div className="min-h-[84px] flex items-center">
+        <StepPreview kind={step.preview} />
       </div>
       <div>
         <h2 className="text-xl font-black uppercase italic tracking-tighter text-text-main leading-tight mb-1.5">
