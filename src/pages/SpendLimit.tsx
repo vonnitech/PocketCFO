@@ -19,7 +19,7 @@ export default function SpendLimit() {
         <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
           Spend Limit
         </h1>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
+        <p className="text-[11px] font-bold text-text-muted mt-1.5">
           Sets the share of your cleared amount you can spend each day
         </p>
       </div>

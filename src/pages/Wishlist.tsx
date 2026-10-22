@@ -6,6 +6,11 @@ import { useStore } from '../store/useStore';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { toLocalDateKey } from '../core/math';
+import { useProLocked } from '../lib/pro';
+
+// Free plan: up to this many wishes on the list at once. Bought and dropped
+// items do not count, so deciding on one frees a slot.
+const FREE_WISH_CAP = 2;
 import {
   daysOfCleared, describeDays, daysSince,
   NAME_MAX_LENGTH, REASON_MAX_LENGTH,
@@ -55,9 +60,15 @@ export default function Wishlist() {
 
   const money = (v: number) => formatCurrency(v, privacyMode);
 
+  const proLocked = useProLocked();
+  const wishCapReached = proLocked && wanted.length >= FREE_WISH_CAP;
+  const showUpsell = () =>
+    window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'wishlist_cap' } }));
+
   const submit = async () => {
     const value = parseFloat(amount);
     if (!userId || !name.trim() || !Number.isFinite(value) || value <= 0) return;
+    if (wishCapReached) { showUpsell(); return; }
     const created = await addWishlistItem(
       userId,
       name.trim().slice(0, NAME_MAX_LENGTH),
@@ -147,7 +158,7 @@ export default function Wishlist() {
             <button
               type="button"
               onClick={() => void submit()}
-              className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none flex h-12 items-center justify-center rounded-2xl border-4 border-black bg-black text-[11px] font-black uppercase tracking-widest text-action-primary shadow-[4px_4px_0px_0px_var(--color-action-primary)] transition-all hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+              className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none flex h-12 items-center justify-center rounded-2xl border-4 border-black bg-action-primary text-[11px] font-black uppercase tracking-widest text-primary-contrast shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
             >
               Add to list
             </button>
@@ -163,11 +174,16 @@ export default function Wishlist() {
       ) : (
         <button
           type="button"
-          onClick={() => setAdding(true)}
+          onClick={() => (wishCapReached ? showUpsell() : setAdding(true))}
           className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border-4 border-dashed border-border text-[10px] font-black uppercase tracking-widest text-text-muted transition-colors hover:text-text-main"
         >
           <Plus size={14} strokeWidth={3} /> Add something you want
         </button>
+      )}
+      {proLocked && (
+        <p className="-mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-muted">
+          {Math.min(wanted.length, FREE_WISH_CAP)} of {FREE_WISH_CAP} free wishes used
+        </p>
       )}
 
       {/* ── wanted ────────────────────────────────────────────────────────── */}
@@ -202,7 +218,7 @@ export default function Wishlist() {
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {lens && (
-                <span className="inline-flex rounded-full border-2 border-black bg-action-primary px-3 py-1 font-mono text-[10px] font-black uppercase tracking-widest text-black">
+                <span className="inline-flex rounded-full border-2 border-black bg-action-primary px-3 py-1 font-mono text-[10px] font-black uppercase tracking-widest text-primary-contrast">
                   {lens}
                 </span>
               )}
@@ -280,7 +296,7 @@ export default function Wishlist() {
         </div>
       )}
 
-      <p className="pt-2 text-center text-[10px] font-bold uppercase tracking-widest text-text-muted">
+      <p className="pt-2 text-center text-[11px] font-bold text-text-muted">
         Saved to your account.{' '}
         <Link to="/vaults" className="underline">Vaults</Link> is where saving for something happens.
       </p>

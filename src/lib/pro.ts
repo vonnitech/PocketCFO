@@ -79,6 +79,15 @@ export function useProLocked(): boolean {
   return !isLoading && !isPro;
 }
 
+// Stricter than useProLocked, for Pro tools whose whole value is the answer
+// (True cost, Safety net). There the asymmetry above flips: showing a free
+// account its real result while the entitlement loads gives away the paid part,
+// whereas a paying customer seeing a placeholder for the length of one query
+// costs nothing. So this stays locked until Pro is confirmed.
+export function useProResultLocked(): boolean {
+  return !useProStatus().isPro;
+}
+
 // Boolean-only view for the gates that just need locked/unlocked.
 export function useIsPro(): boolean {
   return useProStatus().isPro;

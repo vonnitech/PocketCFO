@@ -169,7 +169,7 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
         type="submit"
         disabled={!canSubmit}
         whileTap={{ scale: 0.97 }}
-        className="w-full h-12 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[3px_3px_0px_0px_var(--color-action-primary)]"
+        className="w-full h-12 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-sm tracking-widest flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
       >
         {loading ? (
           <span className="animate-pulse">LOGGING…</span>

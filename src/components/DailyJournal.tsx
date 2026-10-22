@@ -91,7 +91,7 @@ export function DailyJournal() {
             aria-pressed={mood === m}
             onClick={() => setMood(mood === m ? null : m)}
             className={`rounded-full border-2 border-black px-3 py-1.5 font-mono text-[10px] font-black uppercase tracking-widest transition-colors ${
-              mood === m ? 'bg-action-primary text-black' : 'bg-input text-text-muted'
+              mood === m ? 'bg-action-primary text-primary-contrast' : 'bg-input text-text-muted'
             }`}
           >
             {MOOD_LABELS[m]}
@@ -113,7 +113,7 @@ export function DailyJournal() {
         type="button"
         onClick={() => void save()}
         disabled={saving}
-        className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none mt-4 flex h-12 w-full items-center justify-center rounded-2xl border-4 border-black bg-black text-[11px] font-black uppercase tracking-widest text-action-primary shadow-[4px_4px_0px_0px_var(--color-action-primary)] transition-all hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-50"
+        className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none mt-4 flex h-12 w-full items-center justify-center rounded-2xl border-4 border-black bg-action-primary text-[11px] font-black uppercase tracking-widest text-primary-contrast shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-50"
       >
         {saved ? 'Saved' : saving ? 'Saving' : 'Save note'}
       </button>

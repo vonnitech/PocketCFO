@@ -19,17 +19,17 @@ const STEPS = [
   {
     preview: 'today',
     title: 'Your number for today',
-    body: "This is what you can spend today. Bills and savings are already set aside, and whatever you don't spend rolls into tomorrow.",
+    body: "This is how much you can spend today. Your bills and savings are already taken out. If you spend less, you can keep the rest for tomorrow or save it.",
   },
   {
     preview: 'log',
     title: 'Log as you go',
-    body: 'Tap Log spend when you buy something. Then Daily review checks the day in under a minute.',
+    body: 'Tap Log spend each time you buy something. At the end of the day, Daily review shows how you did and what to do with any money left over.',
   },
   {
     preview: 'vault',
     title: 'Give savings a home',
-    body: 'Make a vault for each goal. Leftover cash and anything you save from your wishlist goes straight in.',
+    body: 'Make a vault for each thing you are saving for. You can move leftover money into one at the end of the day.',
   },
 ] as const;
 
@@ -208,7 +208,7 @@ export function FeatureTour({ onDismiss }: Props) {
             <button
               type="button"
               onClick={isLast ? onDismiss : () => setStep(s => s + 1)}
-              className="flex-1 h-11 flex items-center justify-center gap-2 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase tracking-widest text-[10px] shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+              className="flex-1 h-11 flex items-center justify-center gap-2 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase tracking-widest text-[10px] shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
             >
               {isLast ? 'Start using it' : (
                 <>Next <ChevronRight size={13} strokeWidth={3} /></>
@@ -217,7 +217,7 @@ export function FeatureTour({ onDismiss }: Props) {
           </div>
 
           <p className="text-center text-[10px] font-bold uppercase tracking-widest text-text-muted mt-3">
-            {step + 1} of {STEPS.length} · tap outside to dismiss
+            {step + 1} of {STEPS.length} · tap outside to close
           </p>
         </div>
       </motion.div>

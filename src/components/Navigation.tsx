@@ -49,6 +49,7 @@ const desktopCoreLinks = [
   { path: '/vaults',        icon: StackPiggyVaultIcon, label: 'Vaults' },
   { path: '/breakdown',     icon: StackPiggyStatsIcon, label: 'Breakdown' },
   { path: '/subscriptions', icon: StackPiggySubscriptionsIcon, label: 'Subscriptions' },
+  { path: '/wishlist',      icon: StackPiggyWishlistIcon, label: 'Wishlist' },
   { path: '/limit',         icon: StackPiggySpendLimitIcon, label: 'Spend limit' },
   { path: '/pacing',        icon: StackPiggyPacingIcon, label: 'Pacing' },
 ];
@@ -59,18 +60,20 @@ const manageLinks = [
   { path: '/limit',         icon: StackPiggySpendLimitIcon, label: 'Spend limit' },
   { path: '/pacing',        icon: StackPiggyPacingIcon, label: 'Pacing' },
   { path: '/subscriptions', icon: StackPiggySubscriptionsIcon, label: 'Subscriptions' },
+  { path: '/wishlist',      icon: StackPiggyWishlistIcon, label: 'Wishlist' },
   { path: '/settings',      icon: StackPiggySettingsIcon, label: 'Settings' },
 ];
 
-// `pro: true` marks a Tool that requires Pro. Bill Splitter (viral acquisition)
-// and True Cost (free differentiator) are deliberately left free.
+// `pro: true` marks a Tool that requires Pro: free users can open it as a
+// preview, but saving (or, for the pure calculators, seeing the result) needs
+// Pro. Bill splitter stays free because shared splits bring in new users.
+// Wishlist lives under Manage, free up to FREE_WISH_CAP wishes (Wishlist.tsx).
 const calculatorTools: { path: string; icon: React.ElementType; label: string; subtitle: string; pro?: boolean }[] = [
   { path: '/split',            icon: StackPiggyBillSplitIcon, label: 'Bill splitter', subtitle: 'Divide expenses and track who owes what' },
-  { path: '/true-cost',        icon: StackPiggyTrueCostIcon, label: 'True cost', subtitle: 'Calculate the real price of purchases over time' },
+  { path: '/true-cost',        icon: StackPiggyTrueCostIcon, label: 'True cost', subtitle: 'Calculate the real price of purchases over time', pro: true },
   { path: '/debt',             icon: StackPiggyDebtPayoffIcon, label: 'Debt payoff', subtitle: 'Optimize your avalanche or snowball strategy', pro: true },
-  { path: '/safety-net',       icon: StackPiggySafetyNetIcon, label: 'Safety net', subtitle: 'How long your cash lasts and your target buffer' },
+  { path: '/safety-net',       icon: StackPiggySafetyNetIcon, label: 'Safety net', subtitle: 'How long your cash lasts and your target buffer', pro: true },
   { path: '/fire',             icon: StackPiggyFireIcon, label: 'FIRE calculator', subtitle: 'Financial Independence & Early Retirement projection', pro: true },
-  { path: '/wishlist',         icon: StackPiggyWishlistIcon, label: 'Wishlist', subtitle: 'Things you want, priced in days of your cleared amount' },
   { path: '/income',           icon: StackPiggyIncomeIcon, label: 'Income tracker', subtitle: 'Log income milestones & find your FIRE savings rate', pro: true },
 ];
 

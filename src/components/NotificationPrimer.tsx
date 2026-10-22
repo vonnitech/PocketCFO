@@ -64,7 +64,7 @@ export function NotificationPrimer({
     <div className="space-y-4">
       <div className="flex items-start gap-3">
         <div className="w-11 h-11 bg-action-primary border-4 border-black rounded-xl flex items-center justify-center shrink-0">
-          <BellRing size={19} strokeWidth={3} className="text-black" />
+          <BellRing size={19} strokeWidth={3} className="text-primary-contrast" />
         </div>
         <div className="min-w-0">
           <h2 className="text-lg font-black uppercase tracking-tighter italic text-text-main leading-none">
@@ -94,7 +94,7 @@ export function NotificationPrimer({
           onClick={allow}
           disabled={busy}
           whileTap={{ scale: 0.97 }}
-          className="w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40"
+          className="w-full h-14 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40"
         >
           {busy ? <span className="animate-pulse">Waiting…</span> : 'Turn on reminders'}
         </motion.button>

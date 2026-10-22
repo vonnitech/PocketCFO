@@ -403,7 +403,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="dashboard-panel dashboard-welcome bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]">
-            <div className="inline-flex px-3 py-1 bg-action-primary border-2 border-black rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
+            <div className="inline-flex px-3 py-1 bg-action-primary border-2 border-black rounded-full text-primary-contrast text-[10px] font-black tracking-widest uppercase mb-4">
               Setup Required
             </div>
             <p className="text-white font-black uppercase text-sm leading-relaxed">
@@ -477,7 +477,7 @@ export default function Dashboard() {
             type="button"
             whileTap={{ scale: 0.97 }}
             onClick={() => setLogSheetOpen(true)}
-            className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none dark:hover:translate-x-0 dark:hover:translate-y-0 dark:hover:brightness-110 cursor-pointer w-full h-12 flex items-center justify-center gap-2 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none dark:hover:translate-x-0 dark:hover:translate-y-0 dark:hover:brightness-110 cursor-pointer w-full h-12 flex items-center justify-center gap-2 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
           >
             + LOG SPEND
           </motion.button>
@@ -497,14 +497,14 @@ export default function Dashboard() {
             <p className="text-white font-black uppercase text-sm leading-relaxed mb-1">
               Everything is set up.
             </p>
-            <p className="text-white/60 dark:text-text-muted dashboard-copy text-[11px] font-bold uppercase tracking-wide leading-relaxed">
+            <p className="text-white/60 dark:text-text-muted dashboard-copy text-[11px] font-bold leading-relaxed">
               Let's start by logging your current balance or creating your first
               savings vault.
             </p>
             <div className="flex gap-3 mt-5 flex-wrap">
               <Link
                 to="/config"
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-action-primary border-2 border-black rounded-xl text-black font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-action-primary border-2 border-black rounded-xl text-primary-contrast font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
               >
                 Log my balance <ChevronRight size={12} strokeWidth={3} />
               </Link>
@@ -676,13 +676,13 @@ export default function Dashboard() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <p
-                        className={`dashboard-copy text-[10px] font-bold uppercase tracking-widest mb-1 ${days === 0 ? "text-black/60" : "text-white/60 dark:text-text-muted"}`}
+                        className={`dashboard-copy text-[10px] font-bold uppercase tracking-widest mb-1 ${days === 0 ? "text-capture-contrast/60" : "text-white/60 dark:text-text-muted"}`}
                       >
                         {days === 0 ? "Payday" : "Payday In"}
                       </p>
                       <div className="flex items-baseline gap-2">
                         {days === 0 ? (
-                          <span className="text-4xl font-black italic tracking-tighter text-black leading-none">
+                          <span className="text-4xl font-black italic tracking-tighter text-capture-contrast leading-none">
                             Today
                           </span>
                         ) : (
@@ -898,7 +898,7 @@ export default function Dashboard() {
                     );
                   })}
                 </div>
-                <p className="dashboard-copy text-[11px] font-bold uppercase tracking-widest text-text-muted mt-3">
+                <p className="dashboard-copy text-[11px] font-bold text-text-muted mt-3">
                   Tap an obligation to mark it paid · removes it from your
                   upcoming total
                 </p>
@@ -1152,7 +1152,7 @@ export default function Dashboard() {
               transition={{ delay: 0.2 }}
               className="md:col-span-2 dashboard-panel dashboard-welcome bg-black border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
             >
-              <div className="inline-flex px-3 py-1 dark:bg-input dark:border-transparent dark:text-text-main bg-action-primary border-2 border-action-primary rounded-full text-black text-[10px] font-black tracking-widest uppercase mb-4">
+              <div className="inline-flex px-3 py-1 dark:bg-input dark:border-transparent dark:text-text-main bg-action-primary border-2 border-action-primary rounded-full text-primary-contrast text-[10px] font-black tracking-widest uppercase mb-4">
                 YOUR FIRST MOVE
               </div>
               <p className="text-white text-sm font-bold leading-relaxed mb-5">
@@ -1275,10 +1275,10 @@ export default function Dashboard() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest text-black">
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary-contrast">
                   {streak}-day streak at risk
                 </p>
-                <p className="text-xs font-black uppercase text-black/60">
+                <p className="text-xs font-black uppercase text-primary-contrast/60">
                   Review today to keep it alive
                 </p>
               </div>
@@ -1348,14 +1348,14 @@ export default function Dashboard() {
                         <ArrowDownLeft
                           size={13}
                           strokeWidth={2.5}
-                          className="text-black"
+                          className="text-capture-contrast"
                         />
                       ) : (
                         <ArrowUpRight
                           size={13}
                           strokeWidth={2.5}
                           className={
-                            tx.isFlip ? "text-white" : "text-text-main"
+                            tx.isFlip ? "text-white" : isDebt ? "text-primary-contrast" : "text-text-main"
                           }
                         />
                       )}
@@ -1439,7 +1439,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">
+              <p className="dashboard-copy text-[11px] font-bold text-text-muted mb-4">
                 Adds to your liquid capital · raises your Cleared Today amount
                 immediately
               </p>

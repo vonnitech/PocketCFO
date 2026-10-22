@@ -231,7 +231,7 @@ export function CSVImport({ onClose }: Props) {
                 className="border-4 border-dashed border-border rounded-3xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-black hover:bg-input transition-all"
               >
                 <div className="w-14 h-14 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                  <Upload size={24} strokeWidth={3} className="text-black" />
+                  <Upload size={24} strokeWidth={3} className="text-primary-contrast" />
                 </div>
                 <p className="text-[11px] font-black uppercase tracking-widest text-text-main text-center">
                   Drop CSV here or tap to browse
@@ -304,7 +304,7 @@ export function CSVImport({ onClose }: Props) {
               <button
                 type="button"
                 onClick={buildPreview}
-                className="w-full h-12 bg-action-primary border-4 border-black rounded-2xl font-black uppercase tracking-widest text-sm text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                className="w-full h-12 bg-action-primary border-4 border-black rounded-2xl font-black uppercase tracking-widest text-sm text-primary-contrast shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
               >
                 Preview Transactions
               </button>
@@ -383,7 +383,7 @@ export function CSVImport({ onClose }: Props) {
           {step === 'done' && (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-action-capture border-4 border-black rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <CheckCircle2 size={28} strokeWidth={3} className="text-black" />
+                <CheckCircle2 size={28} strokeWidth={3} className="text-capture-contrast" />
               </div>
               <p className="text-3xl font-black italic tracking-tighter text-text-main mb-1">{importedCount} imported</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-6">
@@ -392,7 +392,7 @@ export function CSVImport({ onClose }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full h-12 bg-black border-4 border-black rounded-2xl font-black uppercase tracking-widest text-sm text-action-primary shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                className="w-full h-12 bg-action-primary border-4 border-black rounded-2xl font-black uppercase tracking-widest text-sm text-primary-contrast shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
               >
                 Done
               </button>

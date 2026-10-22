@@ -243,7 +243,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                           <option key={h} value={h}>{h}</option>
                         ))}
                       </select>
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
+                      <p className="text-[11px] font-bold text-text-muted mt-1.5">
                         Map your file's category column. Values like "food", "Restaurants", "Transport" auto-normalize.
                       </p>
                     </div>
@@ -251,7 +251,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                     <div className="flex items-center justify-between px-3 py-3 bg-input border-4 border-black rounded-2xl">
                       <div className="min-w-0">
                         <p className="text-sm font-black uppercase tracking-wide text-text-main">Reverse signs</p>
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-0.5">
+                        <p className="text-[11px] font-bold text-text-muted mt-0.5">
                           Toggle if your file shows purchases as positive (most credit-card CSVs).
                         </p>
                       </div>
@@ -282,7 +282,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                       type="button"
                       onClick={() => setStep('preview')}
                       disabled={!mapping.date || !mapping.merchant || !mapping.amount}
-                      className="w-full h-12 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40"
+                      className="w-full h-12 border-4 border-black rounded-full bg-action-primary text-primary-contrast font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40"
                     >
                       Preview Import
                     </button>
@@ -351,7 +351,7 @@ export function ImportMapperModal({ open, onClose, onImport }: Props) {
                         <p className="text-[10px] font-black uppercase tracking-widest text-text-main">
                           {candidates.length} Recurring pattern{candidates.length !== 1 ? 's' : ''} detected
                         </p>
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1 leading-snug">
+                        <p className="text-[11px] font-bold text-text-muted mt-1 leading-snug">
                           Selected items get added to your recurring bills / monthly income — separate from the {allTxs.length} transactions also being imported.
                         </p>
                       </div>

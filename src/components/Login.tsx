@@ -189,7 +189,7 @@ export function Login({ onAuthenticated }: LoginProps) {
             type="submit"
             disabled={loading}
             whileTap={{ scale: 0.97 }}
-            className="w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2.5 shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-brutal-sm"
+            className="w-full h-14 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2.5 shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-brutal-sm"
           >
             {loading
               ? <span className="animate-pulse">PROCESSING…</span>

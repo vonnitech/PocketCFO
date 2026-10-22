@@ -53,14 +53,41 @@ export function OnboardingModal() {
   const existingFirstName = useStore(s => s.firstName);
   const askName = !existingFirstName?.trim();
 
+  // "Re-run onboarding" in Settings reopens this for an account that already has
+  // a setup. Finishing saves the balance, payday and the bill list wholesale, so
+  // a re-run starts from what is saved: otherwise an untouched bills step would
+  // replace every saved bill with none. A new account has nothing saved, so
+  // every field starts blank exactly as before.
+  const [saved] = useState(() => {
+    const s = useStore.getState();
+    const [y, m, d] = (s.nextPayday || '').slice(0, 10).split('-');
+    const paidKeys = new Set(s.paidBillKeys || []);
+    return {
+      // An account that already finished setup. Its colours were picked then,
+      // and changing them belongs to Settings, where the free-plan and Pro rules
+      // apply, so a re-run skips the colour step instead of offering a re-pick.
+      isRerun:  s.isConfigured,
+      balance:  s.isConfigured ? String(s.liquidAssets ?? '') : '',
+      takeHome: s.monthlyTakeHome > 0 ? String(s.monthlyTakeHome) : '',
+      payDay:   d ? String(Number(d)) : '',
+      payMonth: m ? String(Number(m)) : '',
+      payYear:  y && y.length === 4 ? y : '',
+      bills: (s.recurringBills || []).map(b => ({
+        id: b.id, name: b.name, amount: String(b.amount), paid: paidKeys.has(billKey(b)),
+      })) as DraftBill[],
+      // Due day and paused are not edited here, so they are carried through.
+      billsById: new Map((s.recurringBills || []).map(b => [b.id, b])),
+    };
+  });
+
   const [step,      setStep]      = useState<Step>('basics');
   const [firstName, setFirstName] = useState(() => existingFirstName || '');
-  const [balance,   setBalance]   = useState('');
-  const [takeHome,  setTakeHome]  = useState('');
-  const [payDay,    setPayDay]    = useState('');
-  const [payMonth,  setPayMonth]  = useState('');
-  const [payYear,   setPayYear]   = useState('');
-  const [bills,     setBills]     = useState<DraftBill[]>([]);
+  const [balance,   setBalance]   = useState(saved.balance);
+  const [takeHome,  setTakeHome]  = useState(saved.takeHome);
+  const [payDay,    setPayDay]    = useState(saved.payDay);
+  const [payMonth,  setPayMonth]  = useState(saved.payMonth);
+  const [payYear,   setPayYear]   = useState(saved.payYear);
+  const [bills,     setBills]     = useState<DraftBill[]>(saved.bills);
   const [billName,   setBillName]   = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [loading,   setLoading]   = useState(false);
@@ -72,6 +99,10 @@ export function OnboardingModal() {
     const tc = useStore.getState().themeColors;
     return findPreset(tc?.primary, tc?.secondary)?.id ?? 'default';
   });
+  // What was applied on arrival. Leaving the pick on it applies nothing, so a
+  // re-run keeps a flipped pairing or custom Pro colours instead of resetting
+  // them to the preset (or to Original, for custom colours with no preset).
+  const [initialColourPick] = useState(colourPick);
 
   const numBalance  = parseFloat(balance) || 0;
   const numTakeHome = parseFloat(takeHome) || 0;
@@ -163,8 +194,9 @@ export function OnboardingModal() {
     initForUser(useStore.getState().userId);
     return permissionState() === 'default' && getPrefs().primer === 'unasked';
   });
-  const totalSteps = askNotifications ? 4 : 3;
-  const stepNumber = step === 'basics' ? 1 : step === 'bills' ? 2 : step === 'colour' ? 3 : 4;
+  const colourSteps = saved.isRerun ? 0 : 1;
+  const totalSteps = 2 + colourSteps + (askNotifications ? 1 : 0);
+  const stepNumber = step === 'basics' ? 1 : step === 'bills' ? 2 : step === 'colour' ? 3 : 3 + colourSteps;
 
   const startedRef   = useRef(false);
   const previewedRef = useRef(false);
@@ -286,7 +318,14 @@ export function OnboardingModal() {
     // Deferred: the colour step (and maybe the reminders ask) still has to show.
     // Without this, setHorizon marks onboarding complete locally, the modal
     // unmounts and both steps are silently skipped. finishOnboarding sets it.
-    setHorizon(numBalance, payday, 0, 0, parsedBills, { deferOnboardingComplete: true });
+    // The daily cap is left undefined so a re-run keeps the saved one (a new
+    // account's is 0 either way), and saved bills keep the fields this form
+    // does not show.
+    setHorizon(
+      numBalance, payday, 0, undefined,
+      parsedBills.map(b => ({ ...saved.billsById.get(b.id), ...b })),
+      { deferOnboardingComplete: true },
+    );
 
     logProductEvent({
       type: 'activation_completed',
@@ -297,7 +336,9 @@ export function OnboardingModal() {
     });
 
     setLoading(false);
-    setStep('colour');
+    if (!saved.isRerun) setStep('colour');
+    else if (askNotifications) setStep('notify');
+    else finishOnboarding();
   };
 
   // Live preview only. The store, the profile row and the free pick are not
@@ -312,6 +353,11 @@ export function OnboardingModal() {
 
   const handleColour = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (colourPick === initialColourPick) {
+      if (askNotifications) setStep('notify');
+      else finishOnboarding();
+      return;
+    }
     setLoading(true);
     // Choosing Original spends nothing: the pick stays open for later, in
     // Settings. A new account has no pick yet, so any other preset becomes it.
@@ -343,7 +389,7 @@ export function OnboardingModal() {
     'w-full bg-transparent border-4 border-black rounded-2xl px-3 py-3 font-mono font-bold text-sm text-text-main outline-none focus:bg-input transition-colors cursor-pointer';
 
   const submitClass =
-    'w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[3px_3px_0px_0px_var(--color-action-primary)]';
+    'w-full h-14 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4 py-6 overflow-y-auto">
@@ -599,7 +645,7 @@ export function OnboardingModal() {
                     onClick={addBill}
                     disabled={!billName.trim() || (parseFloat(billAmount) || 0) <= 0}
                     aria-label="Add bill"
-                    className="w-14 self-stretch bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center text-black disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                    className="w-14 self-stretch bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center text-primary-contrast disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                   >
                     <Plus size={20} strokeWidth={3} />
                   </button>
@@ -607,13 +653,13 @@ export function OnboardingModal() {
 
                 {/* Safe-to-Spend preview */}
                 <div className="bg-action-primary border-4 border-black rounded-2xl px-4 py-3 overflow-hidden">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-black/50">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/50">
                     Cleared Today
                   </p>
-                  <p className="text-4xl font-black italic tracking-tighter text-black leading-none mt-0.5 truncate">
+                  <p className="text-4xl font-black italic tracking-tighter text-primary-contrast leading-none mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
                   </p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mt-1">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/40 mt-1">
                     {parsedBills.length === 0
                       ? 'No bills added yet, so nothing is held back'
                       : billsAllTotal > billsTotal
@@ -670,7 +716,7 @@ export function OnboardingModal() {
                 </div>
                 <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-surface to-transparent" />
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug">
+                <p className="text-[11px] font-bold text-text-muted leading-snug">
                   Scroll for more pairings. Original is always yours too, and you can swap your pick once in Settings. Pro unlocks every pairing.
                 </p>
               </motion.div>

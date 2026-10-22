@@ -297,7 +297,7 @@ export function VelocityConfig() {
         whileTap={{ scale: 0.97 }}
         onClick={save}
         disabled={!dirty || saving || (draft.surplusRouting === 'SWEEP_VAULT' && !draft.sweepTargetVaultId)}
-        className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-primary)]"
+        className="w-full h-14 border-4 border-black rounded-full bg-action-primary text-primary-contrast font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
       >
         {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Pacing Configuration'}
       </motion.button>

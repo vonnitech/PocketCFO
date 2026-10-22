@@ -2,6 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Clock, ShieldCheck } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { currencySymbol } from '../lib/currency';
+import { PreviewChip } from '../components/PreviewChip';
+import { ProResult } from '../components/ProResult';
+import { useProResultLocked } from '../lib/pro';
+
+const EXAMPLE_CAPITAL = 30000;
+const EXAMPLE_BURN = 10000;
 
 function contrastText(hex?: string): string {
   if (!hex || hex.length < 7) return 'text-black';
@@ -18,14 +24,20 @@ export const SafetyNet: React.FC = () => {
   const [baselineBurn, setBaselineBurn] = useState<number>(() => fixedBills);
   const [targetMonths, setTargetMonths] = useState<number>(6);
 
+  // Free accounts get fixed example figures behind the blur, never their own
+  // result, so there is nothing real on the page to un-blur (see ProResult).
+  const resultLocked = useProResultLocked();
+  const shownCapital = resultLocked ? EXAMPLE_CAPITAL : liquidCapital;
+  const shownBurn = resultLocked ? EXAMPLE_BURN : baselineBurn;
+
   const runwayMonths = useMemo(() => {
-    if (baselineBurn <= 0) return Infinity;
-    return liquidCapital / baselineBurn;
-  }, [liquidCapital, baselineBurn]);
+    if (shownBurn <= 0) return Infinity;
+    return shownCapital / shownBurn;
+  }, [shownCapital, shownBurn]);
 
   // Target Cushion: the dollar buffer needed for `targetMonths` of burn, and the gap.
-  const targetCapital = baselineBurn * targetMonths;
-  const capitalDeficit = targetCapital - liquidCapital;
+  const targetCapital = shownBurn * targetMonths;
+  const capitalDeficit = targetCapital - shownCapital;
 
   const runwayStatus = runwayMonths < 3 ? 'critical' : runwayMonths < 6 ? 'warning' : 'safe';
   const runwayColor =
@@ -38,6 +50,7 @@ export const SafetyNet: React.FC = () => {
       <div>
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Safety net</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Know exactly when you run out of cash</p>
+        <div className="mt-2"><PreviewChip action="see results" /></div>
       </div>
 
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
@@ -91,6 +104,7 @@ export const SafetyNet: React.FC = () => {
           </div>
         </div>
 
+        <ProResult feature="safety_net">
         {(() => {
           const ct = runwayStatus === 'safe' ? captureTxt : 'text-black';
           const ctMuted = runwayStatus === 'safe' ? captureTxt : 'text-black';
@@ -124,7 +138,7 @@ export const SafetyNet: React.FC = () => {
         })()}
 
         {/* The Big Reveal: cash gap vs your target cushion */}
-        {baselineBurn > 0 && (
+        {shownBurn > 0 && (
           capitalDeficit > 0 ? (
             <div className="mt-4 bg-action-bleed border-4 border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-start gap-3">
               <AlertTriangle size={22} strokeWidth={3} className="text-white shrink-0 mt-0.5" />
@@ -147,6 +161,7 @@ export const SafetyNet: React.FC = () => {
             </div>
           )
         )}
+        </ProResult>
 
         <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-3 text-center">
           Pre-filled from settings · edit to run scenarios

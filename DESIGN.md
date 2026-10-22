@@ -73,8 +73,8 @@ spacing:
   2xl: "24px"
 components:
   button-primary:
-    backgroundColor: "{colors.ink-border}"
-    textColor: "{colors.action-yellow}"
+    backgroundColor: "{colors.action-yellow}"
+    textColor: "{colors.ink-text}"
     typography: "{typography.label}"
     rounded: "{rounded.field}"
     height: "48px"
@@ -230,7 +230,7 @@ Borders are usually 2–4px and visually carry the component. Outer cards take t
 ### Buttons
 
 - **Shape:** Tactile rounded rectangles, usually 16px corners and a 48px minimum height for primary actions.
-- **Primary:** Ink background with action-yellow text, a heavy border, uppercase label, and compact offset yellow shadow.
+- **Primary:** Action-yellow background with its generated readable foreground (`text-primary-contrast`), a heavy ink border, uppercase label, and compact ink offset shadow. Accent-coloured text on an ink background vibrates and is hard to read at button size, so the accent fills the button instead; it still marks the primary path. Ink with accent text is reserved for selected chips and small labels.
 - **Capture:** Capture-green background with a readable generated foreground when the action protects or confirms money.
 - **Risk:** Risk-red or a red-tinted surface for destructive actions and financial danger; confirmation language remains factual.
 - **Hover / Focus:** Translate by roughly 2px into the shadow on hover or press. Keep a visible high-contrast focus treatment and honor reduced motion.

@@ -3,12 +3,12 @@ import { useProLocked } from '../lib/pro';
 
 // Sets expectations before the user invests effort: free users see this at the top
 // of a Pro tool so the later save-action wall reads as honest, not surprise-gated.
-export function PreviewChip() {
+export function PreviewChip({ action = 'save' }: { action?: string }) {
   const locked = useProLocked();
   if (!locked) return null;
   return (
     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-action-primary/20 border-2 border-black rounded-full text-[10px] font-black uppercase tracking-widest text-text-main">
-      <Lock size={11} strokeWidth={3} /> Pro preview · upgrade to save
+      <Lock size={11} strokeWidth={3} /> Pro preview · upgrade to {action}
     </div>
   );
 }

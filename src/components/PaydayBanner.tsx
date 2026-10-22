@@ -38,7 +38,7 @@ export function PaydayBanner() {
 
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-12 h-12 bg-action-primary border-4 border-black rounded-xl flex items-center justify-center shrink-0">
-                  <DollarSign size={24} strokeWidth={3} className="text-black" />
+                  <DollarSign size={24} strokeWidth={3} className="text-primary-contrast" />
                 </div>
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-white/40 leading-none mb-0.5">Payday</p>
@@ -57,7 +57,7 @@ export function PaydayBanner() {
                 <button
                   type="button"
                   onClick={handleFundVaults}
-                  className="flex-1 h-13 bg-action-primary border-4 border-black rounded-2xl text-black font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                  className="flex-1 h-13 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
                 >
                   Fund Vaults
                 </button>

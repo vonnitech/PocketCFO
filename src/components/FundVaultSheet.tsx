@@ -48,7 +48,7 @@ export function FundVaultSheet({ vaultId, vaultName, onClose }: Props) {
         {/* Destination */}
         <div className="flex items-center gap-3 px-4 py-3 bg-input border-4 border-black rounded-2xl">
           <div className="w-9 h-9 bg-action-capture border-2 border-black rounded-xl flex items-center justify-center shrink-0">
-            <ShieldCheck size={16} strokeWidth={2.5} className="text-black" />
+            <ShieldCheck size={16} strokeWidth={2.5} className="text-capture-contrast" />
           </div>
           <div>
             <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted leading-none">Funding</p>

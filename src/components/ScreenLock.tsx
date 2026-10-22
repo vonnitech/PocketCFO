@@ -193,7 +193,7 @@ export function ScreenLock() {
         <div className={`w-14 h-14 border-4 border-black rounded-2xl flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${inCooldown ? 'bg-action-bleed' : 'bg-action-primary'}`}>
           {inCooldown
             ? <ShieldAlert size={24} strokeWidth={3} className="text-white" />
-            : <Lock        size={24} strokeWidth={3} className="text-black" />
+            : <Lock        size={24} strokeWidth={3} className="text-primary-contrast" />
           }
         </div>
         <div className="text-center">

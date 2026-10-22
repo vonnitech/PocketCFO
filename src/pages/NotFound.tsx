@@ -10,7 +10,7 @@ export default function NotFound() {
         {/* The numerals carry the page. A dotted field behind them gives the
             block some weight without adding another competing element. */}
         <div className="dot-bg border-b-4 border-border px-6 py-7 sm:py-9 text-center">
-          <span className="inline-flex px-3 py-1 mb-4 bg-action-primary border-2 border-black rounded-full font-mono text-[10px] font-black uppercase tracking-widest text-black">
+          <span className="inline-flex px-3 py-1 mb-4 bg-action-primary border-2 border-black rounded-full font-mono text-[10px] font-black uppercase tracking-widest text-primary-contrast">
             Error 404
           </span>
           <p className="font-black italic leading-none tracking-tighter text-[4.5rem] sm:text-[6.5rem] text-action-primary [text-shadow:5px_5px_0_var(--border-primary)]">
@@ -40,7 +40,7 @@ export default function NotFound() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <Link
               to="/"
-              className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none dark:hover:translate-x-0 dark:hover:translate-y-0 dark:hover:brightness-110 min-w-0 flex items-center justify-center gap-2 h-14 bg-black border-4 border-black rounded-2xl text-sm font-black uppercase tracking-widest text-action-primary shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+              className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none dark:hover:translate-x-0 dark:hover:translate-y-0 dark:hover:brightness-110 min-w-0 flex items-center justify-center gap-2 h-14 bg-action-primary border-4 border-black rounded-2xl text-sm font-black uppercase tracking-widest text-primary-contrast shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
             >
               <Home size={18} strokeWidth={3} aria-hidden="true" />
               Dashboard

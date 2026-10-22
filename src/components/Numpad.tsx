@@ -63,7 +63,7 @@ export const Numpad: React.FC<NumpadProps> = ({
           hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all
           ${isImpulse
             ? 'bg-action-bleed text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-            : 'bg-black text-action-primary shadow-[4px_4px_0px_0px_var(--color-action-primary)]'
+            : 'bg-action-primary text-primary-contrast shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
           }`}
       >
         {submitLabel}

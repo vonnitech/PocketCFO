@@ -138,7 +138,7 @@ export default function DailyLog() {
   const pulsePercent = effectiveLimit > 0 ? Math.min(100, (recordedDailyDrain / effectiveLimit) * 100) : 0;
   const pulseColor = recordedDailyDrain > effectiveLimit ? 'bg-action-bleed' : pulsePercent > 80 ? 'bg-action-primary' : 'bg-action-capture';
   const pulseStatus = recordedDailyDrain > effectiveLimit ? 'Over' : pulsePercent > 80 ? 'Near Limit' : 'On Track';
-  const pulseStatusColor = recordedDailyDrain > effectiveLimit ? 'bg-action-bleed text-white' : pulsePercent > 80 ? 'bg-action-primary text-black' : 'bg-action-capture text-capture-contrast';
+  const pulseStatusColor = recordedDailyDrain > effectiveLimit ? 'bg-action-bleed text-white' : pulsePercent > 80 ? 'bg-action-primary text-primary-contrast' : 'bg-action-capture text-capture-contrast';
 
   const pastDays = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
@@ -419,7 +419,7 @@ const chooseWorthIt = (id: WorthIt) => {
                 />
               </div>
               {rawSpend === '' && recordedDailyDrain > 0 && (
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center -mt-1">
+                <p className="text-[11px] font-bold text-text-muted text-center -mt-1">
                   Pre-filled from today's logged transactions · edit if needed
                 </p>
               )}
@@ -458,7 +458,7 @@ const chooseWorthIt = (id: WorthIt) => {
                 whileTap={{ scale: 0.97 }}
                 disabled={!hasValidReviewedSpend}
                 onClick={() => setStep('WORTH_IT_CHECK')}
-                className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40"
+                className="w-full h-14 border-4 border-black rounded-full bg-action-primary text-primary-contrast font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40"
               >
                 Continue <ChevronRight size={20} strokeWidth={3} />
               </motion.button>
@@ -580,7 +580,7 @@ const chooseWorthIt = (id: WorthIt) => {
 
               {/* Danger meter recap */}
               <div>
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2 text-black gap-2">
+                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2 text-primary-contrast gap-2">
                   <span className="opacity-60 shrink-0">Tier Usage</span>
                   <span className="text-right tabular-nums">{dangerProgress.toFixed(0)}% of {formatCurrency(tierLimit, privacyMode)} limit</span>
                 </div>
@@ -676,19 +676,19 @@ const chooseWorthIt = (id: WorthIt) => {
                     whileTap={{ scale: 0.97 }}
                     disabled={!canCloseReview}
                     onClick={() => handleAction('stash')}
-                    className="w-full h-16 flex flex-col items-center justify-center gap-1 bg-black text-action-primary border-4 border-black rounded-3xl shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-primary)]"
+                    className="w-full h-16 flex flex-col items-center justify-center gap-1 bg-action-primary text-primary-contrast border-4 border-black rounded-3xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                   >
                     <span className="font-black uppercase text-[11px] tracking-widest px-3 text-center leading-tight">
                       Sweep to {sweepVault?.name ?? 'Vault'}
                     </span>
-                    <span className="text-[10px] font-bold text-action-primary/60 uppercase tracking-wide">
+                    <span className="text-[10px] font-bold text-primary-contrast/60 uppercase tracking-wide">
                       {formatCurrency(surplus, privacyMode)}
                     </span>
                   </motion.button>
                 </div>
               ) : surplus > 0 ? (
                 <div className="space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-center text-black/60">What to do with the surplus?</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-center text-primary-contrast/60">What to do with the surplus?</p>
                   <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                     <motion.button
                       type="button"
@@ -706,11 +706,11 @@ const chooseWorthIt = (id: WorthIt) => {
                       whileTap={{ scale: 0.97 }}
                       disabled={!canCloseReview || !hasVault}
                       onClick={() => handleAction('stash')}
-                      className="flex flex-col items-center gap-2 p-5 bg-black text-action-primary border-4 border-black rounded-3xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] disabled:translate-x-0 disabled:translate-y-0"
+                      className="flex flex-col items-center gap-2 p-5 bg-action-primary text-primary-contrast border-4 border-black rounded-3xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] disabled:translate-x-0 disabled:translate-y-0"
                     >
                       <ShieldCheck size={28} strokeWidth={3} />
                       <span className="font-black uppercase text-[10px]">Stash It</span>
-                      <span className="text-[11px] font-black text-action-primary/60 uppercase">
+                      <span className="text-[11px] font-black text-primary-contrast/60 uppercase">
                         {hasVault ? 'Move to vault' : 'Create a vault first'}
                       </span>
                     </motion.button>
@@ -722,7 +722,7 @@ const chooseWorthIt = (id: WorthIt) => {
                   whileTap={{ scale: 0.97 }}
                   disabled={!canCloseReview}
                   onClick={() => handleAction('roll')}
-                  className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] disabled:translate-x-0 disabled:translate-y-0"
+                  className="w-full h-14 border-4 border-black rounded-full bg-action-primary text-primary-contrast font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] disabled:translate-x-0 disabled:translate-y-0"
                 >
                   Log & Close Day
                 </motion.button>

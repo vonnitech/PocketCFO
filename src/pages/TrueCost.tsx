@@ -3,6 +3,9 @@ import { Flame, RotateCcw, TrendingUp, Clock } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { currencySymbol } from '../lib/currency';
 import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
+import { PreviewChip } from '../components/PreviewChip';
+import { ProResult } from '../components/ProResult';
+import { useProResultLocked } from '../lib/pro';
 
 function contrastText(hex?: string): string {
   if (!hex || hex.length < 7) return 'text-black';
@@ -67,11 +70,16 @@ export const TrueCost: React.FC = () => {
 
   // Full reality-check engine: loan math + opportunity cost + life energy. Returns the
   // clean data object the UI maps from, or null when inputs aren't ready.
+  // Free accounts get the fixed example behind the blur, never their own result,
+  // so there is nothing real on the page to un-blur (see ProResult).
+  const resultLocked = useProResultLocked();
+
   const metrics = useMemo(() => {
     // parseInt('') is NaN, and `NaN < 1` is false — so guard on a finite term to
     // avoid falling through and computing results as if the term were 1 month.
     const termMonths = parseInt(term);
     if (!Number.isFinite(termMonths) || termMonths < 1) return null;
+    if (resultLocked) return { ...EXAMPLE_RESULT, lifeEnergyDays: null };
     const base = computeCost(
       Math.max(0, parseFloat(price) || 0),
       Math.max(0, parseFloat(apr) || 0),
@@ -79,7 +87,7 @@ export const TrueCost: React.FC = () => {
     );
     if (!base) return null;
     return { ...base, lifeEnergyDays: lifeEnergyDays(base.totalCost, Math.max(0, parseFloat(wage) || 0)) };
-  }, [price, apr, term, wage]);
+  }, [price, apr, term, wage, resultLocked]);
 
   const hasInput = parseFloat(price) > 0 || parseFloat(apr) > 0 || parseInt(term) > 0 || parseFloat(wage) > 0;
 
@@ -170,6 +178,7 @@ export const TrueCost: React.FC = () => {
         <div>
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">True cost</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">True cost of financing</p>
+          <div className="mt-2"><PreviewChip action="see results" /></div>
         </div>
         {hasInput && (
           <button
@@ -263,7 +272,7 @@ export const TrueCost: React.FC = () => {
       </div>
 
       {metrics ? (
-        renderResults(metrics, parseFloat(price) || 0)
+        <ProResult feature="true_cost">{renderResults(metrics, resultLocked ? EXAMPLE.price : parseFloat(price) || 0)}</ProResult>
       ) : (
         // Empty state: a plain, factual example so the page shows real numbers before input.
         <div className="bg-surface border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-2">

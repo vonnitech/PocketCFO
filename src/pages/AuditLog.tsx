@@ -185,7 +185,7 @@ const PivotTable: React.FC = () => {
         </div>
         <div className="text-center py-10">
           <Grid3x3 size={42} className="mx-auto mb-3 text-text-muted opacity-30" />
-          <p className="text-[11px] font-black uppercase tracking-widest text-text-muted">
+          <p className="text-[11px] font-black text-text-muted">
             No transactions yet · log spending or income to build the pivot
           </p>
         </div>

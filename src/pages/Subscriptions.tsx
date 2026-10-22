@@ -101,7 +101,7 @@ export default function Subscriptions() {
 
   const usageBadge = (usage: string) => {
     if (usage === 'Active') return 'bg-action-capture border-action-capture text-capture-contrast';
-    if (usage === 'Low Use') return 'bg-action-primary border-action-primary text-black';
+    if (usage === 'Low Use') return 'bg-action-primary border-action-primary text-primary-contrast';
     return 'bg-action-bleed border-action-bleed text-white';
   };
 
@@ -118,7 +118,7 @@ export default function Subscriptions() {
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">
           Subscriptions
         </h1>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Bill dates decide when subscriptions reserve cash before payday</p>
+        <p className="text-[11px] font-bold text-text-muted mt-1.5">Bill dates decide when subscriptions reserve cash before payday</p>
       </div>
 
       {/* Total Bleed */}
@@ -248,7 +248,7 @@ export default function Subscriptions() {
                     <button
                       type="button"
                       onClick={() => saveContext(sub.id)}
-                      className="flex-1 py-1.5 bg-black text-action-primary border-2 border-black rounded-full text-[10px] font-black uppercase tracking-widest"
+                      className="flex-1 py-1.5 bg-action-primary text-primary-contrast border-2 border-black rounded-full text-[10px] font-black uppercase tracking-widest"
                     >
                       Save
                     </button>
@@ -354,7 +354,7 @@ export default function Subscriptions() {
                 type="button"
                 onClick={submitNewSub}
                 disabled={!canAddSub}
-                className="h-12 px-5 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-primary)]"
+                className="h-12 px-5 border-4 border-black rounded-full bg-action-primary text-primary-contrast font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
               >
                 Add
               </button>
@@ -368,7 +368,7 @@ export default function Subscriptions() {
               if (subCapReached) { window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature: 'subscription_cap' } })); return; }
               setIsAddingSub(true);
             }}
-            className="md:col-span-2 w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+            className="md:col-span-2 w-full h-14 border-4 border-black rounded-full bg-action-primary text-primary-contrast font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
           >
             {subCapReached
               ? <><Lock size={18} strokeWidth={3} /> Add Subscription · Pro</>

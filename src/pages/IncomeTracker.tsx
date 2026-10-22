@@ -188,7 +188,7 @@ export default function IncomeTracker() {
         <div className="bg-surface border-4 border-border rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-4">
           <TrendingUp size={32} className="text-capture-readable" strokeWidth={2.5} />
           <p className="font-black uppercase text-sm text-text-main">Set up your income to unlock the savings rate lab.</p>
-          <Link to="/config" className="flex items-center justify-between px-4 py-3 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-[11px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+          <Link to="/config" className="flex items-center justify-between px-4 py-3 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-[11px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
             Configure income & savings
             <LinkIcon size={13} strokeWidth={2.5} />
           </Link>
@@ -254,12 +254,12 @@ export default function IncomeTracker() {
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-action-primary border-2 border-black rounded-xl flex items-center justify-center shrink-0">
-            <BarChart3 size={14} strokeWidth={2.5} className="text-black" />
+            <BarChart3 size={14} strokeWidth={2.5} className="text-primary-contrast" />
           </div>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Savings Rate Lab</p>
         </div>
 
-        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted -mt-2">
+        <p className="text-[11px] font-bold text-text-muted -mt-2">
           Slide to simulate different savings rates → see how your FIRE date moves
         </p>
 
@@ -316,7 +316,7 @@ export default function IncomeTracker() {
 
         {/* Scenario insight */}
         <div className={`px-4 py-3 rounded-2xl border-2 ${simOnTrack ? 'bg-action-capture/10 border-action-capture/40' : 'bg-action-bleed/10 border-action-bleed/40'}`}>
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-main leading-snug">
+          <p className="text-[11px] font-black text-text-main leading-snug">
             {simOnTrack
               ? simYears !== null && simYears < fireYears
                 ? `At ${simRate}% you hit FIRE ${fireYears - simYears} years ahead of your target age ${fireTargetAge}.`

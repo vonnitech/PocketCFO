@@ -5,10 +5,11 @@ import {
   Eye, EyeOff, Sun, Moon, SlidersHorizontal, ChevronRight, Lock, LockOpen,
   Trash2, Smartphone, RefreshCw, Zap, Trophy, Shield, Medal,
   User, Check, ChevronDown, FileDown, FileUp, Fingerprint,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
-import { COLOR_THEMES, DEFAULT_THEME_UNLOCK, FREE_SWAPS, themeName } from '../core/themes';
+import { COLOR_THEMES, DEFAULT_THEME_UNLOCK, FREE_SWAPS, findPreset, themeName } from '../core/themes';
 import { DASHBOARD_WIDGETS } from '../core/widgets';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { supabase } from '../core/supabase';
@@ -512,7 +513,7 @@ export default function Settings() {
           <button
             type="button"
             onClick={saveFirstName}
-            className="h-12 shrink-0 px-5 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase text-xs tracking-widest flex items-center gap-2 whitespace-nowrap shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            className="h-12 shrink-0 px-5 border-4 border-black rounded-2xl bg-action-primary text-primary-contrast font-black uppercase text-xs tracking-widest flex items-center gap-2 whitespace-nowrap shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
           >
             {firstNameSaved ? <><Check size={13} /> Saved</> : 'Save'}
           </button>
@@ -637,16 +638,16 @@ export default function Settings() {
             </div>
           ) : !isPro ? (
             <>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3">
-                FIRE, Income Tracker, and Debt Payoff are free previews. Pro unlocks saving and full actions.
+              <p className="text-[11px] font-bold text-text-muted mb-3">
+                Bill splitter is free and Wishlist holds 2 wishes. Other tools are free previews. Pro unlocks saving, full actions and every result.
               </p>
 
               {/* Annual — the hero */}
               <button type="button" onClick={() => startCheckout('annual')}
                 className="w-full text-left bg-action-primary border-4 border-black rounded-2xl p-4 flex items-center justify-between shadow-brutal mb-3 hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
                 <div>
-                  <div className="text-lg font-black text-black tabular-nums">{PRICING.annual.price}<span className="text-sm font-bold">/yr</span></div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-black/70">{PRICING.annual.sub}</div>
+                  <div className="text-lg font-black text-primary-contrast tabular-nums">{PRICING.annual.price}<span className="text-sm font-bold">/yr</span></div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/70">{PRICING.annual.sub}</div>
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest bg-black text-action-primary px-3 py-1 rounded-full">Best value</span>
               </button>
@@ -664,7 +665,7 @@ export default function Settings() {
             <>
               <div className="bg-action-capture/10 border-4 border-action-capture rounded-2xl p-4 mb-3 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-action-capture border-4 border-black flex items-center justify-center shrink-0">
-                  <Check size={18} strokeWidth={3} className="text-black" />
+                  <Check size={18} strokeWidth={3} className="text-capture-contrast" />
                 </div>
                 <div>
                   <p className="text-sm font-black uppercase tracking-tight text-text-main">Pro is active</p>
@@ -788,7 +789,12 @@ export default function Settings() {
                 <Smartphone size={16} /> {isInstallable ? 'INSTALL PWA' : 'ON iOS: SHARE → ADD TO HOME SCREEN'}
               </button>
             )}
-            <button type="button" onClick={() => setState({ isConfigured: false } as any)}
+            {/* Reopens setup, pre-filled with the saved figures (see Onboarding).
+                Local only: the profile still says setup is done, so closing the
+                app halfway leaves everything as it was. This used to flip
+                isConfigured, which onboarding never reads, so nothing opened,
+                while payday handling and notifications quietly switched off. */}
+            <button type="button" onClick={() => { setState({ hasCompletedOnboarding: false }); navigate('/'); }}
               className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all">
               <RefreshCw size={16} /> RE-RUN ONBOARDING
             </button>
@@ -837,7 +843,7 @@ export default function Settings() {
           </select>
           <ChevronDown size={16} strokeWidth={2.5} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
         </div>
-        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">
+        <p className="text-[11px] font-bold text-text-muted mt-2">
           Sets how amounts are shown across the app. No conversion. Enter amounts in your own currency.
         </p>
       </div>
@@ -864,7 +870,20 @@ export default function Settings() {
               style={{ overflow: 'hidden' }}
             >
               <div className="px-5 pb-5">
-                <div className="flex justify-end mb-3">
+                <div className="flex justify-between gap-3 mb-3">
+                  {/* Trades the two accents' places, e.g. Pink & Sky becomes Sky &
+                      Pink. Each colour keeps its job (main action vs money saved);
+                      only which colour does which job changes. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = primaryColor, c = captureColor;
+                      setPrimaryColor(c); setCaptureColor(p); void setThemeColors(c, p);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+                  >
+                    <ArrowLeftRight size={12} strokeWidth={3} /> Flip colours
+                  </button>
                   <button
                     type="button"
                     onClick={() => { setPrimaryColor(DEFAULT_PRIMARY); setCaptureColor(DEFAULT_CAPTURE); setThemeColors(DEFAULT_PRIMARY, DEFAULT_CAPTURE); }}
@@ -874,7 +893,7 @@ export default function Settings() {
                   </button>
                 </div>
                 {proLocked && (
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3 leading-snug">
+                  <p className="text-[11px] font-bold text-text-muted mb-3 leading-snug">
                     {!themeUnlock.freeThemeId
                       ? 'Free plan: Original plus 1 pairing of your choice. Tap one to make it yours.'
                       : swapLeft
@@ -894,7 +913,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={() => void choosePreset(pendingSwap.to, true)}
-                        className="flex-1 h-10 bg-black text-action-primary border-4 border-black rounded-xl text-[11px] font-black uppercase tracking-widest"
+                        className="flex-1 h-10 bg-action-primary text-primary-contrast border-4 border-black rounded-xl text-[11px] font-black uppercase tracking-widest"
                       >
                         Swap
                       </button>
@@ -910,7 +929,8 @@ export default function Settings() {
                 )}
                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
                   {COLOR_THEMES.map(t => {
-                    const isActive = primaryColor === t.primary && captureColor === t.capture;
+                    // A flipped pairing is still this pairing (see findPreset).
+                    const isActive = findPreset(primaryColor, captureColor)?.id === t.id;
                     const isMine = proLocked && t.id === themeUnlock.freeThemeId;
                     // Only drawn once the pick is made AND the swap is spent.
                     // Before that, any pairing can still be chosen for free.
