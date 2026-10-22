@@ -5,7 +5,7 @@ import type { SVGProps } from 'react';
 // The main shape follows currentColor. The second tone is a fixed accent, and any
 // highlighted parent overrides it with --icon-tone (see index.css) so it never
 // disappears into a same-coloured theme background. Details drawn on top of the
-// accent (the Vaults coins, the Spend lines, the Home smile) use --icon-detail, a
+// accent (the Vaults wheel, the Spend lines, the Home smile) use --icon-detail, a
 // fixed dark ink, so they stay visible in dark mode where currentColor turns light.
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
@@ -26,9 +26,11 @@ export function StackPiggySpendIcon(props: IconProps) {
 }
 
 export function StackPiggyVaultIcon(props: IconProps) {
-  // A savings jar: the lid follows currentColor, the glass takes the tone and
-  // the coins inside use the fixed detail ink so they show in dark mode too.
-  return <IconFrame {...props}><g fill="currentColor"><path d="M7.8 2H16.2C16.95 2 17.5 2.55 17.5 3.3V4.3C17.5 5.05 16.95 5.6 16.2 5.6H7.8C7.05 5.6 6.5 5.05 6.5 4.3V3.3C6.5 2.55 7.05 2 7.8 2Z"/><path d="M5 9.5C5 7.3 6.8 5.5 9 5.5H15C17.2 5.5 19 7.3 19 9.5V18C19 20.2 17.2 22 15 22H9C6.8 22 5 20.2 5 18V9.5Z" style={{ fill: 'var(--icon-tone, #FACC15)' }}/><circle cx="9.3" cy="17.6" r="2" style={{ fill: 'var(--icon-detail, #111111)' }}/><circle cx="14.6" cy="17.6" r="2" style={{ fill: 'var(--icon-detail, #111111)' }}/><circle cx="12" cy="13.7" r="2" style={{ fill: 'var(--icon-detail, #111111)' }}/></g></IconFrame>;
+  // A safe on two little feet with a turn wheel on the door. The feet follow
+  // currentColor, the body takes the tone, and the door frame and wheel use the
+  // fixed detail ink so they show in dark mode and on a selected tab.
+  const ink = { stroke: 'var(--icon-detail, #111111)' };
+  return <IconFrame {...props}><g fill="currentColor"><rect x="5" y="19" width="3.2" height="3" rx="1"/><rect x="15.8" y="19" width="3.2" height="3" rx="1"/><rect x="2.5" y="2.5" width="19" height="17.5" rx="3.6" style={{ fill: 'var(--icon-tone, #FACC15)' }}/><rect x="5" y="5" width="14" height="12.5" rx="2" fill="none" strokeWidth="1.3" style={ink}/><circle cx="12" cy="11.25" r="3.4" fill="none" strokeWidth="1.5" style={ink}/><path d="M12 6.6V8.1M12 14.4V15.9M7.4 11.25H8.9M15.1 11.25H16.6" fill="none" strokeWidth="1.5" strokeLinecap="round" style={ink}/><circle cx="12" cy="11.25" r="1.2" style={{ fill: 'var(--icon-detail, #111111)' }}/></g></IconFrame>;
 }
 
 export function StackPiggyStatsIcon(props: IconProps) {
