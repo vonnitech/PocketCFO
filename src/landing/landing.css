@@ -368,7 +368,8 @@
 .lp .price-card-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .lp .price-badge { padding: .4rem .6rem; background: var(--ink); color: var(--acid); border-radius: 999px; font: 500 .58rem var(--mono); letter-spacing: .06em; }
 .lp .pro-lead { margin: 0; font-size: 1.35rem; line-height: 1.3; font-weight: 800; letter-spacing: -.04em; }
-.lp .price-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+.lp .price-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.lp .price-tax { margin: -.5rem 0 0; font: .62rem var(--mono); letter-spacing: .04em; color: rgba(17,17,15,.68); }
 .lp .price-options > div { padding: .8rem; border: 1.5px solid rgba(17,17,15,.35); border-radius: .65rem; }
 .lp .price-options .is-best { background: var(--ink); color: var(--acid); border-color: var(--ink); }
 .lp .price-options strong { display: block; font-size: 1.5rem; letter-spacing: -.06em; }

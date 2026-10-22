@@ -26,7 +26,7 @@ import { clearUserLocalData } from '../lib/userScopedStorage';
 import { clearSnapshot, cancelQueuedSnapshotSave } from '../db/storage';
 import { CURRENCIES } from '../lib/currency';
 import { useIsPro, useProLocked, refreshProStatus } from '../lib/pro';
-import { PRICING } from '../lib/pricing';
+import { PRICING, TAX_NOTE } from '../lib/pricing';
 import { ProAction } from '../components/ProAction';
 import { validateBackupFile } from '../core/fileValidation';
 
@@ -94,7 +94,7 @@ export default function Settings() {
 
   // Kick off LemonSqueezy Checkout for a plan (the /api/checkout function builds
   // the hosted checkout; we just redirect to it).
-  const startCheckout = async (plan: 'monthly' | 'annual' | 'lifetime') => {
+  const startCheckout = async (plan: 'monthly' | 'annual') => {
     if (isNative) { alert('Purchases are not available in this mobile preview.'); return; }
     // Logged before the network call so the funnel captures intent even when
     // checkout creation fails or the user abandons the LemonSqueezy page.
@@ -651,21 +651,14 @@ export default function Settings() {
                 <span className="text-[10px] font-black uppercase tracking-widest bg-black text-action-primary px-3 py-1 rounded-full">Best value</span>
               </button>
 
-              {/* Monthly + Lifetime — quieter */}
-              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 mb-3">
-                <button type="button" onClick={() => startCheckout('monthly')}
-                  className="text-left bg-input border-2 border-black rounded-2xl p-4 hover:border-black hover:bg-surface transition-colors">
-                  <div className="text-[1rem] font-black text-text-main tabular-nums">{PRICING.monthly.price}<span className="text-xs font-bold">/mo</span></div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{PRICING.monthly.sub}</div>
-                </button>
-                <button type="button" onClick={() => startCheckout('lifetime')}
-                  className="text-left bg-input border-2 border-black rounded-2xl p-4 hover:border-black hover:bg-surface transition-colors">
-                  <div className="text-[1rem] font-black text-text-main tabular-nums">{PRICING.lifetime.price}<span className="text-xs font-bold"> once</span></div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{PRICING.lifetime.sub}</div>
-                </button>
-              </div>
+              {/* Monthly — quieter */}
+              <button type="button" onClick={() => startCheckout('monthly')}
+                className="w-full text-left bg-input border-2 border-black rounded-2xl p-4 mb-3 hover:border-black hover:bg-surface transition-colors">
+                <div className="text-[1rem] font-black text-text-main tabular-nums">{PRICING.monthly.price}<span className="text-xs font-bold">/mo</span></div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{PRICING.monthly.sub}</div>
+              </button>
 
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No bank login · Cancel anytime</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{TAX_NOTE} · No bank login · Cancel anytime</p>
             </>
           ) : (
             <>
