@@ -127,23 +127,30 @@ h1, h2, h3 {
 
 /* ── Screens with their own treatment ─────────────────────────────────────── */
 
-/* Today's number sits in the landing page's dark "today's plan" frame, so it is
-   unmistakably the main thing on the screen. Drawn with a ring rather than a
-   wrapper element so the card's own layout and states are untouched. */
-/* Repeated class: outranks the general card shadow further down, which has the
-   same reach otherwise and would win by coming later. */
-:root:not(.dark) .dashboard-hero.dashboard-hero.dashboard-hero {
-  margin: 10px;
-  border-color: transparent;
-  box-shadow: 0 0 0 10px #11110F;
+/* Today's number: the landing page's bold accent card. The account's primary
+   colour, an ink edge and a hard ink shadow, so it is unmistakably the main
+   thing on the screen in either mode. Text follows the colour's own contrast
+   ink, so a dark pairing gets light text. Doubled classes outrank the dark
+   .dashboard-panel rule in index.css. */
+.daily-card.daily-card {
+  background: var(--color-action-primary);
+  color: var(--color-primary-contrast);
+  border: 1.5px solid #11110F;
+  border-radius: 1.4rem;
+  box-shadow: 6px 6px 0 #11110F;
+  margin: 0 6px 6px 0;
 }
-:root:not(.dark) .dashboard-hero.dashboard-hero.dashboard-hero.border-action-bleed {
-  box-shadow: 0 0 0 10px #11110F, 0 0 0 12px var(--color-action-bleed);
-}
+.dark .daily-card.daily-card { box-shadow: 6px 6px 0 #000; }
+.daily-card.daily-card.daily-card--over { box-shadow: 6px 6px 0 var(--color-action-bleed); }
+.daily-card-chip { background: #11110F; color: var(--color-action-primary); }
+.daily-card-track { background: color-mix(in srgb, var(--color-primary-contrast) 16%, transparent); }
+.daily-card-fill { background: var(--color-primary-contrast); }
+.daily-card-cta { background: #11110F; color: #FFFDF8; transition: opacity .15s; }
+.daily-card-cta:hover { opacity: .88; }
 
 /* index.css gave a few dark surfaces a cool blue-grey; keep them in the warm
    charcoal family of the restyle. */
-.dark .dashboard-hero, .dark .app-navigation { background: #2A2A26; }
+.dark .app-navigation { background: #2A2A26; }
 
 /* Cards get a soft lift so they read as cards, not as faint outlines. Soft and
    downward only, unlike the old hard offset shadows. */

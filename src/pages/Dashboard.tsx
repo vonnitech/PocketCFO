@@ -3,7 +3,6 @@ import { NATIVE_SPEND_INTENT } from '../native/useNativeBridge';
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Wallet,
   Shield,
   TrendingUp,
   X,
@@ -385,10 +384,6 @@ export default function Dashboard() {
     heroAmount.length <= 7 ? "text-6xl md:text-7xl"
     : heroAmount.length <= 9 ? "text-5xl md:text-6xl"
     : "text-4xl md:text-5xl";
-  const spendBarColor  =
-    spendPct >= 100 ? "bg-action-bleed"
-    : spendPct >= 80 ? "bg-action-primary"
-    : "bg-action-capture";
 
   if (!hasCompletedOnboarding) {
     return (
@@ -475,8 +470,9 @@ export default function Dashboard() {
           <NotificationBell />
         </div>
 
-        {/* Log Spend trigger */}
-        {hasCompletedOnboarding && (
+        {/* Log Spend trigger. Lives inside the daily card now; this one only
+            shows when that card is hidden in the dashboard settings. */}
+        {hasCompletedOnboarding && !widgetVisible("safe-spend") && (
           <motion.button
             type="button"
             whileTap={{ scale: 0.97 }}
@@ -549,63 +545,60 @@ export default function Dashboard() {
 
         {/* ── Hero Row: Safe Spend (2/3) + Payday Countdown (1/3) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
-          {/* Safe Spend Hero */}
-          {widgetVisible("safe-spend") && (
-            <div
-              className={`lg:col-span-2 dashboard-hero dashboard-panel bg-surface border-4 rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden transition-colors duration-300 ${
-                isOverToday ? "border-action-bleed" : "border-border"
-              }`}
-            >
-              {/* "today" lives in the label, not beside the number. Next to a
-                  four-figure amount it had nowhere to sit and wrapped onto its
-                  own line, where it read as a stray heading rather than the end
-                  of the sentence. */}
-              <div className="flex items-center gap-2 mb-1.5">
-                <Wallet size={13} strokeWidth={3} className="text-text-muted shrink-0" />
-                <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                  Cleared Today
+          {/* Safe Spend Hero. The bold accent card from the landing page: the
+              account's own primary colour, an ink edge and a hard ink shadow
+              (styles in redesign.css under .daily-card). Log spend lives inside
+              it, so the number and the action that changes it sit together; the
+              standalone Log spend button above only shows when this card is
+              hidden. */}
+          {widgetVisible("safe-spend") && (() => {
+            // Cents drop to a smaller size so the whole amount lands first.
+            const cents = heroAmount.match(/^(.*?)([.,]\d{2})$/);
+            const paydayLabel = !nextPayday ? null
+              : daysToPayday <= 0 ? "Payday today"
+              : `${daysToPayday} ${daysToPayday === 1 ? "day" : "days"} to payday`;
+            return (
+            <div className={`lg:col-span-2 daily-card dashboard-panel p-5 md:p-6 ${isOverToday ? "daily-card--over" : ""}`}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest">
+                  Safe to spend today
                 </p>
+                {paydayLabel && (
+                  <span className="daily-card-chip text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shrink-0">
+                    {paydayLabel}
+                  </span>
+                )}
               </div>
 
-              {/* The number. `break-all` is gone: it split currency figures
-                  mid-digit ("£1,2 / 34.56"). Length-based sizing replaces it. */}
-              <p className={`${heroSize} dark:not-italic font-black italic tracking-tighter leading-[0.9] text-text-main tabular-nums mb-5`}>
-                {heroAmount}
+              <p className={`${heroSize} font-extrabold tracking-tighter leading-[0.95] tabular-nums mt-4 mb-2`}>
+                {cents ? <>{cents[1]}<span className="text-[0.5em]">{cents[2]}</span></> : heroAmount}
               </p>
 
-              {/* Before anything is spent the headline already equals the full
-                  allowance and the meter is an empty grey slab, so the quiet
-                  state gets one line instead of a bar showing nothing. */}
-              {!isFirstTime && !hasSpentToday && (
-                <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                  Nothing spent yet
+              {!hasSpentToday && (
+                <p className="text-sm font-semibold opacity-75">
+                  {isFirstTime
+                    ? "Bills and savings are already set aside."
+                    : "Nothing spent yet. Bills and savings are already set aside."}
                 </p>
               )}
 
-              {!isFirstTime && hasSpentToday && (
-                <div className="space-y-2.5">
-                  {/* Meter in the house language: hard black border, squared
-                      corners, thick enough to read without looking. */}
-                  <div className="h-5 bg-input border-[3px] border-black rounded-lg overflow-hidden">
+              {hasSpentToday && (
+                <div className="space-y-2 mt-1">
+                  <div className="h-2.5 daily-card-track rounded-full overflow-hidden">
                     <motion.div
-                      className={`h-full ${spendBarColor}`}
+                      className={`h-full rounded-full ${isOverToday ? "bg-action-bleed" : "daily-card-fill"}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${spendPct}%` }}
                       transition={{ type: "spring", stiffness: 200, damping: 30 }}
                     />
                   </div>
-
                   <div className="flex items-center justify-between gap-3">
-                    <span className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                    <span className="text-[10px] font-bold uppercase tracking-widest">
                       {format(todaySpend)} spent
                     </span>
-                    {/* Promoted out of 10px grey text into a chip. This is the
-                        figure someone actually checks mid-afternoon. */}
                     <span
-                      className={`px-2.5 py-1 border-2 border-black rounded-lg text-[11px] font-black uppercase tracking-widest shrink-0 ${
-                        isOverToday
-                          ? "bg-action-bleed text-white"
-                          : "bg-input text-text-muted"
+                      className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md shrink-0 ${
+                        isOverToday ? "bg-action-bleed text-white" : "opacity-75"
                       }`}
                     >
                       {isOverToday
@@ -613,19 +606,17 @@ export default function Dashboard() {
                         : `of ${format(safeSpendLimit)}`}
                     </span>
                   </div>
-
-                  {/* The card showed the overage and never said what happens
-                      next. The engine already absorbs it: tomorrow recomputes
-                      from what is left over the days that remain. That was only
-                      ever said in a notification, which can be blocked or off. */}
+                  {/* What happens to an overage: tomorrow recomputes from what
+                      is left over the days that remain. */}
                   {isOverToday && daysToPayday > 0 && (
-                    <p className="dashboard-copy text-[10px] font-bold uppercase tracking-widest text-text-muted leading-snug">
+                    <p className="text-sm font-semibold opacity-75 leading-snug">
                       Spread across the {daysToPayday} days to payday, about{' '}
-                      {format(Math.abs(spendRemaining) / daysToPayday)} off each day
+                      {format(Math.abs(spendRemaining) / daysToPayday)} off each day.
                     </p>
                   )}
                 </div>
               )}
+
               {/* Green only for money that really moved today. Otherwise the cap
                   just holds the daily number down and the rest stays in cash. */}
               {(sweptToday > 0 || hardCapSweep > 0) && (
@@ -648,8 +639,22 @@ export default function Dashboard() {
                   )}
                 </div>
               )}
+
+              {hasCompletedOnboarding && (
+                <div className="mt-5">
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setLogSheetOpen(true)}
+                    className="daily-card-cta w-full h-11 rounded-xl text-xs font-bold uppercase tracking-widest cursor-pointer"
+                  >
+                    + Log spend
+                  </motion.button>
+                </div>
+              )}
             </div>
-          )}
+            );
+          })()}
 
           {/* Payday Countdown */}
           {nextPayday &&
