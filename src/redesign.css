@@ -142,7 +142,6 @@ h1, h2, h3 {
 }
 .dark .daily-card.daily-card { box-shadow: 6px 6px 0 #000; }
 .daily-card.daily-card.daily-card--over { box-shadow: 6px 6px 0 var(--color-action-bleed); }
-.daily-card-chip { background: #11110F; color: var(--color-action-primary); }
 .daily-card-track { background: color-mix(in srgb, var(--color-primary-contrast) 16%, transparent); }
 .daily-card-fill { background: var(--color-primary-contrast); }
 .daily-card-cta { background: #11110F; color: #FFFDF8; transition: opacity .15s; }

@@ -554,21 +554,12 @@ export default function Dashboard() {
           {widgetVisible("safe-spend") && (() => {
             // Cents drop to a smaller size so the whole amount lands first.
             const cents = heroAmount.match(/^(.*?)([.,]\d{2})$/);
-            const paydayLabel = !nextPayday ? null
-              : daysToPayday <= 0 ? "Payday today"
-              : `${daysToPayday} ${daysToPayday === 1 ? "day" : "days"} to payday`;
             return (
             <div className={`lg:col-span-2 daily-card dashboard-panel p-5 md:p-6 ${isOverToday ? "daily-card--over" : ""}`}>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest">
-                  Safe to spend today
-                </p>
-                {paydayLabel && (
-                  <span className="daily-card-chip text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shrink-0">
-                    {paydayLabel}
-                  </span>
-                )}
-              </div>
+              {/* No payday chip here: the payday card sits right below. */}
+              <p className="text-[10px] font-bold uppercase tracking-widest">
+                Safe to spend today
+              </p>
 
               <p className={`${heroSize} font-extrabold tracking-tighter leading-[0.95] tabular-nums mt-4 mb-2`}>
                 {cents ? <>{cents[1]}<span className="text-[0.5em]">{cents[2]}</span></> : heroAmount}
