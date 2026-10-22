@@ -116,7 +116,9 @@ export function useNotifications(): UseNotifications {
   const [, force] = useReducer((x: number) => x + 1, 0);
   const [permission, setPermission] = useState<PermissionState>(() => permissionState());
 
-  useEffect(() => subscribe(force), []);
+  // The phone app learns its permission asynchronously and reports it through
+  // the engine's listeners, so the cached state is re-read on every publish.
+  useEffect(() => subscribe(() => { setPermission(permissionState()); force(); }), []);
 
   // The user can flip permission in browser settings while the tab is open, and
   // there is no event for it. Re-reading on focus is the cheap approximation.

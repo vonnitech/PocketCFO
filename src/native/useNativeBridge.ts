@@ -8,6 +8,7 @@ import { isNative } from './platform';
 import { parseNativeLink } from './deepLinks';
 import { makeWidgetSnapshot, type WidgetSnapshot } from './widgetSnapshot';
 import { toLocalDateKey } from '../core/math';
+import { installLocalNotifications } from './localNotifications';
 
 const Widget = registerPlugin<{
   update(options: WidgetSnapshot): Promise<void>;
@@ -19,6 +20,7 @@ export const NATIVE_SPEND_INTENT = 'pocketcfo-native-log-spend';
 export function useNativeBridge() {
   useEffect(() => {
     if (!isNative) return;
+    const removeNotifications = installLocalNotifications();
     let live = true;
     let previous = '';
     let writes = Promise.resolve();
@@ -89,6 +91,7 @@ export function useNativeBridge() {
       .catch(() => console.warn('[native] Could not read launch link.'));
     return () => {
       live = false;
+      removeNotifications();
       unsubscribe();
       clearInterval(timer);
       for (const listener of [urlListener, stateListener, backListener]) {

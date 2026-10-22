@@ -133,7 +133,22 @@ export interface NotificationRecord {
   deliveredOs: boolean;
   // 'server' is unused today. It exists so a push-delivered record arriving from
   // the backend can be merged into the same inbox without a schema change.
-  origin: 'client' | 'server';
+  // 'scheduled' is a phone-app alert booked ahead with the OS (see projection.ts)
+  // and written to the inbox once its time has passed.
+  origin: 'client' | 'server' | 'scheduled';
+}
+
+// An alert booked with the phone's OS to fire while the app may be closed. The
+// record is fully formed in advance so that, once the time passes, it can be
+// moved into the inbox and counted against the caps exactly as if the app had
+// emitted it live.
+export interface ScheduledAlert {
+  // Numeric id the OS uses for this booking.
+  osId: number;
+  // When it fires (ISO). Always outside quiet hours.
+  at: string;
+  record: NotificationRecord;
+  cooldownHours: number;
 }
 
 // ── Persisted log ────────────────────────────────────────────────────────────
@@ -146,4 +161,6 @@ export interface NotificationLogState {
   // Small scratchpad for rules that need to remember what they last told the
   // user (for example the safe-spend figure a change is measured against).
   memory: Record<string, string | number>;
+  // Phone app only: what is currently booked with the OS. Absent on the web.
+  scheduled?: ScheduledAlert[];
 }

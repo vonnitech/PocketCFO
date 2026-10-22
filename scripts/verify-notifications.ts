@@ -575,6 +575,114 @@ section('10. "Off" means off, on every channel');
   notificationPermission = 'default';
 }
 
+// =============================================================================
+section('11. Phone app: alerts booked ahead with the OS');
+// projection.ts asks the real engine what it would say over the coming week and
+// books the calendar-driven answers. Every gate the live engine applies has to
+// hold across that whole plan, and a booked alert that fires must count exactly
+// like a live one, or the phone could say the same thing twice.
+// =============================================================================
+{
+  const { planSchedule } = await import('../src/core/notifications/projection');
+  const { setOsScheduler } = await import('../src/core/notifications/engine');
+
+  const rent = { id: 'b-rent', name: 'Rent', amount: 500, dueDay: 4 };
+  const localHour = (iso: string) => new Date(iso).getHours();
+  const localDay = (iso: string) => new Date(iso).toDateString();
+
+  // --- the plan on its own --------------------------------------------------
+  const billPlan = planSchedule(slice({ billQueue: [rent] }), allOn(), defaultLog(), EVENING);
+  check('a bill due in 3 days is booked for the first morning it is "due soon"',
+    billPlan.length > 0 && billPlan[0].at === at('2026-09-02T09:00:00').toISOString(),
+    billPlan[0]?.at);
+  check('the booking carries the real rule wording', /Rent is due/.test(billPlan[0]?.record.title ?? ''),
+    billPlan[0]?.record.title);
+  check('booked records are marked as scheduled', billPlan.every(p => p.record.origin === 'scheduled'));
+
+  check('nothing is booked when notifications are off',
+    planSchedule(slice({ billQueue: [rent] }), prefsWith({ mode: 'off' }), defaultLog(), EVENING).length === 0);
+
+  const lateMornings = prefsWith({ mode: 'all', quietHours: { start: 21, end: 10 } });
+  const quietPlan = planSchedule(slice({ billQueue: [rent] }), lateMornings, defaultLog(), EVENING);
+  check('no booking ever lands inside quiet hours',
+    quietPlan.length > 0 && quietPlan.every(p => !isQuietHour(new Date(p.at), lateMornings.quietHours)),
+    quietPlan.map(p => p.at).join(','));
+  check('a 9am slot inside quiet hours moves to the evening slot',
+    quietPlan[0] && localHour(quietPlan[0].at) === 18, quietPlan[0]?.at);
+
+  const twoBills = [rent, { id: 'b-gym', name: 'Gym', amount: 30, dueDay: 3 }, { id: 'b-tv', name: 'TV', amount: 15, dueDay: 7 }];
+  const busyPlan = planSchedule(slice({ billQueue: twoBills, nextPayday: '2026-09-05' }), allOn(), defaultLog(), EVENING);
+  const perDay = new Map<string, number>();
+  busyPlan.forEach(p => perDay.set(localDay(p.at), (perDay.get(localDay(p.at)) ?? 0) + 1));
+  check('the daily cap holds across the plan (never two on one day)',
+    [...perDay.values()].every(n => n <= POLICY.maxPerDay), JSON.stringify([...perDay]));
+  check('the weekly cap holds across the plan', busyPlan.length <= POLICY.maxPerWeek, String(busyPlan.length));
+
+  // Three proactive records already sent this week: the plan must wait until the
+  // oldest drops out of the 7-day window before booking anything.
+  const spent = defaultLog();
+  spent.records = ['2026-08-29T12:00:00', '2026-08-30T12:00:00', '2026-08-31T12:00:00'].map((iso, i) => ({
+    id: `old-${i}`, dedupeKey: `old-${i}`, ruleId: 'safe-spend-shift', category: 'safe-spend',
+    level: 'helpful', title: 'x', body: 'x', createdAt: at(iso).toISOString(), readAt: null,
+    deliveredOs: true, origin: 'client',
+  })) as any;
+  const waitPlan = planSchedule(slice({ billQueue: [rent] }), allOn(), spent, EVENING);
+  check('alerts already sent this week count against the plan',
+    waitPlan.every(p => new Date(p.at) >= at('2026-09-05T12:00:00')), waitPlan.map(p => p.at).join(','));
+
+  const paydayPlan = planSchedule(slice({ nextPayday: '2026-09-03' }), allOn(), defaultLog(), EVENING);
+  const payday = paydayPlan.find(p => p.record.ruleId === 'payday-landed');
+  check('payday is booked for the morning of payday',
+    payday?.at === at('2026-09-03T09:00:00').toISOString(), payday?.at);
+  check('the payday booking makes no claim about figures it cannot know yet',
+    payday?.record.title === 'It is payday' && !/\d/.test(payday?.record.body ?? ''), payday?.record.body);
+
+  const shortPlan = planSchedule(
+    slice({ liquidAssets: 50, upcomingBills: 900, safeSpendLimit: 1 }), allOn(), defaultLog(), EVENING);
+  check('risk warnings are never booked (they depend on figures that can change)',
+    shortPlan.every(p => p.record.category !== 'overspend'), shortPlan.map(p => p.record.category).join(','));
+
+  // --- the full loop through tick() ------------------------------------------
+  const storeState = (userId: string, over: Partial<Slice> = {}) => ({
+    userId, dataFresh: true, isConfigured: true, hasCompletedOnboarding: true, ...slice(over),
+  }) as any;
+  let booked: { at: string; record: { ruleId: string } }[] | null = null;
+  let bookCalls = 0;
+  setOsScheduler({ book: async plan => { booked = plan; bookCalls++; } });
+  notificationPermission = 'granted';
+
+  initForUser('u-phone');
+  setMode('all');
+  tick(storeState('u-phone', { billQueue: [rent] }), EVENING);
+  check('a tick books the coming week with the phone', (booked ?? []).length > 0, String(booked?.length));
+
+  const later = tick(storeState('u-phone', { billQueue: [rent] }), at('2026-09-02T10:00:00'));
+  const settled = getRecords().filter(r => r.origin === 'scheduled');
+  check('a booked alert whose time has passed lands in the inbox', settled.length === 1, String(settled.length));
+  check('and the live check does not say the same thing again',
+    !later.emitted.some(r => r.ruleId === 'bill-due-soon'), later.emitted.map(r => r.ruleId).join(','));
+
+  setMode('off');
+  check('turning notifications off cancels every booking at once', booked !== null && booked!.length === 0,
+    String(booked?.length));
+
+  setMode('all');
+  tick(storeState('u-phone', { billQueue: [rent] }), at('2026-09-02T11:00:00'));
+  notificationPermission = 'denied';
+  const callsBefore = bookCalls;
+  tick(storeState('u-phone', { billQueue: [rent] }), at('2026-09-02T12:00:00'));
+  check('without permission nothing stays booked', bookCalls > callsBefore && booked!.length === 0,
+    String(booked?.length));
+
+  notificationPermission = 'granted';
+  tick(storeState('u-phone', { billQueue: [rent] }), at('2026-09-02T13:00:00'));
+  initForUser(null);
+  check('signing out cancels every booking', booked!.length === 0, String(booked?.length));
+
+  setOsScheduler(null);
+  notificationPermission = 'default';
+}
+
 // ── Result ───────────────────────────────────────────────────────────────────
 
 console.log(`\n${'-'.repeat(60)}`);

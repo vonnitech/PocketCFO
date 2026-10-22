@@ -4,8 +4,9 @@
 
 export * from './types';
 export { POLICY, DEFAULT_QUIET_HOURS, isQuietHour, budgetUsage } from './policy';
-export { permissionState, requestPermission, deliverTest, isSupported } from './permission';
-export type { PermissionState } from './permission';
+export { permissionState, requestPermission, deliverTest, isSupported, setNativeNotifier } from './permission';
+export type { PermissionState, NativeNotifier, DeliverPayload } from './permission';
+export { planSchedule } from './projection';
 export { recordSyncFailure, recordSyncSuccess, readSyncHealth } from './health';
 export { RULES } from './rules';
 export { assessRisk, decideEscalation, severityStep, RISK, HIGH_RISK_LEVEL } from './risk';
@@ -27,4 +28,7 @@ export {
   clearInbox,
   evaluate,
   tick,
+  setOsScheduler,
+  refreshFromOs,
 } from './engine';
+export type { OsScheduler } from './engine';
