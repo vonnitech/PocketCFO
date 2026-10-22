@@ -5,7 +5,7 @@ import type { SVGProps } from 'react';
 // The main shape follows currentColor. The second tone is a fixed accent, and any
 // highlighted parent overrides it with --icon-tone (see index.css) so it never
 // disappears into a same-coloured theme background. Details drawn on top of the
-// accent (the Vaults dial, the Spend lines, the Home smile) use --icon-detail, a
+// accent (the Vaults coins, the Spend lines, the Home smile) use --icon-detail, a
 // fixed dark ink, so they stay visible in dark mode where currentColor turns light.
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
@@ -26,7 +26,9 @@ export function StackPiggySpendIcon(props: IconProps) {
 }
 
 export function StackPiggyVaultIcon(props: IconProps) {
-  return <IconFrame {...props}><g fill="currentColor"><path d="M3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 7.28595 22 4.92893 20.5355 3.46447C19.0711 2 16.714 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447Z" style={{ fill: 'var(--icon-tone, #FACC15)' }}/><path d="M6.75 7C6.75 6.58579 6.41421 6.25 6 6.25C5.58579 6.25 5.25 6.58579 5.25 7L5.25 17C5.25 17.4142 5.58579 17.75 6 17.75C6.41421 17.75 6.75 17.4142 6.75 17L6.75 7Z" style={{ fill: 'var(--icon-detail, #111111)' }}/><path fillRule="evenodd" d="M9.46967 7.46967C9.76256 7.17678 10.2374 7.17678 10.5303 7.46967L11.932 8.8713C12.5248 8.47866 13.2357 8.25 14 8.25C14.7643 8.25 15.4752 8.47866 16.068 8.8713L17.4697 7.46967C17.7626 7.17678 18.2374 7.17678 18.5303 7.46967C18.8232 7.76256 18.8232 8.23744 18.5303 8.53033L17.1287 9.93196C17.5213 10.5248 17.75 11.2357 17.75 12C17.75 12.7643 17.5213 13.4752 17.1287 14.068L18.5303 15.4697C18.8232 15.7626 18.8232 16.2374 18.5303 16.5303C18.2374 16.8232 17.7626 16.8232 17.4697 16.5303L16.068 15.1287C15.4752 15.5213 14.7643 15.75 14 15.75C13.2357 15.75 12.5248 15.5213 11.932 15.1287L10.5303 16.5303C10.2374 16.8232 9.76256 16.8232 9.46967 16.5303C9.17678 16.2374 9.17678 15.7626 9.46967 15.4697L10.8713 14.068C10.4787 13.4752 10.25 12.7643 10.25 12C10.25 11.2357 10.4787 10.5248 10.8713 9.93196L9.46967 8.53033C9.17678 8.23744 9.17678 7.76256 9.46967 7.46967ZM11.75 12C11.75 10.7574 12.7574 9.75 14 9.75C15.2426 9.75 16.25 10.7574 16.25 12C16.25 13.2426 15.2426 14.25 14 14.25C12.7574 14.25 11.75 13.2426 11.75 12Z" clipRule="evenodd" style={{ fill: 'var(--icon-detail, #111111)' }}/></g></IconFrame>;
+  // A savings jar: the lid follows currentColor, the glass takes the tone and
+  // the coins inside use the fixed detail ink so they show in dark mode too.
+  return <IconFrame {...props}><g fill="currentColor"><path d="M7.8 2H16.2C16.95 2 17.5 2.55 17.5 3.3V4.3C17.5 5.05 16.95 5.6 16.2 5.6H7.8C7.05 5.6 6.5 5.05 6.5 4.3V3.3C6.5 2.55 7.05 2 7.8 2Z"/><path d="M5 9.5C5 7.3 6.8 5.5 9 5.5H15C17.2 5.5 19 7.3 19 9.5V18C19 20.2 17.2 22 15 22H9C6.8 22 5 20.2 5 18V9.5Z" style={{ fill: 'var(--icon-tone, #FACC15)' }}/><circle cx="9.3" cy="17.6" r="2" style={{ fill: 'var(--icon-detail, #111111)' }}/><circle cx="14.6" cy="17.6" r="2" style={{ fill: 'var(--icon-detail, #111111)' }}/><circle cx="12" cy="13.7" r="2" style={{ fill: 'var(--icon-detail, #111111)' }}/></g></IconFrame>;
 }
 
 export function StackPiggyStatsIcon(props: IconProps) {
