@@ -4,7 +4,8 @@ import { supabase } from '../core/supabase';
 // Pro tier gate.
 //
 // One source of truth: profiles.pro_plan / pro_expires_at, written by the
-// LemonSqueezy webhook (api/lemonsqueezy-webhook.ts) through the service role.
+// billing webhook (api/paddle-webhook.ts, or api/lemonsqueezy-webhook.ts for
+// older subscribers) through the service role.
 // Those columns are not user-writable; migration 011_billing_column_guard
 // rejects any client that tries. Fetched once and shared by every consumer.
 
@@ -42,7 +43,7 @@ export function proSnapshot(): { isPro: boolean; loaded: boolean } {
   return { isPro: entitlement.isPro, loaded: entitlement.loaded };
 }
 
-// Force a re-fetch (e.g. after returning from LemonSqueezy Checkout).
+// Force a re-fetch (e.g. after returning from checkout).
 export function refreshProStatus(): void {
   entitlement = { isPro: false, loaded: false };
   inFlight = loadEntitlement();

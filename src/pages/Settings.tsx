@@ -26,7 +26,8 @@ import { logSecurityEvent, logProductEvent } from '../core/telemetry';
 import { clearUserLocalData } from '../lib/userScopedStorage';
 import { clearSnapshot, cancelQueuedSnapshotSave } from '../db/storage';
 import { CURRENCIES } from '../lib/currency';
-import { useIsPro, useProLocked, refreshProStatus } from '../lib/pro';
+import { useIsPro, useProLocked, refreshProStatus, proSnapshot } from '../lib/pro';
+import { openPaddleCheckout } from '../lib/paddle';
 import { PRICING, TAX_NOTE } from '../lib/pricing';
 import { ProAction } from '../components/ProAction';
 import { validateBackupFile } from '../core/fileValidation';
@@ -93,12 +94,13 @@ export default function Settings() {
   // stamp locks on a paying customer's themes while their status is still loading.
   const proLocked = useProLocked();
 
-  // Kick off LemonSqueezy Checkout for a plan (the /api/checkout function builds
-  // the hosted checkout; we just redirect to it).
+  // Kick off Paddle Checkout for a plan. /api/checkout prepares the transaction
+  // (price, customer and account are fixed server-side); Paddle.js then opens
+  // it as an overlay on this page.
   const startCheckout = async (plan: 'monthly' | 'annual') => {
     if (isNative) { alert('Purchases are not available in this mobile preview.'); return; }
     // Logged before the network call so the funnel captures intent even when
-    // checkout creation fails or the user abandons the LemonSqueezy page.
+    // checkout creation fails or the user abandons the Paddle checkout.
     logProductEvent({ type: 'payment_intent', plan });
     try {
       // The function reads the buyer from this token, so it is the whole
@@ -112,24 +114,38 @@ export default function Settings() {
         },
         body: JSON.stringify({ plan }),
       });
-      const { url, error } = await res.json();
-      if (url) navigateToSecureUrl(url);
-      else alert(error || 'Could not start checkout. Billing may not be configured yet.');
+      const { transactionId, error } = await res.json();
+      if (!transactionId) {
+        alert(error || 'Could not start checkout. Billing may not be configured yet.');
+        return;
+      }
+      if (!(await openPaddleCheckout(transactionId))) {
+        alert('Could not load checkout. Check your connection and try again.');
+      }
     } catch {
       alert('Could not start checkout. Billing may not be configured yet.');
     }
   };
 
-  // After returning from LemonSqueezy (redirect_url = /settings?pro=success),
-  // re-read the entitlement so the unlock reflects once the webhook has run.
+  // Paddle sends the buyer back to /settings?pro=success as soon as payment
+  // goes through, which is usually a few seconds before its webhook has
+  // switched Pro on. One re-read would often land too early and show the user
+  // as still on the free plan, so this re-reads every 2 seconds for up to 30.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('pro') === 'success') {
+    if (new URLSearchParams(window.location.search).get('pro') !== 'success') return;
+    window.history.replaceState({}, '', '/settings#pro');
+    refreshProStatus();
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      if (proSnapshot().isPro || tries >= 15) { window.clearInterval(timer); return; }
       refreshProStatus();
-      window.history.replaceState({}, '', '/settings#pro');
-    }
+    }, 2000);
+    return () => window.clearInterval(timer);
   }, []);
 
-  // Open the LemonSqueezy Customer Portal (manage / cancel / receipts).
+  // Open the billing portal (manage / cancel / receipts): Paddle's, or
+  // LemonSqueezy's for anyone still billed there. /api/portal decides.
   const openBillingPortal = async () => {
     if (isNative) { alert('Billing management is not available in this mobile preview.'); return; }
     try {
@@ -622,7 +638,7 @@ export default function Settings() {
         {/* Notifications */}
         <NotificationSettings />
 
-        {/* Pro tier — three-tier pricing, state driven by the LemonSqueezy webhook */}
+        {/* Pro tier: state driven by the billing webhook (Paddle, or LemonSqueezy for older subscribers) */}
         <div id="pro" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <Lock size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />

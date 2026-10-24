@@ -26,16 +26,58 @@ assert.match(source, /LEMONSQUEEZY_STORE_ID/);
 assert.match(source, /ls_event_updated_at/);
 assert.match(source, /throw new Error\(`Supabase entitlement update failed/);
 
+// A LemonSqueezy event may only revoke Pro that LemonSqueezy granted, so a late
+// expiry cannot cancel someone's Paddle subscription.
+assert.match(source, /if \(fields\.pro_plan === null\) query = query\.eq\('pro_source', 'lemonsqueezy'\)/);
+
+// Paddle: signatures are checked for real, not just pattern-matched.
+const { verifyPaddleSignature } = await import('../api/_paddle');
+const { createHmac } = await import('node:crypto');
+const body = Buffer.from('{"event_type":"subscription.created"}');
+const sign = (ts: number, secret: string, payload = body) =>
+  createHmac('sha256', secret).update(`${ts}:`).update(payload).digest('hex');
+const now = 1_800_000_000;
+assert.equal(verifyPaddleSignature(body, `ts=${now};h1=${sign(now, 'sec')}`, 'sec', now), true);
+assert.equal(verifyPaddleSignature(Buffer.from('{"tampered":1}'), `ts=${now};h1=${sign(now, 'sec')}`, 'sec', now), false);
+assert.equal(verifyPaddleSignature(body, `ts=${now};h1=${sign(now, 'other')}`, 'sec', now), false);
+assert.equal(verifyPaddleSignature(body, `ts=${now - 600};h1=${sign(now - 600, 'sec')}`, 'sec', now), false);
+assert.equal(verifyPaddleSignature(body, `ts=${now};h1=${sign(now, 'old')};h1=${sign(now, 'sec')}`, 'sec', now), true);
+assert.equal(verifyPaddleSignature(body, `ts=${now};h1=${sign(now, 'sec')}`, '', now), false);
+assert.equal(verifyPaddleSignature(body, '', 'sec', now), false);
+
+const paddleHelper = readFileSync('api/_paddle.ts', 'utf8');
+const paddleWebhook = readFileSync('api/paddle-webhook.ts', 'utf8');
+assert.match(paddleHelper, /timingSafeEqual/);
+// Only an explicit 'production' reaches live Paddle; anything else is sandbox.
+assert.match(paddleHelper, /PADDLE_LIVE = process\.env\.PADDLE_ENV === 'production'/);
+assert.match(paddleWebhook, /bytes > 1024 \* 1024/);
+assert.match(paddleWebhook, /if \(!secret\)/);
+assert.match(paddleWebhook, /paddle_event_updated_at/);
+// The account is found by the server-linked customer, never by custom_data.
+assert.match(paddleWebhook, /\.eq\('paddle_customer_id', sub\.customer_id!\)/);
+assert.doesNotMatch(paddleWebhook, /custom_data/);
+assert.match(paddleWebhook, /\.eq\('paddle_subscription_id', sub\.id!\)\.eq\('pro_source', 'paddle'\)/);
+
 const checkout = readFileSync('api/checkout.ts', 'utf8');
 const portal = readFileSync('api/portal.ts', 'utf8');
 const deletion = readFileSync('api/_delete-account-core.ts', 'utf8');
-assert.match(checkout, /process\.env\.APP_ORIGIN/);
+assert.match(checkout, /requireUser\(req\)/);
 assert.doesNotMatch(checkout, /req\.headers\.origin/);
-assert.doesNotMatch(checkout, /resp\.status, json/);
+assert.doesNotMatch(checkout, /req\.body[^;]*user_id/);
+// The customer link must exist before the transaction is created.
+assert.ok(checkout.indexOf('customerFor(caller.id') < checkout.indexOf("'/transactions'"));
 assert.match(portal, /encodeURIComponent\(customerId\)/);
+assert.match(portal, /trusted\(session\?\.urls\?\.general\?\.overview, 'paddle\.com'\)/);
 assert.doesNotMatch(portal, /resp\.status, json/);
 assert.match(deletion, /encodeURIComponent\(subscriptionId\)/);
+assert.match(deletion, /cancelPaddleSubscription/);
 assert.doesNotMatch(deletion, /resp\.text\(\)/);
+
+const paddleMigration = readFileSync('supabase/migrations/027_paddle_billing.sql', 'utf8');
+for (const column of ['paddle_customer_id', 'paddle_subscription_id', 'paddle_event_updated_at']) {
+  assert.match(paddleMigration, new RegExp(`new\\.${column} := null`));
+  assert.match(paddleMigration, new RegExp(`new\\.${column} is distinct from old\\.${column}`));
+}
 
 const capMigration = readFileSync('supabase/migrations/023_free_tier_cap_hardening.sql', 'utf8');
 assert.match(capMigration, /security definer/);
@@ -77,6 +119,10 @@ assert.match(csp, /frame-ancestors 'none'/);
 // These two assertions exist so tightening the policy breaks a test instead.
 assert.match(csp, /connect-src[^;]*https:\/\/us\.i\.posthog\.com/);
 assert.match(csp, /script-src 'self'[^;]*https:\/\/us-assets\.i\.posthog\.com/);
+// Checkout is a Paddle overlay: its script and frame must be allowed, or the
+// upgrade button silently does nothing in production.
+assert.match(csp, /script-src 'self'[^;]*https:\/\/cdn\.paddle\.com/);
+assert.match(csp, /frame-src[^;]*https:\/\/buy\.paddle\.com[^;]*https:\/\/sandbox-buy\.paddle\.com/);
 assert.equal(headers.find(header => header.key === 'X-Content-Type-Options')?.value, 'nosniff');
 
 console.log('Security checks passed: bounded imports, spreadsheet/XSS defenses, signed ordered webhooks, trusted billing URLs, redacted telemetry, and race-safe plan caps.');

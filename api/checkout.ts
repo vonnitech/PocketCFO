@@ -1,27 +1,59 @@
 ﻿import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 import { requireUser } from './_auth.js';
+import { PaddleApiError, paddleApi, priceIdFor } from './_paddle.js';
 
-// Creates a LemonSqueezy Checkout for a Pro plan and returns its hosted URL.
-// Env (set in Vercel): LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID,
-// LEMONSQUEEZY_VARIANT_MONTHLY/ANNUAL/LIFETIME.
-const VARIANT_IDS: Record<string, string | undefined> = {
-  monthly:  process.env.LEMONSQUEEZY_VARIANT_MONTHLY,
-  annual:   process.env.LEMONSQUEEZY_VARIANT_ANNUAL,
-  lifetime: process.env.LEMONSQUEEZY_VARIANT_LIFETIME,
-};
+// Prepares a Paddle checkout for a Pro plan and returns the transaction id.
+// The browser opens it with Paddle.js (Paddle.Checkout.open({ transactionId })),
+// so the price, customer and account are all fixed here on the server, never
+// chosen by the browser.
+//
+// Entitlement is decided by /api/paddle-webhook, which finds the account by
+// paddle_customer_id. That link is written below, before checkout opens, so a
+// checkout someone opens from the browser in another person's name cannot
+// reach that person's account. Env: see api/_paddle.ts.
+const supabase = createClient(
+  process.env.SUPABASE_URL ?? '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+);
 
-function appOrigin(): string | null {
-  try {
-    const url = new URL(process.env.APP_ORIGIN ?? '');
-    if (url.protocol !== 'https:' || url.username || url.password) return null;
-    return url.origin;
-  } catch {
-    return null;
-  }
-}
+type Customer = { id: string };
+type Transaction = { id: string };
 
-function isLemonSqueezyUrl(url: URL): boolean {
-  return url.hostname === 'lemonsqueezy.com' || url.hostname.endsWith('.lemonsqueezy.com');
+// One Paddle customer per account. Paddle keeps customers unique by email, so an
+// existing one (from an earlier, abandoned checkout) is reused, not duplicated.
+async function customerFor(userId: string, email: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('paddle_customer_id')
+    .eq('id', userId)
+    .maybeSingle() as { data: { paddle_customer_id?: string | null } | null; error: { code?: string } | null };
+  if (error) throw new Error(`profile lookup failed: ${error.code ?? 'unknown'}`);
+  if (data?.paddle_customer_id) return data.paddle_customer_id;
+
+  const existing = await paddleApi<Customer[]>(`/customers?email=${encodeURIComponent(email)}`);
+  const customerId = existing[0]?.id ?? (await paddleApi<Customer>('/customers', {
+    method: 'POST',
+    body: { email },
+  })).id;
+
+  // Only fills an empty link, so a race between two checkouts cannot swap an
+  // account onto a different customer.
+  const { error: linkError } = await supabase
+    .from('profiles')
+    .update({ paddle_customer_id: customerId })
+    .eq('id', userId)
+    .is('paddle_customer_id', null);
+  if (linkError) throw new Error(`customer link failed: ${linkError.code ?? 'unknown'}`);
+
+  // Whichever link won is the one the webhook will use, so check out with it.
+  const { data: linked } = await supabase
+    .from('profiles')
+    .select('paddle_customer_id')
+    .eq('id', userId)
+    .maybeSingle() as { data: { paddle_customer_id?: string | null } | null };
+  if (!linked?.paddle_customer_id) throw new Error('customer link missing after write');
+  return linked.paddle_customer_id;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -31,66 +63,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // user_id is echoed back by every webhook and decides which profile gets
-    // entitled, so it comes from the verified token. Left body-supplied, anyone
-    // could tag a checkout with someone else's id and overwrite their billing
-    // link. Only the plan is caller's choice.
     const caller = await requireUser(req);
     if (!caller) return res.status(401).json({ error: 'Not signed in' });
+    if (!caller.email) return res.status(400).json({ error: 'Your account needs an email address to subscribe' });
 
     const { plan } = (req.body ?? {}) as { plan?: string };
-    const variantId = plan ? VARIANT_IDS[plan] : undefined;
-    const storeId = process.env.LEMONSQUEEZY_STORE_ID;
-    const apiKey = process.env.LEMONSQUEEZY_API_KEY;
-    if (!variantId || !storeId || !apiKey) {
+    const priceId = priceIdFor(plan);
+    if (!priceId || !process.env.PADDLE_API_KEY) {
       return res.status(400).json({ error: 'Unknown or unconfigured plan' });
     }
 
-    const origin = appOrigin();
-    if (!origin) return res.status(500).json({ error: 'Checkout is not configured' });
-
-    const resp = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
+    const customerId = await customerFor(caller.id, caller.email);
+    const transaction = await paddleApi<Transaction>('/transactions', {
       method: 'POST',
-      headers: {
-        Accept: 'application/vnd.api+json',
-        'Content-Type': 'application/vnd.api+json',
-        Authorization: `Bearer ${apiKey}`,
+      body: {
+        items: [{ price_id: priceId, quantity: 1 }],
+        customer_id: customerId,
+        // For support and reporting only; the webhook does not trust it.
+        custom_data: { user_id: caller.id, plan },
       },
-      body: JSON.stringify({
-        data: {
-          type: 'checkouts',
-          attributes: {
-            checkout_data: {
-              // email pre-fills the form; custom is echoed back in every webhook's
-              // meta.custom_data so we know which profile to entitle. plan also
-              // disambiguates a lifetime order from a subscription's first order.
-              ...(caller.email ? { email: caller.email } : {}),
-              custom: { user_id: caller.id, plan: plan ?? '' },
-            },
-            product_options: {
-              redirect_url: `${origin}/settings?pro=success`,
-            },
-          },
-          relationships: {
-            store:   { data: { type: 'stores',   id: String(storeId) } },
-            variant: { data: { type: 'variants', id: String(variantId) } },
-          },
-        },
-      }),
     });
 
-    const json = await resp.json() as { data?: { attributes?: { url?: string } } };
-    const url = json?.data?.attributes?.url;
-    let secureUrl: URL | null = null;
-    try { if (url) secureUrl = new URL(url); } catch { /* handled below */ }
-    if (!resp.ok || !secureUrl || secureUrl.protocol !== 'https:' || secureUrl.username || secureUrl.password || !isLemonSqueezyUrl(secureUrl)) {
-      console.error('[checkout] upstream request failed', { status: resp.status });
+    if (!/^txn_[a-z\d]+$/.test(transaction?.id ?? '')) {
+      console.error('[checkout] unexpected transaction id');
       return res.status(502).json({ error: 'Checkout failed' });
     }
-
-    return res.status(200).json({ url: secureUrl.href });
-  } catch {
-    console.error('[checkout] request failed');
-    return res.status(500).json({ error: 'Checkout failed' });
+    return res.status(200).json({ transactionId: transaction.id });
+  } catch (e) {
+    const code = e instanceof PaddleApiError ? `${e.status} ${e.code}` : 'internal';
+    console.error('[checkout] request failed', { code });
+    return res.status(502).json({ error: 'Checkout failed' });
   }
 }
