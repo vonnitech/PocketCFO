@@ -411,7 +411,7 @@ export function OnboardingModal() {
           {/* Title + step counter */}
           <div className="overflow-hidden">
             <div className="flex items-baseline justify-between gap-2">
-              <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-none truncate">
+              <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-tight truncate">
                 {step === 'basics' ? 'Set up your account'
                   : step === 'bills' ? 'Your bills'
                   : step === 'colour' ? 'Make it yours'
@@ -656,7 +656,7 @@ export function OnboardingModal() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/50">
                     Cleared Today
                   </p>
-                  <p className="text-4xl font-black italic tracking-tighter text-primary-contrast leading-none mt-0.5 truncate">
+                  <p className="text-4xl font-black italic tracking-tighter text-primary-contrast leading-tight mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
                   </p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/40 mt-1">
@@ -735,7 +735,7 @@ export function OnboardingModal() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-capture-contrast/60">
                     Cleared Today
                   </p>
-                  <p className="text-3xl font-black italic tracking-tighter text-capture-contrast leading-none mt-0.5 truncate">
+                  <p className="text-3xl font-black italic tracking-tighter text-capture-contrast leading-tight mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
                   </p>
                 </div>

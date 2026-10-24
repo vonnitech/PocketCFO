@@ -93,7 +93,7 @@ function DesktopNavItem({ path, icon: Icon, label, locked }: {
       }
     >
       <Icon size={20} className="shrink-0" />
-      <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wider leading-none">{label}</span>
+      <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wider leading-normal">{label}</span>
       {locked && (
         <span className="ml-auto inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest opacity-70">
           <Lock size={10} strokeWidth={3} /> Preview
