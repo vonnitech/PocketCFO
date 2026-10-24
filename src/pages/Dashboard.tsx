@@ -558,7 +558,7 @@ export default function Dashboard() {
             <div className={`lg:col-span-2 daily-card dashboard-panel p-5 md:p-6 ${isOverToday ? "daily-card--over" : ""}`}>
               {/* No payday chip here: the payday card sits right below. */}
               <p className="text-[10px] font-bold uppercase tracking-widest">
-                Safe to spend today
+                Cleared today
               </p>
 
               <p className={`${heroSize} font-extrabold tracking-tighter leading-[0.95] tabular-nums mt-4 mb-2`}>
