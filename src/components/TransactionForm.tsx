@@ -42,7 +42,6 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
 
   const numAmt = parseFloat(amount) || 0;
   const isOver = numAmt > 0 && numAmt > safeSpendLimit;
-  const penalty = isOver ? numAmt * 0.2 : 0;
   const canSubmit = numAmt > 0 && !!category && !loading;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,8 +157,7 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
       {isOver && (
         <div className="flex items-center justify-between bg-action-bleed/10 border-2 border-action-bleed rounded-xl px-4 py-2.5 overflow-hidden">
           <p className="text-[10px] font-black uppercase tracking-widest text-action-bleed truncate">
-            Over by {formatCurrency(numAmt - safeSpendLimit)} ·{" "}
-            {formatCurrency(penalty)} penalty to savings
+            Over today's number by {formatCurrency(numAmt - safeSpendLimit)}
           </p>
         </div>
       )}
