@@ -468,6 +468,9 @@ export function LandingPage() {
         <p>Payday-aware spending for the days in between.</p>
         <div className="footer-links">
           <a href="mailto:hello@stackpiggy.com">hello@stackpiggy.com</a>
+          <Link to="/terms">Terms</Link>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/refunds">Refunds</Link>
           <Link to="/login">Sign in →</Link>
         </div>
       </footer>

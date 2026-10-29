@@ -1,0 +1,55 @@
+/* Terms, Privacy and Refunds. Builds on landing.css (same .lp tokens) so the
+   legal pages read as part of the public site. Everything is scoped under
+   .legal-page so none of it reaches the landing page or the app. */
+
+.lp.legal-page { min-height: 100vh; }
+
+.legal-page .legal-nav { display: flex; gap: 1.2rem; font: 500 .7rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.legal-page .legal-nav a { color: var(--muted); padding: .4rem 0; border-bottom: 1.5px solid transparent; }
+.legal-page .legal-nav a:hover { color: var(--ink); }
+.legal-page .legal-nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--acid); }
+
+.legal-page .legal-main { padding: clamp(2.5rem, 6vw, 5rem) 0 4rem; }
+.legal-page .legal-hero { max-width: 760px; margin-bottom: clamp(2rem, 5vw, 3.5rem); }
+.legal-page .legal-hero h1 { font-size: clamp(2.6rem, 5.4vw, 4.6rem); margin-bottom: 1.1rem; }
+/* The landing highlight is one absolutely positioned bar, which breaks when a
+   heading wraps. Here it is a background on the text itself, so each wrapped
+   line gets its own stripe. */
+.legal-page .legal-hero h1 em::after { display: none; }
+.legal-page .legal-hero h1 em { background: linear-gradient(transparent 64%, var(--acid) 64%, var(--acid) 92%, transparent 92%); -webkit-box-decoration-break: clone; box-decoration-break: clone; padding: 0 .06em; }
+.legal-page .legal-lead { font-size: 1.12rem; line-height: 1.55; color: #3d3b35; max-width: 620px; margin-bottom: 1.2rem; }
+.legal-page .legal-date { font: 500 .66rem/1 var(--mono); letter-spacing: .08em; color: var(--muted); margin: 0; }
+
+.legal-page .legal-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: clamp(2rem, 5vw, 4.5rem); align-items: start; }
+.legal-page .legal-aside { position: sticky; top: 1.5rem; display: flex; flex-direction: column; gap: .7rem; font-size: .9rem; }
+.legal-page .legal-aside p { font: 500 .64rem/1 var(--mono); letter-spacing: .08em; color: var(--muted); margin-bottom: .3rem; }
+.legal-page .legal-aside a { color: #3d3b35; }
+.legal-page .legal-aside a:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--acid); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+.legal-page .legal-copy { max-width: 720px; font-size: 1rem; line-height: 1.7; color: #2b2a26; }
+.legal-page .legal-copy section { padding-top: 1.6rem; margin-top: 1.6rem; border-top: 1px solid var(--line); scroll-margin-top: 1.5rem; }
+.legal-page .legal-copy h2 { font-size: clamp(1.35rem, 2.2vw, 1.7rem); letter-spacing: -.04em; line-height: 1.15; margin-bottom: .8rem; }
+.legal-page .legal-copy p { margin-bottom: .9rem; }
+.legal-page .legal-copy strong { color: var(--ink); }
+.legal-page .legal-copy a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--acid); text-decoration-thickness: 2px; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.legal-page .legal-intro { font-size: 1.08rem; color: var(--ink); }
+
+.legal-page .legal-table { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper); margin: 1rem 0 1.2rem; font-size: .9rem; }
+.legal-page .legal-table [role="row"] { display: grid; grid-template-columns: 1fr 1.3fr 1.6fr; gap: 1rem; padding: .75rem 1rem; border-top: 1px solid var(--line); }
+.legal-page .legal-table [role="row"]:first-child { border-top: 0; font: 500 .64rem/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.legal-page .legal-table [role="cell"]:first-child { font-weight: 700; }
+
+.legal-page .legal-contact { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 1.4rem 1.5rem !important; margin-top: 2.2rem !important; }
+
+@media (max-width: 860px) {
+  .legal-page .legal-layout { grid-template-columns: 1fr; }
+  .legal-page .legal-aside { position: static; flex-direction: row; flex-wrap: wrap; gap: .5rem 1rem; }
+  .legal-page .legal-aside p { width: 100%; }
+}
+@media (max-width: 560px) {
+  .legal-page .legal-nav { gap: .8rem; font-size: .62rem; }
+  .legal-page .legal-table [role="row"] { grid-template-columns: 1fr; gap: .2rem; }
+  .legal-page .legal-table [role="row"]:first-child { display: none; }
+  .legal-page .legal-table [role="cell"]:nth-child(2) { color: #3d3b35; }
+  .legal-page .legal-table [role="cell"]:nth-child(3) { color: var(--muted); font-size: .85rem; }
+}

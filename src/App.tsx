@@ -27,6 +27,11 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const LandingPage = lazy(() =>
   import('./landing/LandingPage').then(module => ({ default: module.LandingPage }))
 );
+// Terms, Privacy and Refunds: public, reachable signed in or out.
+const LegalPage = lazy(() => import('./legal/LegalPage'));
+const legalRoutes = (['terms', 'privacy', 'refunds'] as const).map(doc => (
+  <Route key={doc} path={`/${doc}`} element={<Suspense fallback={<SyncFallback />}><LegalPage doc={doc} /></Suspense>} />
+));
 const BillSplitter = lazy(() =>
   import('./pages/BillSplitter').then(module => ({ default: module.BillSplitter }))
 );
@@ -456,6 +461,7 @@ function App() {
               ) : authScreen('login')} />
               <Route path="/login" element={authScreen('login')} />
               <Route path="/signup" element={authScreen('signup')} />
+              {legalRoutes}
               <Route path="*" element={
                 <div className="min-h-screen bg-base dot-bg text-text-main font-sans overflow-x-hidden p-4">
                   {withPageWrapper(<NotFound />)}
@@ -552,6 +558,7 @@ function App() {
                 <Route path="/recon"           element={<Navigate to="/daily" replace />} />
                 <Route path="/audit"           element={<Navigate to="/breakdown" replace />} />
                 <Route path="/settings"        element={withPageWrapper(<Settings />)} />
+                {legalRoutes}
                 <Route path="*"                element={withPageWrapper(<NotFound />)} />
               </Routes>
             </div>
