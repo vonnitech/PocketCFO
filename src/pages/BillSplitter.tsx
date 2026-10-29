@@ -3,7 +3,6 @@ import { Users, CheckCircle2, Trash2, Plus, Pencil, Check, X, Send } from 'lucid
 import { useStore, IouEntry } from '../store/useStore';
 import { saveSplitTransaction } from '../db';
 import { SplitTransaction, CustomSplitPreset } from '../types/split';
-import { UNIVERSAL_FLIP_RATE } from '../core/math';
 import { evalAmount, splitEven, toCents } from '../lib/splitMath';
 import { formatCurrency } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
@@ -71,14 +70,14 @@ export const BillSplitter: React.FC = () => {
 
   // Even mode: everyone else pays the same share and you cover any leftover cent.
   // Custom mode: each member owes the amount you typed; YOUR share is whatever's left.
-  // Your flip is 20% of your share either way.
   const { theirShare, metrics } = useMemo(() => {
     const even = splitEven(grandTotal, totalPeople);
     const others = isCustom
       ? activeSquad.reduce((s, m) => s + toCents(evalAmount(customAmounts[m.id] ?? '') * tipMult), 0) / 100
       : 0;
     const yourShare = isCustom ? Math.max(0, toCents(grandTotal - others) / 100) : even.yourShare;
-    const flip = toCents(yourShare * UNIVERSAL_FLIP_RATE) / 100;
+    // No extra charge: a split used to add 20% of your share into a vault.
+    const flip = 0;
     return {
       theirShare: even.theirShare,
       metrics: {
@@ -237,16 +236,6 @@ export const BillSplitter: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
-            <div className="bg-input border-4 border-black rounded-2xl p-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1">Your Vault</p>
-              <p className="text-lg sm:text-xl font-black italic text-capture-readable tabular-nums">+{money(s.flip)}</p>
-            </div>
-            <div className="bg-action-primary border-4 border-black rounded-2xl p-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-primary-contrast opacity-60 mb-1">Total Hit</p>
-              <p className="text-lg sm:text-xl font-black italic text-primary-contrast tabular-nums">{money(s.total)}</p>
-            </div>
-          </div>
 
           <button
             type="button"
@@ -372,8 +361,7 @@ export const BillSplitter: React.FC = () => {
           <div className="flex gap-3 pt-2 border-t-2 border-border">
             {[
               { label: isCustom ? 'Others Owe' : 'They Owe', value: money(isCustom ? othersTotal : theirShare), tone: 'text-text-main', labelTone: 'text-text-muted' },
-              { label: 'Your Vault', value: `+${money(metrics.flipObligationPerPerson)}`, tone: 'text-capture-readable', labelTone: 'text-capture-readable' },
-              { label: 'Your Total', value: money(metrics.totalHitPerPerson), tone: 'text-text-main', labelTone: 'text-text-muted' },
+              { label: 'Your Share', value: money(metrics.totalHitPerPerson), tone: 'text-text-main', labelTone: 'text-text-muted' },
             ].map(col => (
               <div key={col.label} className="flex-1 min-w-0 text-center">
                 <p className={`text-[11px] font-bold uppercase tracking-wide leading-tight ${col.labelTone}`}>{col.label}</p>

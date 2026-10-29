@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { SquadMember, SplitTransaction, CustomSplitPreset } from '../types/split';
-import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, UNIVERSAL_FLIP_RATE, toLocalDateKey, billKey, DEFAULT_TIER_LOCK, normalizeTierLock, isTierLocked, tierLockDaysLeft, calculateFlatSafeSpend, calculateTieredSafeSpend, type TierLockState } from '../core/math';
+import { calculateTrueSafeSpend, calculateRawSafeSpend, calculateAvailableToVault, calculateDailyDrain, pickAutoDepositVault, isCashInflow, toLocalDateKey, billKey, DEFAULT_TIER_LOCK, normalizeTierLock, isTierLocked, tierLockDaysLeft, calculateFlatSafeSpend, calculateTieredSafeSpend, type TierLockState } from '../core/math';
 import { supabase } from '../core/supabase';
 import { DEFAULT_VELOCITY_CONFIG, normalizeVelocityConfig, type VelocityConfig } from '../core/velocity';
 import { pushTransactions, pushProfileUpdate, pushVaultUpdate, pushVaultInsert, pushReconEntry } from '../core/sync';
@@ -1219,7 +1219,11 @@ export const useStore = create<StoreState>()(
       if (!userId) return;
 
       const isOverspend = amount > safeSpendLimit;
-      const penalty     = isOverspend ? amount * UNIVERSAL_FLIP_RATE : 0;
+      // The old 20% "overspend penalty" moved extra money into a vault whenever
+      // a single spend went over today's number. Removed 2026-10-29: it fined
+      // people, and with no vault the money vanished from their balance. An
+      // overspend is still marked (isFlip) and still lowers the days ahead.
+      const penalty     = 0;
       const now         = new Date().toISOString();
       const mainTxId    = crypto.randomUUID();
       const penaltyTxId = isOverspend && penalty > 0 ? crypto.randomUUID() : null;
@@ -1287,7 +1291,6 @@ export const useStore = create<StoreState>()(
           transactions:        [...newTxs, ...state.transactions],
           stats: {
             ...state.stats,
-            flipsExecuted:   state.stats.flipsExecuted + (isOverspend ? 1 : 0),
             lifetimeCapture: state.stats.lifetimeCapture + penalty,
           },
         };

@@ -286,7 +286,7 @@ const chooseWorthIt = (id: WorthIt) => {
               </div>
               {todayEntry.taxAmount > 0 && (
                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest border-b-2 border-border pb-2 gap-2">
-                  <span className="text-text-muted">Captured → Vault</span>
+                  <span className="text-text-muted">Moved to a vault</span>
                   <span className="text-capture-readable">+{formatCurrency(todayEntry.taxAmount, privacyMode)}</span>
                 </div>
               )}
