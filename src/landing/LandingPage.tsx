@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PRICING } from '../lib/pricing';
+import { PRICING, TAX_NOTE } from '../lib/pricing';
 import './landing.css';
 
 // Public landing page shown at "/" to signed-out visitors on the web.
@@ -407,14 +407,14 @@ export function LandingPage() {
               <article className="price-card price-card-pro reveal reveal-delay">
                 <div className="price-card-top">
                   <h3>Pro</h3>
-                  <span className="price-badge">ANNUAL SAVES 35%</span>
+                  <span className="price-badge">ANNUAL: 4 MONTHS FREE</span>
                 </div>
                 <p className="pro-lead">Stop typing every spend. Import your bank statement and StackPiggy sorts it for you.</p>
                 <div className="price-options">
                   <div><strong>{PRICING.monthly.price}</strong><span>per month</span></div>
                   <div className="is-best"><strong>{PRICING.annual.price}</strong><span>per year</span></div>
-                  <div><strong>{PRICING.lifetime.price}</strong><span>once, for life</span></div>
                 </div>
+                <p className="price-tax">{TAX_NOTE}</p>
                 <ul>
                   <li>Everything in Free</li>
                   <li>Import bank statements (CSV or Excel)</li>
@@ -468,6 +468,9 @@ export function LandingPage() {
         <p>Payday-aware spending for the days in between.</p>
         <div className="footer-links">
           <a href="mailto:hello@stackpiggy.com">hello@stackpiggy.com</a>
+          <Link to="/terms">Terms</Link>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/refunds">Refunds</Link>
           <Link to="/login">Sign in →</Link>
         </div>
       </footer>
