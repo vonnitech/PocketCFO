@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Eye, EyeOff, Sun, Moon, SlidersHorizontal, ChevronRight, Lock, LockOpen,
   Trash2, Smartphone, RefreshCw, Zap, Trophy, Shield, Medal,
-  User, Check, ChevronDown, FileDown, FileUp, Fingerprint,
+  Check, ChevronDown, FileDown, FileUp, Fingerprint,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
@@ -322,11 +322,6 @@ export default function Settings() {
 
   const [firstName, setFirstName] = useState(state.firstName || '');
   const [firstNameSaved, setFirstNameSaved] = useState(false);
-  const xpProgress = ((state.stats.experience || 0) % 1000) / 10;
-  const xpBarRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    xpBarRef.current?.style.setProperty('--bar-fill', `${xpProgress}%`);
-  }, [xpProgress]);
 
   const saveFirstName = async () => {
     const userId = state.userId;
@@ -465,11 +460,42 @@ export default function Settings() {
     reader.readAsText(file);
   };
 
-  const achievements = [
-    { id: '1', title: 'Sub Slayer',      desc: 'Cancel 3 subscriptions', unlocked: state.stats.subscriptionsCancelled >= 3, icon: Zap    },
-    { id: '2', title: 'Snowball Striker', desc: 'Execute 10 flips',       unlocked: state.stats.flipsExecuted >= 10,          icon: Shield },
-    { id: '3', title: 'Capital King',     desc: 'Secure $1,000 in Vaults', unlocked: state.vaults.reduce((acc, v) => acc + v.current, 0) >= 1000, icon: Trophy },
-  ];
+  // Worked out from saved data on every render rather than from counters, so
+  // nothing can reset on reload (the old "flips" counter was never saved) and
+  // nothing is tied to a currency amount. Daily reviews come from reconHistory,
+  // of which the store loads the latest 90: more than either goal needs.
+  const achievements = (() => {
+    const dayKey = (iso: string) => iso.slice(0, 10);
+    const reviewedDays = new Map<string, boolean>();
+    for (const r of state.reconHistory) {
+      const key = dayKey(r.date);
+      const within = r.rawSpend <= r.tierLimit;
+      // One review per day counts; if a day somehow has two, it is within only if both were.
+      reviewedDays.set(key, (reviewedDays.get(key) ?? true) && within);
+    }
+    // Longest run of consecutive calendar days that were reviewed and within the number.
+    let best = 0;
+    let run = 0;
+    let prev: number | null = null;
+    for (const key of [...reviewedDays.keys()].sort()) {
+      const t = Date.parse(`${key}T12:00:00Z`);
+      if (!reviewedDays.get(key)) { run = 0; prev = t; continue; }
+      run = prev !== null && Math.round((t - prev) / 86_400_000) === 1 ? run + 1 : 1;
+      best = Math.max(best, run);
+      prev = t;
+    }
+    const reviews = reviewedDays.size;
+    const goalReached = [...state.vaults, ...(state.deletedVaults ?? [])]
+      .some(v => v.target > 0 && v.current >= v.target);
+    return [
+      { id: 'week', title: 'On track for a week', unlocked: best >= 7, icon: Shield,
+        desc: best >= 7 ? "Within today's number 7 days in a row" : `Within today's number ${best} of 7 days in a row` },
+      { id: 'reviews', title: '30 daily reviews', unlocked: reviews >= 30, icon: Zap,
+        desc: reviews >= 30 ? '30 days reviewed' : `${Math.min(reviews, 30)} of 30 days reviewed` },
+      { id: 'goal', title: 'First goal reached', unlocked: goalReached, icon: Trophy,
+        desc: goalReached ? 'A vault reached its target' : 'Fill a vault to its target' },
+    ];
+  })();
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 w-full max-w-3xl mx-auto">
@@ -486,18 +512,6 @@ export default function Settings() {
       {/* Profile */}
       <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
         <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-4">Profile</p>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 bg-action-primary border-4 border-black rounded-xl flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] shrink-0">
-            <User size={26} strokeWidth={3} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">User Level</div>
-            <div className="text-2xl font-black italic text-text-main">LVL {state.stats.level}</div>
-            <div className="w-full h-2 bg-input rounded-full mt-1 overflow-hidden border border-border">
-              <div ref={xpBarRef} className="h-full bg-action-capture bar-fill" />
-            </div>
-          </div>
-        </div>
         <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">Your First Name</label>
         <div className="flex gap-3">
           <input
