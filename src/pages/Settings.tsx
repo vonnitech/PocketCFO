@@ -659,6 +659,11 @@ export default function Settings() {
               </button>
 
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{TAX_NOTE} · No bank login · Cancel anytime</p>
+              <p className="text-[10px] font-bold text-text-muted mt-1.5">
+                See our <Link to="/terms" className="underline">Terms</Link>,{' '}
+                <Link to="/refunds" className="underline">Refund Policy</Link> and{' '}
+                <Link to="/privacy" className="underline">Privacy Policy</Link>.
+              </p>
             </>
           ) : (
             <>
