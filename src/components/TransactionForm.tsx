@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "../store/useStore";
 import { useShallow } from "zustand/react/shallow";
 import { formatCurrency } from "../lib/utils";
+import { currencySymbol } from "../lib/currency";
 import { calculateDailyDrain, toLocalDateKey } from "../core/math";
 
 const CATEGORIES = [
@@ -101,9 +102,9 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
       )}
 
       {/* Amount */}
-      <div className="relative">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black text-text-muted pointer-events-none select-none">
-          $
+      <label className="flex items-center gap-2 border-4 border-border rounded-2xl px-4 focus-within:bg-input transition-colors">
+        <span className="text-2xl font-black text-text-muted select-none shrink-0">
+          {currencySymbol()}
         </span>
         <input
           type="number"
@@ -114,9 +115,9 @@ export function TransactionForm({ onClose, showHeader = true }: Props = {}) {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           onFocus={(e) => e.target.select()}
-          className="w-full bg-transparent border-4 border-border rounded-2xl px-4 py-3 pl-9 font-mono font-black text-2xl text-text-main outline-none placeholder:text-text-muted focus:bg-input transition-colors tabular-nums"
+          className="w-full min-w-0 bg-transparent py-3 font-black text-2xl text-text-main outline-none placeholder:text-text-muted tabular-nums"
         />
-      </div>
+      </label>
 
       {/* Merchant */}
       <input
