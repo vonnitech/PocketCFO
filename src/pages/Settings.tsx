@@ -480,7 +480,7 @@ export default function Settings() {
   // Worked out from saved data on every render rather than from counters, so
   // nothing can reset on reload (the old "flips" counter was never saved) and
   // nothing is tied to a currency amount. Daily reviews come from reconHistory,
-  // of which the store loads the latest 90: more than either goal needs.
+  // of which the store loads the latest 400: more than either goal needs.
   const achievements = (() => {
     const dayKey = (iso: string) => iso.slice(0, 10);
     const reviewedDays = new Map<string, boolean>();
@@ -551,9 +551,15 @@ export default function Settings() {
         <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Shows in your dashboard greeting</p>
       </div>
 
+      {/* Two independent columns on wider screens, so the tall notifications
+          card doesn't leave a gap beside the shorter cards (Pro alone changes
+          height a lot between free and active). On phones the column wrappers
+          dissolve (contents) and order- keeps the original reading order:
+          Display, Notifications, Pro, Widgets, Achievements, Data & Security. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
+        <div className="contents md:flex md:flex-col md:gap-6">
         {/* Display */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
+        <div className="order-1 md:order-0 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-1">Display</p>
 
           <div className="flex items-center justify-between gap-4">
@@ -649,11 +655,8 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Notifications */}
-        <NotificationSettings />
-
         {/* Pro tier: state driven by the billing webhook (Paddle, or LemonSqueezy for older subscribers) */}
-        <div id="pro" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div id="pro" className="order-3 md:order-0 scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <Lock size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">StackPiggy Pro</p>
@@ -717,7 +720,7 @@ export default function Settings() {
         </div>
 
         {/* Dashboard Widgets */}
-        <div id="dashboard-widgets" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div id="dashboard-widgets" className="order-4 md:order-0 scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <SlidersHorizontal size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">Dashboard Widgets</p>
@@ -750,11 +753,9 @@ export default function Settings() {
             Hidden widgets are saved to your profile · toggle anytime.
           </p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-stretch">
         {/* Achievements */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
+        <div className="order-5 md:order-0 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-4">Achievements</p>
           <div className="space-y-3 flex-1">
             {achievements.map(ach => (
@@ -771,9 +772,16 @@ export default function Settings() {
             ))}
           </div>
         </div>
+        </div>
+
+        <div className="contents md:flex md:flex-col md:gap-6">
+        {/* Notifications */}
+        <div className="order-2 md:order-0">
+          <NotificationSettings />
+        </div>
 
         {/* Data & Security */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
+        <div className="order-6 md:order-0 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-4">Data & Security</p>
           <div className="space-y-3 flex-1">
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Export</p>
@@ -858,6 +866,7 @@ export default function Settings() {
               </button>
             )}
           </div>
+        </div>
         </div>
       </div>
 
