@@ -20,6 +20,7 @@ import { formatCurrency } from "../lib/utils";
 import { currencySymbol } from "../lib/currency";
 import { isSinkingFund } from "../core/vaults";
 import { toLocalDateKey, calculateDaysUntilPayday, isCashInflow } from "../core/math";
+import { computeStreak, streakAnchorDay } from "../core/streak";
 import { OnboardingModal } from "../components/Onboarding";
 import { NotificationBell } from "../components/NotificationCenter";
 import { BottomSheet } from "../components/BottomSheet";
@@ -98,6 +99,7 @@ export default function Dashboard() {
     firstName,
     hasCompletedOnboarding,
     themeColors,
+    paydayAnchorDay,
   } = useStore(
     useShallow((s) => ({
       safeSpendLimit: s.safeSpendLimit,
@@ -122,6 +124,7 @@ export default function Dashboard() {
       firstName: s.firstName,
       hasCompletedOnboarding: s.hasCompletedOnboarding,
       themeColors: s.themeColors,
+      paydayAnchorDay: s.paydayAnchorDay,
     })),
   );
   const captureTxt = contrastText(themeColors?.secondary);
@@ -164,7 +167,7 @@ export default function Dashboard() {
     [transactions],
   );
 
-  const { last7Days, streak } = useMemo(() => {
+  const { last7Days } = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
@@ -178,21 +181,15 @@ export default function Dashboard() {
       };
     });
 
-    let s = 0;
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      if (
-        reconHistory.some((e) => toLocalDateKey(e.date) === toLocalDateKey(d))
-      ) {
-        s++;
-      } else if (i < 6) {
-        break;
-      }
-    }
+    return { last7Days: days };
+  }, [transactions]);
 
-    return { last7Days: days, streak: s };
-  }, [transactions, reconHistory]);
+  // todayKey is a dependency so a page left open past midnight recounts.
+  const todayKey = toLocalDateKey(new Date());
+  const streak = useMemo(
+    () => computeStreak(reconHistory.map((e) => e.date), streakAnchorDay(paydayAnchorDay, nextPayday)),
+    [reconHistory, paydayAnchorDay, nextPayday, todayKey],
+  );
 
   const { monthlySpend, monthlyIncome, monthlyBudget, monthlyPct } =
     useMemo(() => {
@@ -1262,7 +1259,7 @@ export default function Dashboard() {
           )}
 
           {/* Streak nudge */}
-          {!isFirstTime && !loggedToday && streak > 0 && (
+          {!isFirstTime && !loggedToday && streak.current > 0 && (
             <Link
               to="/daily"
               className="md:col-span-2 flex items-center gap-4 bg-action-primary border-4 border-black rounded-[28px] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1.5 hover:translate-y-1.5 transition-all group"
@@ -1276,10 +1273,12 @@ export default function Dashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary-contrast">
-                  {streak}-day streak at risk
+                  {streak.current}-day streak{streak.longest > streak.current ? ` · Longest ${streak.longest}` : ""}
                 </p>
                 <p className="text-xs font-black uppercase text-primary-contrast/60">
-                  Review today to keep it alive
+                  {streak.yesterdayCovered
+                    ? "Yesterday was covered (1 missed day per pay cycle). Review today to keep it going"
+                    : "Review today to keep it going"}
                 </p>
               </div>
               <ChevronRight

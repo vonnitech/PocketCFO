@@ -6,6 +6,7 @@ import { currencySymbol } from '../lib/currency';
 import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
 import { useStore } from '../store/useStore';
 import { DailyJournal } from '../components/DailyJournal';
+import { computeStreak, streakAnchorDay } from '../core/streak';
 import {
   calculateTrueSafeSpend,
   calculateDailySurplus,
@@ -56,6 +57,10 @@ export default function DailyLog() {
   // below needs the complete AppState, so a narrowed selector would not help.
   const state = useStore();
   const { privacyMode, reconHistory, nextPayday, submitReconEntry, vaults, velocityConfig } = state;
+  const streak = useMemo(
+    () => computeStreak(reconHistory.map(e => e.date), streakAnchorDay(state.paydayAnchorDay, nextPayday)),
+    [reconHistory, state.paydayAnchorDay, nextPayday],
+  );
 
   const [step, setStep] = useState<Step>('RAW_SPEND');
   const [rawSpend, setRawSpend] = useState('');
@@ -202,6 +207,11 @@ const chooseWorthIt = (id: WorthIt) => {
         <div>
           <h1 className="text-4xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Daily review</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Review complete · {todayLabel}</p>
+          {streak.current > 1 && (
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-main mt-1">
+              {streak.current}-day streak{streak.longest > streak.current ? ` · Longest ${streak.longest}` : ''}
+            </p>
+          )}
         </div>
 
         {/* Today's Pulse — completed view */}

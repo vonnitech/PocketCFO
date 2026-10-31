@@ -16,7 +16,8 @@
     "native:android": "cap open android",
     "native:ios": "cap open ios",
     "verify:native": "tsx scripts/verify-native.ts",
-    "verify:security": "tsx scripts/verify-security.ts"
+    "verify:security": "tsx scripts/verify-security.ts",
+    "verify:streak": "tsx scripts/verify-streak.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

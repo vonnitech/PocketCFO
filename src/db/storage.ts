@@ -69,6 +69,7 @@ const PERSISTED_KEYS = [
   'safeSpendLimit',
   'primaryVaultBalance',
   'nextPayday',
+  'paydayAnchorDay',
   'upcomingBills',
   'hardDailyCap',
   'velocityConfig',

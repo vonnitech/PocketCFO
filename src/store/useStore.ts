@@ -558,7 +558,7 @@ export const useStore = create<StoreState>()(
         supabase.from('vaults').select('*').eq('user_id', userId).eq('deleted', true).order('created_at').order('id'),
         supabase.from('debts').select('*').eq('user_id', userId),
         supabase.from('subscriptions').select('*').eq('user_id', userId),
-        supabase.from('recon_history').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(90),
+        supabase.from('recon_history').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(400),
       ]);
 
       // A native refresh can finish after sign-out or an account switch.
