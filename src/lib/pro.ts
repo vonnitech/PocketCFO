@@ -4,7 +4,8 @@ import { supabase } from '../core/supabase';
 // Pro tier gate.
 //
 // One source of truth: profiles.pro_plan / pro_expires_at, written by the
-// LemonSqueezy webhook (api/lemonsqueezy-webhook.ts) through the service role.
+// billing webhook (api/paddle-webhook.ts, or api/lemonsqueezy-webhook.ts for
+// older subscribers) through the service role.
 // Those columns are not user-writable; migration 011_billing_column_guard
 // rejects any client that tries. Fetched once and shared by every consumer.
 
@@ -42,7 +43,7 @@ export function proSnapshot(): { isPro: boolean; loaded: boolean } {
   return { isPro: entitlement.isPro, loaded: entitlement.loaded };
 }
 
-// Force a re-fetch (e.g. after returning from LemonSqueezy Checkout).
+// Force a re-fetch (e.g. after returning from checkout).
 export function refreshProStatus(): void {
   entitlement = { isPro: false, loaded: false };
   inFlight = loadEntitlement();
@@ -77,6 +78,15 @@ export function useProStatus(): { isPro: boolean; isLoading: boolean } {
 export function useProLocked(): boolean {
   const { isPro, isLoading } = useProStatus();
   return !isLoading && !isPro;
+}
+
+// Stricter than useProLocked, for Pro tools whose whole value is the answer
+// (True cost, Safety net). There the asymmetry above flips: showing a free
+// account its real result while the entitlement loads gives away the paid part,
+// whereas a paying customer seeing a placeholder for the length of one query
+// costs nothing. So this stays locked until Pro is confirmed.
+export function useProResultLocked(): boolean {
+  return !useProStatus().isPro;
 }
 
 // Boolean-only view for the gates that just need locked/unlocked.

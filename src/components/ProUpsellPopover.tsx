@@ -43,7 +43,7 @@ export function ProUpsellPopover() {
       <div ref={cardRef} className="pointer-events-auto w-full max-w-sm bg-surface border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-2xl bg-action-primary border-4 border-black flex items-center justify-center shrink-0">
-            <Lock size={18} strokeWidth={3} className="text-black" />
+            <Lock size={18} strokeWidth={3} className="text-primary-contrast" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-black uppercase tracking-tight text-text-main">This preview saves with Pro</p>
@@ -53,7 +53,7 @@ export function ProUpsellPopover() {
             <div className="flex gap-2 mt-3">
               <Link to="/settings#pro"
                 onClick={() => { logProductEvent({ type: 'paywall_cta_clicked', feature }); setOpen(false); }}
-                className="inline-flex items-center h-9 px-4 bg-black border-2 border-black rounded-xl text-action-primary font-black uppercase text-[11px] tracking-widest">
+                className="inline-flex items-center h-9 px-4 bg-action-primary border-2 border-black rounded-xl text-primary-contrast font-black uppercase text-[11px] tracking-widest">
                 See Pricing
               </Link>
               <button type="button" onClick={() => setOpen(false)}

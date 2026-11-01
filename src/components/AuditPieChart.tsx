@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from 'react';
-import { currencySymbol } from '../lib/currency';
+import { formatCurrency } from '../lib/utils';
 
 type AuditPieChartDatum = {
   name: string;
@@ -21,40 +21,42 @@ const CHART_SIZE = 208;
 const STROKE_WIDTH = 28;
 const RADIUS = (CHART_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const GAP_RATIO = 0.012;
+// Fixed gap between slices, and the shortest a slice may be drawn, both in
+// chart units. Square ends keep every slice inside its own share: round caps
+// spilled half the stroke width onto both neighbours and swallowed small ones.
+const GAP = 3;
+const MIN_SLICE = 4;
 
-const PALETTE = [
-  // Slot 0 always goes to the largest category. It was '#000000', which is
-  // invisible on the dark card; the token is near-black on light, near-white
-  // on dark. The rest are mid-tone and already read on both surfaces.
-  'var(--text-primary)', '#6366f1', '#f59e0b', '#10b981',
-  '#3b82f6', '#06b6d4', '#ec4899', '#14b8a6',
-  '#f97316', '#84cc16',
-];
+// Colours live in index.css (--chart-1..8) so dark mode can soften them. No
+// near-white or near-black (they looked like a hole in the ring), and no red.
+const PALETTE = Array.from({ length: 8 }, (_, i) => `var(--chart-${i + 1})`);
 
-function formatCurrency(value: number) {
-  return `${currencySymbol()}${value.toFixed(2)}`;
-}
+// Stroke widths are set in CSS so dark mode can use a thinner ring sitting in a
+// faint track; the gaps then show the track instead of reading as black cracks.
+const SLICE_CLASS = '[stroke-width:28] dark:[stroke-width:22]';
+const ACTIVE_SLICE_CLASS = '[stroke-width:32] dark:[stroke-width:26]';
 
 export default function AuditPieChart({ data }: AuditPieChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const { segments, total } = useMemo(() => {
-    const chartTotal = data.reduce((sum, item) => sum + item.total, 0);
+    const items = data.filter(item => item.total > 0).sort((a, b) => b.total - a.total);
+    const chartTotal = items.reduce((sum, item) => sum + item.total, 0);
 
     if (chartTotal <= 0) {
       return { segments: [] as ChartSegment[], total: 0 };
     }
 
-    let progress = 0;
-    const chartSegments = data.map((item, index) => {
+    const gap = items.length > 1 ? GAP : 0;
+    let start = 0;
+    const chartSegments = items.map((item, index) => {
       const percentage = item.total / chartTotal;
-      const gap = Math.min(CIRCUMFERENCE * GAP_RATIO, CIRCUMFERENCE * percentage * 0.35);
-      const filledLength = Math.max(CIRCUMFERENCE * percentage - gap, 0);
+      const share = CIRCUMFERENCE * percentage;
+      const filledLength = Math.max(share - gap, Math.min(MIN_SLICE, share));
       const dashArray = `${filledLength} ${CIRCUMFERENCE - filledLength}`;
-      const dashOffset = -progress * CIRCUMFERENCE;
+      const dashOffset = -start;
 
-      progress += percentage;
+      start += share;
 
       return {
         ...item,
@@ -70,8 +72,10 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
 
   const activeSegment = activeIndex === null ? null : segments[activeIndex];
   const centerLabel = activeSegment?.name ?? 'Total Spend';
-  const centerValue = activeSegment ? formatCurrency(activeSegment.total) : formatCurrency(total);
-  const centerShare = activeSegment ? `${Math.round(activeSegment.percentage * 100)}%` : `${segments.length} categories`;
+  const centerValue = formatCurrency(activeSegment ? activeSegment.total : total);
+  const centerShare = activeSegment
+    ? `${Math.round(activeSegment.percentage * 100)}%`
+    : `${segments.length} ${segments.length === 1 ? 'category' : 'categories'}`;
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -87,8 +91,9 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
             cy={CHART_SIZE / 2}
             r={RADIUS}
             fill="none"
-            style={{ stroke: 'var(--color-input)' }}
-            strokeWidth={STROKE_WIDTH}
+            style={{ stroke: 'var(--chart-track)' }}
+            strokeWidth={STROKE_WIDTH + 4}
+            className="hidden dark:block"
           />
 
           {segments.map((segment, index) => (
@@ -98,13 +103,12 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
               cy={CHART_SIZE / 2}
               r={RADIUS}
               fill="none"
-              style={{ stroke: segment.color }}
-              strokeWidth={activeIndex === index ? STROKE_WIDTH + 4 : STROKE_WIDTH}
+              style={{ stroke: segment.color, opacity: activeIndex === null || activeIndex === index ? 1 : 0.35 }}
               strokeDasharray={segment.dashArray}
               strokeDashoffset={segment.dashOffset}
-              strokeLinecap="round"
+              strokeLinecap="butt"
               transform={`rotate(-90 ${CHART_SIZE / 2} ${CHART_SIZE / 2})`}
-              className="transition-all duration-150 cursor-pointer"
+              className={`${activeIndex === index ? ACTIVE_SLICE_CLASS : SLICE_CLASS} transition-all duration-150 cursor-pointer`}
               onMouseEnter={() => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(current => (current === index ? null : current))}
               onFocus={() => setActiveIndex(index)}
@@ -114,9 +118,9 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
           ))}
         </svg>
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-10 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-text-muted">{centerLabel}</p>
-          <p className="text-2xl font-black italic tracking-tighter text-text-main">{centerValue}</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-12 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-text-muted truncate max-w-full">{centerLabel}</p>
+          <p className="text-xl font-black tracking-tight text-text-main tabular-nums">{centerValue}</p>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{centerShare}</p>
         </div>
       </div>
@@ -137,13 +141,14 @@ export default function AuditPieChart({ data }: AuditPieChartProps) {
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex items-center gap-2">
                 <span
-                  className="w-3 h-3 rounded-full border-2 border-black flex-shrink-0"
+                  className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ backgroundColor: segment.color }}
                 />
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-muted truncate">{segment.name}</span>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-text-main flex-shrink-0">
-                {Math.round(segment.percentage * 100)}%
+              <span className="text-xs font-black text-text-main tabular-nums flex-shrink-0">
+                {formatCurrency(segment.total)}
+                <span className="ml-2 text-[10px] text-text-muted">{Math.round(segment.percentage * 100)}%</span>
               </span>
             </div>
           </button>

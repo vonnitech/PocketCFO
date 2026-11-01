@@ -16,11 +16,29 @@ import type { NotificationRecord } from './types';
 
 export type PermissionState = 'unsupported' | 'default' | 'granted' | 'denied';
 
+// The phone app's web view has no web notifications, so the native shell plugs
+// the OS in here (src/native/localNotifications.ts). Kept as an injected object
+// rather than an import so this module stays free of Capacitor and the verify
+// script can keep running it in plain Node.
+export interface NativeNotifier {
+  // Cached, because the OS answers asynchronously; the shell refreshes it.
+  permission(): PermissionState;
+  request(): Promise<PermissionState>;
+  show(payload: DeliverPayload): Promise<boolean>;
+}
+let native: NativeNotifier | null = null;
+
+export function setNativeNotifier(notifier: NativeNotifier | null): void {
+  native = notifier;
+}
+
 export function isSupported(): boolean {
+  if (native) return true;
   return typeof window !== 'undefined' && 'Notification' in window;
 }
 
 export function permissionState(): PermissionState {
+  if (native) return native.permission();
   if (!isSupported()) return 'unsupported';
   const p = Notification.permission;
   return p === 'granted' || p === 'denied' ? p : 'default';
@@ -29,6 +47,7 @@ export function permissionState(): PermissionState {
 // Call from a click handler only. Resolves to the state after the user answers;
 // a dismissed prompt stays 'default', which the caller must treat as a no.
 export async function requestPermission(): Promise<PermissionState> {
+  if (native) return native.request();
   if (!isSupported()) return 'unsupported';
   try {
     // Safari below 16 only supports the callback form, hence the tolerance.
@@ -44,7 +63,7 @@ export async function requestPermission(): Promise<PermissionState> {
 const ICON  = '/icon-192x192.png';
 const BADGE = '/icon-192x192.png';
 
-interface DeliverPayload {
+export interface DeliverPayload {
   title: string;
   body: string;
   tag: string;
@@ -54,6 +73,7 @@ interface DeliverPayload {
 
 async function deliver(payload: DeliverPayload): Promise<boolean> {
   if (permissionState() !== 'granted') return false;
+  if (native) return native.show(payload);
 
   const options: NotificationOptions & { renotify?: boolean } = {
     body: payload.body,

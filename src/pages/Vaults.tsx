@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldCheck, Plus, Edit2, Target, Trash2, RotateCcw,
   AlertTriangle, Check, X, Trophy, ArrowLeftRight, TrendingUp, ChevronDown, Lock,
-  ArrowUp, ArrowDown, Eye, EyeOff, SlidersHorizontal,
+  ArrowUp, ArrowDown, Eye, EyeOff, SlidersHorizontal, Heart, Flame,
 } from 'lucide-react';
+import { fetchWishlist } from '../core/personalData';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import type { VaultAssetClass } from '../store/useStore';
@@ -82,7 +83,7 @@ const GROUPS: {
     emptyHint:    'No investments yet. Set up an index fund or brokerage vault.',
     icon:         TrendingUp,
     iconBg:       'bg-action-primary',
-    iconText:     'text-black',
+    iconText:     'text-primary-contrast',
     barColor:     'bg-action-primary',
     borderActive: 'border-action-primary',
   },
@@ -93,7 +94,7 @@ const GROUPS: {
     emptyHint:    'No sinking funds yet. Planning a trip or a big purchase?',
     icon:         Target,
     iconBg:       'bg-action-capture',
-    iconText:     'text-black',
+    iconText:     'text-capture-contrast',
     barColor:     'bg-action-capture',
     borderActive: 'border-action-capture',
   },
@@ -139,6 +140,20 @@ export default function Vaults() {
   // FREE_VAULT_CAP is deposit-locked: still visible, still withdrawable, still
   // deletable, just closed to new money until Pro returns.
   const lockedIds = lockedVaultIds(vaults, proKnownAsPro);
+
+  // Vaults started from a wishlist item, so their cards can say so. Read once
+  // per visit; empty until migration 026 is run, in which case no tag shows.
+  const userId = useStore(s => s.userId);
+  const [wishlistVaultIds, setWishlistVaultIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void fetchWishlist(userId).then(items => {
+      if (cancelled) return;
+      setWishlistVaultIds(new Set(items.map(i => i.vaultId).filter((id): id is string => !!id)));
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   // Section customization (order / hidden / collapsed), persisted per user.
   const [sectionPrefs, setSectionPrefs] = useState<SectionPrefs>(loadSectionPrefs);
@@ -269,7 +284,7 @@ export default function Vaults() {
         <button
           type="button"
           onClick={() => setShowCustomize(v => !v)}
-          className={`shrink-0 mt-1 flex items-center gap-1.5 h-9 px-3 border-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomize ? 'bg-action-primary border-black text-black' : 'bg-surface border-border text-text-muted hover:border-black hover:text-text-main'}`}
+          className={`shrink-0 mt-1 flex items-center gap-1.5 h-9 px-3 border-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${showCustomize ? 'bg-action-primary border-black text-primary-contrast' : 'bg-surface border-border text-text-muted hover:border-black hover:text-text-main'}`}
         >
           <SlidersHorizontal size={12} strokeWidth={3} /> Customize
         </button>
@@ -309,11 +324,11 @@ export default function Vaults() {
       <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 gap-3">
         {/* Total Vaulted — accent hero */}
         <div className="col-span-2 sm:col-span-1 min-w-0 overflow-hidden bg-action-primary border-4 border-black rounded-2xl p-4 shadow-brutal">
-          <p className="text-[10px] font-black uppercase tracking-widest text-black/60 mb-1">Total Vaulted</p>
-          <p className={`${amountFitClass} ${amountTextSize(formatCurrency(totalVaulted, privacyMode), 'summary')} font-black italic tabular-nums text-black`}>
+          <p className="text-[10px] font-black uppercase tracking-widest text-primary-contrast/60 mb-1">Total Vaulted</p>
+          <p className={`${amountFitClass} ${amountTextSize(formatCurrency(totalVaulted, privacyMode), 'summary')} font-black italic tabular-nums text-primary-contrast`}>
             {formatCurrency(totalVaulted, privacyMode)}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-black/50 mt-1">Across all vaults</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/50 mt-1">Across all vaults</p>
         </div>
 
         {/* Monthly Goal */}
@@ -346,7 +361,7 @@ export default function Vaults() {
             <ShieldCheck size={32} strokeWidth={2} className="text-text-muted" />
           </div>
           <div>
-            <p className="font-black uppercase text-xl italic text-text-main">No Vaults Yet</p>
+            <p className="font-black uppercase text-xl italic text-text-main">No vaults yet</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">Create savings goals to start capturing money</p>
           </div>
         </div>
@@ -371,7 +386,7 @@ export default function Vaults() {
               {/* Header: icon beside the name; name gets the full remaining width */}
               <div className="flex items-start gap-2.5 mb-3">
                 <div className={`w-9 h-9 border-[3px] border-black rounded-xl flex items-center justify-center shrink-0 ${group.iconBg}`}>
-                  {isComplete ? <Trophy size={16} strokeWidth={3} className="text-black" /> : <group.icon size={16} strokeWidth={3} className={group.iconText} />}
+                  {isComplete ? <Trophy size={16} strokeWidth={3} className={group.iconText === 'text-text-muted' ? 'text-text-main' : group.iconText} /> : <group.icon size={16} strokeWidth={3} className={group.iconText} />}
                 </div>
                 <div className="flex-1 min-w-0 pr-7">
                   {editingNameId === vault.id ? (
@@ -405,6 +420,22 @@ export default function Vaults() {
                       className="text-[9px] font-bold text-text-muted cursor-pointer hover:text-text-muted flex items-center gap-0.5 mt-0.5 tabular-nums">
                       {formatCurrency(vault.target, privacyMode)} <Edit2 size={8} />
                     </p>
+                  )}
+                  {/* Where this vault connects to the rest of the app. Each
+                      tag opens the screen it names. */}
+                  {(vault.asset_class === 'INVESTMENT' || wishlistVaultIds.has(vault.id)) && (
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {wishlistVaultIds.has(vault.id) && (
+                        <Link to="/wishlist" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border-2 border-border bg-input text-[9px] font-black uppercase tracking-wide text-text-muted hover:border-black hover:text-text-main transition-colors">
+                          <Heart size={9} strokeWidth={3} /> From your wishlist
+                        </Link>
+                      )}
+                      {vault.asset_class === 'INVESTMENT' && (
+                        <Link to="/fire" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border-2 border-border bg-input text-[9px] font-black uppercase tracking-wide text-text-muted hover:border-black hover:text-text-main transition-colors">
+                          <Flame size={9} strokeWidth={3} /> Counts toward FIRE
+                        </Link>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -615,7 +646,7 @@ export default function Vaults() {
                           }`}
                         >
                           <div className={`w-9 h-9 border-2 border-black rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-action-primary' : 'bg-surface'}`}>
-                            <opt.icon size={16} strokeWidth={2.5} className="text-black" />
+                            <opt.icon size={16} strokeWidth={2.5} className="text-primary-contrast" />
                           </div>
                           <div className="min-w-0">
                             <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${selected ? 'text-action-primary' : 'text-text-main'}`}>{opt.label}</p>
@@ -623,7 +654,7 @@ export default function Vaults() {
                           </div>
                           {selected && (
                             <span className="absolute top-2 right-2 w-4 h-4 bg-action-primary border-2 border-black rounded-full hidden sm:flex items-center justify-center">
-                              <Check size={9} strokeWidth={4} className="text-black" />
+                              <Check size={9} strokeWidth={4} className="text-primary-contrast" />
                             </span>
                           )}
                         </button>
@@ -675,7 +706,7 @@ export default function Vaults() {
                     type="button"
                     onClick={submitForm}
                     disabled={!formName.trim() || !formTarget || parseFloat(formTarget) <= 0}
-                    className="flex-1 h-14 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-primary)]"
+                    className="flex-1 h-14 border-4 border-black rounded-2xl bg-action-primary text-primary-contrast font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                   >
                     Create Vault
                   </button>
@@ -705,9 +736,9 @@ export default function Vaults() {
             <div className="w-12 h-12 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center mb-4 mx-auto">
               <AlertTriangle size={24} strokeWidth={3} className="text-text-main" />
             </div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Move to Trash?</h2>
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Move to trash?</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-1">"{vaultBeingDeleted.name}"</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-5">
+            <p className="text-[11px] font-bold text-text-muted text-center mb-5">
               This vault will be moved to trash. You can restore it anytime.
             </p>
             <div className="flex gap-3">
@@ -723,15 +754,15 @@ export default function Vaults() {
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-surface border-4 border-border rounded-3xl p-7 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-sm w-full">
             <div className="w-12 h-12 bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center mb-4 mx-auto">
-              <Lock size={22} strokeWidth={3} className="text-black" />
+              <Lock size={22} strokeWidth={3} className="text-primary-contrast" />
             </div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Vault Limit Reached</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-5">
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main text-center mb-2">Vault limit reached</h2>
+            <p className="text-[11px] font-bold text-text-muted text-center mb-5">
               Free keeps {FREE_VAULT_CAP} active vaults. Restore this one with Pro, or trash an active vault first to make room.
             </p>
             <div className="flex gap-3">
               <button type="button" onClick={handleCloseRestoreModal} className="flex-1 h-12 border-4 border-border rounded-full bg-surface text-text-main font-black text-sm uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">Got it</button>
-              <Link to="/settings#pro" onClick={handleCloseRestoreModal} className="flex-1 h-12 flex items-center justify-center border-4 border-black rounded-full bg-action-primary text-black font-black text-sm uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">Get Pro</Link>
+              <Link to="/settings#pro" onClick={handleCloseRestoreModal} className="flex-1 h-12 flex items-center justify-center border-4 border-black rounded-full bg-action-primary text-primary-contrast font-black text-sm uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">Get Pro</Link>
             </div>
           </div>
         </div>
@@ -744,9 +775,9 @@ export default function Vaults() {
             <div className="w-12 h-12 bg-action-bleed border-4 border-black rounded-2xl flex items-center justify-center mb-4 mx-auto">
               <Trash2 size={24} strokeWidth={3} className="text-white" />
             </div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-action-bleed text-center mb-2">Delete Forever?</h2>
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-action-bleed text-center mb-2">Delete for good?</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-1">"{vaultBeingPermDeleted.name}"</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center mb-5">
+            <p className="text-[11px] font-bold text-text-muted text-center mb-5">
               {vaultBeingPermDeleted.current > 0
                 ? `This cannot be undone. ${formatCurrency(vaultBeingPermDeleted.current, privacyMode)} stored will be permanently lost.`
                 : 'This cannot be undone. The vault record will be erased.'

@@ -29,12 +29,14 @@ import {
 import { loadLog, loadPrefs, saveLog, savePrefs, defaultLog, defaultPrefs } from './storage';
 import { isSilentMatch, RULES, type NotificationRule, type NotificationStateSlice, type RuleMatch } from './rules';
 import { calculateFlatSafeSpend } from '../math';
+import { planSchedule, planSignature } from './projection';
 import {
   CATEGORY_META,
   type NotificationCategory,
   type NotificationLogState,
   type NotificationPrefs,
   type NotificationRecord,
+  type ScheduledAlert,
 } from './types';
 
 // ── Singleton state ──────────────────────────────────────────────────────────
@@ -42,6 +44,27 @@ import {
 let prefs: NotificationPrefs = defaultPrefs();
 let log: NotificationLogState = defaultLog();
 let loadedForUser: string | null = null;
+
+// ── Phone app: alerts booked ahead with the OS ───────────────────────────────
+//
+// Installed only by the native shell (src/native/localNotifications.ts), so the
+// web build and the verify script never touch an OS API. `book` replaces every
+// booking with the given plan; an empty plan cancels them all.
+export interface OsScheduler {
+  book(plan: ScheduledAlert[]): Promise<void>;
+}
+let osScheduler: OsScheduler | null = null;
+// The slice the last tick saw. A settings change re-plans against it, so turning
+// notifications off cancels bookings at once instead of at the next tick.
+let lastSlice: NotificationStateSlice | null = null;
+// The OS can lose bookings (reinstall, cleared data), so the first plan of each
+// session is booked even if it matches what was saved.
+let bookedThisSession = false;
+
+export function setOsScheduler(scheduler: OsScheduler | null): void {
+  osScheduler = scheduler;
+  bookedThisSession = false;
+}
 
 const listeners = new Set<() => void>();
 const emitListeners = new Set<(records: NotificationRecord[]) => void>();
@@ -68,9 +91,13 @@ export function subscribeToEmissions(listener: (records: NotificationRecord[]) =
 export function initForUser(userId: string | null): void {
   if (loadedForUser === userId) return;
   loadedForUser = userId;
+  lastSlice = null;
+  bookedThisSession = false;
   if (!userId) {
     prefs = defaultPrefs();
     log = defaultLog();
+    // Signed out: nothing booked for that account may still fire.
+    if (osScheduler) void osScheduler.book([]);
   } else {
     prefs = loadPrefs(userId);
     log = loadLog(userId);
@@ -88,6 +115,14 @@ export const getUnreadCount = (): number => log.records.filter(r => !r.readAt).l
 function commitPrefs(next: NotificationPrefs): void {
   prefs = next;
   savePrefs(prefs, loadedForUser);
+  replan();
+  publish();
+}
+
+// For the native shell to call once the OS answers a permission check, which is
+// asynchronous there: re-render, and book or cancel to match the answer.
+export function refreshFromOs(): void {
+  replan();
   publish();
 }
 
@@ -177,6 +212,8 @@ export function evaluate(
   currentPrefs: NotificationPrefs,
   currentLog: NotificationLogState,
   now: Date,
+  // The projection runs only the calendar-driven rules (see projection.ts).
+  rules: NotificationRule[] = RULES,
 ): EvaluationResult {
   const todayKey = toLocalDateKey(now);
   let workingLog = currentLog;
@@ -184,7 +221,7 @@ export function evaluate(
   const ctx = { now, todayKey, state: slice, memory: workingLog.memory };
   const candidates: Candidate[] = [];
 
-  for (const rule of RULES) {
+  for (const rule of rules) {
     let match: RuleMatch | null = null;
     try {
       match = rule.evaluate(ctx);
@@ -296,11 +333,17 @@ export function tick(state: StoreState, now: Date = new Date()): TickResult {
 
   initForUser(state.userId);
 
-  const { records, nextLog } = evaluate(toStateSlice(state, now), prefs, log, now);
+  const slice = toStateSlice(state, now);
+  lastSlice = slice;
+  const { records, nextLog } = evaluate(slice, prefs, settleScheduled(log, now), now);
 
   // Memory and cooldown changes are worth persisting even when nothing was
   // emitted, because silent baseline writes happen on those ticks.
   if (nextLog !== log) commitLog(nextLog);
+
+  // After this tick's own emissions, so anything just said live (and now on
+  // cooldown) drops out of the booked plan rather than buzzing again later.
+  replan(now);
 
   // TRUST BOUNDARY. Every downstream channel hangs off `records`, so an empty
   // result here means silence on all three at once: no inbox row (none was
@@ -330,6 +373,48 @@ export function tick(state: StoreState, now: Date = new Date()): TickResult {
   if (canBuzz) void deliverAll(records);
 
   return { emitted: records };
+}
+
+// Booked alerts whose time has passed fired while the app may have been closed.
+// They join the inbox and start their cooldowns exactly as a live emission would,
+// so the caps count them and the live tick does not say the same thing again.
+function settleScheduled(current: NotificationLogState, now: Date): NotificationLogState {
+  const booked = current.scheduled ?? [];
+  const due = booked.filter(s => Date.parse(s.at) <= now.getTime());
+  if (due.length === 0) return current;
+
+  const known = new Set(current.records.map(r => r.id));
+  const delivered = permissionState() === 'granted';
+  let next: NotificationLogState = {
+    ...current,
+    scheduled: booked.filter(s => Date.parse(s.at) > now.getTime()),
+  };
+  for (const s of due) {
+    if (known.has(s.record.id)) continue;
+    next = {
+      ...next,
+      records: [{ ...s.record, deliveredOs: delivered }, ...next.records],
+      nextEligibleAt: {
+        ...next.nextEligibleAt,
+        [s.record.dedupeKey]: cooldownExpiry(new Date(s.at), s.cooldownHours),
+      },
+    };
+  }
+  return next;
+}
+
+// Books the coming week with the OS (phone app only). Nothing is booked without
+// permission, and an empty plan cancels whatever was booked before, which is
+// how "off" stays off when the app is closed.
+function replan(now: Date = new Date()): void {
+  if (!osScheduler || !lastSlice) return;
+  const plan = permissionState() === 'granted'
+    ? planSchedule(lastSlice, prefs, log, now)
+    : [];
+  if (bookedThisSession && planSignature(plan) === planSignature(log.scheduled ?? [])) return;
+  bookedThisSession = true;
+  commitLog({ ...log, scheduled: plan });
+  void osScheduler.book(plan);
 }
 
 // Delivery is fire-and-forget: the record is already in the inbox, so a failed

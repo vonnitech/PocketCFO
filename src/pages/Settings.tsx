@@ -5,10 +5,11 @@ import {
   Eye, EyeOff, Sun, Moon, SlidersHorizontal, ChevronRight, Lock, LockOpen,
   Trash2, Smartphone, RefreshCw, Zap, Trophy, Shield, Medal,
   Check, ChevronDown, FileDown, FileUp, Fingerprint,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore, INITIAL_STATE } from '../store/useStore';
-import { COLOR_THEMES, DEFAULT_THEME_UNLOCK, FREE_SWAPS, themeName } from '../core/themes';
+import { COLOR_THEMES, DEFAULT_THEME_UNLOCK, FREE_SWAPS, findPreset, themeName } from '../core/themes';
 import { DASHBOARD_WIDGETS } from '../core/widgets';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { supabase } from '../core/supabase';
@@ -25,8 +26,9 @@ import { logSecurityEvent, logProductEvent } from '../core/telemetry';
 import { clearUserLocalData } from '../lib/userScopedStorage';
 import { clearSnapshot, cancelQueuedSnapshotSave } from '../db/storage';
 import { CURRENCIES } from '../lib/currency';
-import { useIsPro, useProLocked, refreshProStatus } from '../lib/pro';
-import { PRICING, TAX_NOTE } from '../lib/pricing';
+import { useIsPro, useProLocked, refreshProStatus, proSnapshot } from '../lib/pro';
+import { openPaddleCheckout } from '../lib/paddle';
+import { PRICING, PRO_CHECKOUT_OPEN, TAX_NOTE } from '../lib/pricing';
 import { ProAction } from '../components/ProAction';
 import { validateBackupFile } from '../core/fileValidation';
 
@@ -92,12 +94,13 @@ export default function Settings() {
   // stamp locks on a paying customer's themes while their status is still loading.
   const proLocked = useProLocked();
 
-  // Kick off LemonSqueezy Checkout for a plan (the /api/checkout function builds
-  // the hosted checkout; we just redirect to it).
+  // Kick off Paddle Checkout for a plan. /api/checkout prepares the transaction
+  // (price, customer and account are fixed server-side); Paddle.js then opens
+  // it as an overlay on this page.
   const startCheckout = async (plan: 'monthly' | 'annual') => {
     if (isNative) { alert('Purchases are not available in this mobile preview.'); return; }
     // Logged before the network call so the funnel captures intent even when
-    // checkout creation fails or the user abandons the LemonSqueezy page.
+    // checkout creation fails or the user abandons the Paddle checkout.
     logProductEvent({ type: 'payment_intent', plan });
     try {
       // The function reads the buyer from this token, so it is the whole
@@ -111,24 +114,38 @@ export default function Settings() {
         },
         body: JSON.stringify({ plan }),
       });
-      const { url, error } = await res.json();
-      if (url) navigateToSecureUrl(url);
-      else alert(error || 'Could not start checkout. Billing may not be configured yet.');
+      const { transactionId, error } = await res.json();
+      if (!transactionId) {
+        alert(error || 'Could not start checkout. Billing may not be configured yet.');
+        return;
+      }
+      if (!(await openPaddleCheckout(transactionId))) {
+        alert('Could not load checkout. Check your connection and try again.');
+      }
     } catch {
       alert('Could not start checkout. Billing may not be configured yet.');
     }
   };
 
-  // After returning from LemonSqueezy (redirect_url = /settings?pro=success),
-  // re-read the entitlement so the unlock reflects once the webhook has run.
+  // Paddle sends the buyer back to /settings?pro=success as soon as payment
+  // goes through, which is usually a few seconds before its webhook has
+  // switched Pro on. One re-read would often land too early and show the user
+  // as still on the free plan, so this re-reads every 2 seconds for up to 30.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('pro') === 'success') {
+    if (new URLSearchParams(window.location.search).get('pro') !== 'success') return;
+    window.history.replaceState({}, '', '/settings#pro');
+    refreshProStatus();
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      if (proSnapshot().isPro || tries >= 15) { window.clearInterval(timer); return; }
       refreshProStatus();
-      window.history.replaceState({}, '', '/settings#pro');
-    }
+    }, 2000);
+    return () => window.clearInterval(timer);
   }, []);
 
-  // Open the LemonSqueezy Customer Portal (manage / cancel / receipts).
+  // Open the billing portal (manage / cancel / receipts): Paddle's, or
+  // LemonSqueezy's for anyone still billed there. /api/portal decides.
   const openBillingPortal = async () => {
     if (isNative) { alert('Billing management is not available in this mobile preview.'); return; }
     try {
@@ -463,7 +480,7 @@ export default function Settings() {
   // Worked out from saved data on every render rather than from counters, so
   // nothing can reset on reload (the old "flips" counter was never saved) and
   // nothing is tied to a currency amount. Daily reviews come from reconHistory,
-  // of which the store loads the latest 90: more than either goal needs.
+  // of which the store loads the latest 400: more than either goal needs.
   const achievements = (() => {
     const dayKey = (iso: string) => iso.slice(0, 10);
     const reviewedDays = new Map<string, boolean>();
@@ -526,7 +543,7 @@ export default function Settings() {
           <button
             type="button"
             onClick={saveFirstName}
-            className="h-12 shrink-0 px-5 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase text-xs tracking-widest flex items-center gap-2 whitespace-nowrap shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            className="h-12 shrink-0 px-5 border-4 border-black rounded-2xl bg-action-primary text-primary-contrast font-black uppercase text-xs tracking-widest flex items-center gap-2 whitespace-nowrap shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
           >
             {firstNameSaved ? <><Check size={13} /> Saved</> : 'Save'}
           </button>
@@ -534,9 +551,15 @@ export default function Settings() {
         <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Shows in your dashboard greeting</p>
       </div>
 
+      {/* Two independent columns on wider screens, so the tall notifications
+          card doesn't leave a gap beside the shorter cards (Pro alone changes
+          height a lot between free and active). On phones the column wrappers
+          dissolve (contents) and order- keeps the original reading order:
+          Display, Notifications, Pro, Widgets, Achievements, Data & Security. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
+        <div className="contents md:flex md:flex-col md:gap-6">
         {/* Display */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
+        <div className="order-1 md:order-0 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-3">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-1">Display</p>
 
           <div className="flex items-center justify-between gap-4">
@@ -632,11 +655,8 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Notifications */}
-        <NotificationSettings />
-
-        {/* Pro tier — three-tier pricing, state driven by the LemonSqueezy webhook */}
-        <div id="pro" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        {/* Pro tier: state driven by the billing webhook (Paddle, or LemonSqueezy for older subscribers) */}
+        <div id="pro" className="order-3 md:order-0 scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <Lock size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">StackPiggy Pro</p>
@@ -651,30 +671,37 @@ export default function Settings() {
             </div>
           ) : !isPro ? (
             <>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3">
-                FIRE, Income Tracker, and Debt Payoff are free previews. Pro unlocks saving and full actions.
+              <p className="text-[11px] font-bold text-text-muted mb-3">
+                Bill splitter is free and Wishlist holds 2 wishes. Other tools are free previews. Pro unlocks saving, full actions and every result.
               </p>
 
+              {!PRO_CHECKOUT_OPEN && (
+                <p className="text-xs font-bold text-text-main bg-input border-2 border-border rounded-2xl px-4 py-3 mb-3">
+                  Pro upgrades open soon. Everything free works as normal in the meantime.
+                </p>
+              )}
+
               {/* Annual — the hero */}
-              <button type="button" onClick={() => startCheckout('annual')}
-                className="w-full text-left bg-action-primary border-4 border-black rounded-2xl p-4 flex items-center justify-between shadow-brutal mb-3 hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+              <button type="button" onClick={() => startCheckout('annual')} disabled={!PRO_CHECKOUT_OPEN}
+                className="w-full text-left bg-action-primary border-4 border-black rounded-2xl p-4 flex items-center justify-between shadow-brutal mb-3 hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-brutal disabled:hover:translate-x-0 disabled:hover:translate-y-0">
                 <div>
-                  <div className="text-lg font-black text-black tabular-nums">{PRICING.annual.price}<span className="text-sm font-bold">/yr</span></div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-black/70">{PRICING.annual.sub}</div>
+                  <div className="text-lg font-black text-primary-contrast tabular-nums">{PRICING.annual.price}<span className="text-sm font-bold">/yr</span></div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/70">{PRICING.annual.sub}</div>
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest bg-black text-action-primary px-3 py-1 rounded-full">Best value</span>
               </button>
 
               {/* Monthly — quieter */}
-              <button type="button" onClick={() => startCheckout('monthly')}
-                className="w-full text-left bg-input border-2 border-black rounded-2xl p-4 mb-3 hover:border-black hover:bg-surface transition-colors">
+              <button type="button" onClick={() => startCheckout('monthly')} disabled={!PRO_CHECKOUT_OPEN}
+                className="w-full text-left bg-input border-2 border-black rounded-2xl p-4 mb-3 hover:border-black hover:bg-surface transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-input">
                 <div className="text-[1rem] font-black text-text-main tabular-nums">{PRICING.monthly.price}<span className="text-xs font-bold">/mo</span></div>
                 <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{PRICING.monthly.sub}</div>
               </button>
 
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{TAX_NOTE} · No bank login · Cancel anytime</p>
-              <p className="text-[10px] font-bold text-text-muted mt-1.5">
-                See our <Link to="/terms" className="underline">Terms</Link>,{' '}
+              <p className="text-[11px] font-bold text-text-muted mt-1.5">
+                Sold by Paddle as Merchant of Record. See our{' '}
+                <Link to="/terms" className="underline">Terms</Link>,{' '}
                 <Link to="/refunds" className="underline">Refund Policy</Link> and{' '}
                 <Link to="/privacy" className="underline">Privacy Policy</Link>.
               </p>
@@ -683,7 +710,7 @@ export default function Settings() {
             <>
               <div className="bg-action-capture/10 border-4 border-action-capture rounded-2xl p-4 mb-3 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-action-capture border-4 border-black flex items-center justify-center shrink-0">
-                  <Check size={18} strokeWidth={3} className="text-black" />
+                  <Check size={18} strokeWidth={3} className="text-capture-contrast" />
                 </div>
                 <div>
                   <p className="text-sm font-black uppercase tracking-tight text-text-main">Pro is active</p>
@@ -699,7 +726,7 @@ export default function Settings() {
         </div>
 
         {/* Dashboard Widgets */}
-        <div id="dashboard-widgets" className="scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
+        <div id="dashboard-widgets" className="order-4 md:order-0 scroll-mt-20 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="flex items-center gap-2 mb-4">
             <SlidersHorizontal size={14} strokeWidth={2.5} className="text-text-muted shrink-0" />
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted">Dashboard Widgets</p>
@@ -732,11 +759,9 @@ export default function Settings() {
             Hidden widgets are saved to your profile · toggle anytime.
           </p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-stretch">
         {/* Achievements */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
+        <div className="order-5 md:order-0 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-4">Achievements</p>
           <div className="space-y-3 flex-1">
             {achievements.map(ach => (
@@ -753,9 +778,16 @@ export default function Settings() {
             ))}
           </div>
         </div>
+        </div>
+
+        <div className="contents md:flex md:flex-col md:gap-6">
+        {/* Notifications */}
+        <div className="order-2 md:order-0">
+          <NotificationSettings />
+        </div>
 
         {/* Data & Security */}
-        <div className="bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
+        <div className="order-6 md:order-0 bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)] flex flex-col">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-text-muted mb-4">Data & Security</p>
           <div className="space-y-3 flex-1">
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Export</p>
@@ -807,7 +839,12 @@ export default function Settings() {
                 <Smartphone size={16} /> {isInstallable ? 'INSTALL PWA' : 'ON iOS: SHARE → ADD TO HOME SCREEN'}
               </button>
             )}
-            <button type="button" onClick={() => setState({ isConfigured: false } as any)}
+            {/* Reopens setup, pre-filled with the saved figures (see Onboarding).
+                Local only: the profile still says setup is done, so closing the
+                app halfway leaves everything as it was. This used to flip
+                isConfigured, which onboarding never reads, so nothing opened,
+                while payday handling and notifications quietly switched off. */}
+            <button type="button" onClick={() => { setState({ hasCompletedOnboarding: false }); navigate('/'); }}
               className="w-full h-12 border-4 border-black rounded-full bg-surface text-text-main font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-input transition-all">
               <RefreshCw size={16} /> RE-RUN ONBOARDING
             </button>
@@ -836,6 +873,7 @@ export default function Settings() {
             )}
           </div>
         </div>
+        </div>
       </div>
 
       {/* Currency */}
@@ -856,7 +894,7 @@ export default function Settings() {
           </select>
           <ChevronDown size={16} strokeWidth={2.5} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
         </div>
-        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">
+        <p className="text-[11px] font-bold text-text-muted mt-2">
           Sets how amounts are shown across the app. No conversion. Enter amounts in your own currency.
         </p>
       </div>
@@ -883,7 +921,20 @@ export default function Settings() {
               style={{ overflow: 'hidden' }}
             >
               <div className="px-5 pb-5">
-                <div className="flex justify-end mb-3">
+                <div className="flex justify-between gap-3 mb-3">
+                  {/* Trades the two accents' places, e.g. Pink & Sky becomes Sky &
+                      Pink. Each colour keeps its job (main action vs money saved);
+                      only which colour does which job changes. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = primaryColor, c = captureColor;
+                      setPrimaryColor(c); setCaptureColor(p); void setThemeColors(c, p);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-text-muted hover:text-text-main transition-colors"
+                  >
+                    <ArrowLeftRight size={12} strokeWidth={3} /> Flip colours
+                  </button>
                   <button
                     type="button"
                     onClick={() => { setPrimaryColor(DEFAULT_PRIMARY); setCaptureColor(DEFAULT_CAPTURE); setThemeColors(DEFAULT_PRIMARY, DEFAULT_CAPTURE); }}
@@ -893,7 +944,7 @@ export default function Settings() {
                   </button>
                 </div>
                 {proLocked && (
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3 leading-snug">
+                  <p className="text-[11px] font-bold text-text-muted mb-3 leading-snug">
                     {!themeUnlock.freeThemeId
                       ? 'Free plan: Original plus 1 pairing of your choice. Tap one to make it yours.'
                       : swapLeft
@@ -913,7 +964,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={() => void choosePreset(pendingSwap.to, true)}
-                        className="flex-1 h-10 bg-black text-action-primary border-4 border-black rounded-xl text-[11px] font-black uppercase tracking-widest"
+                        className="flex-1 h-10 bg-action-primary text-primary-contrast border-4 border-black rounded-xl text-[11px] font-black uppercase tracking-widest"
                       >
                         Swap
                       </button>
@@ -929,7 +980,8 @@ export default function Settings() {
                 )}
                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
                   {COLOR_THEMES.map(t => {
-                    const isActive = primaryColor === t.primary && captureColor === t.capture;
+                    // A flipped pairing is still this pairing (see findPreset).
+                    const isActive = findPreset(primaryColor, captureColor)?.id === t.id;
                     const isMine = proLocked && t.id === themeUnlock.freeThemeId;
                     // Only drawn once the pick is made AND the swap is spent.
                     // Before that, any pairing can still be chosen for free.

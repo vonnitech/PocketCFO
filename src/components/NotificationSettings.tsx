@@ -9,6 +9,7 @@ import {
 } from '../core/notifications';
 import { useNotifications } from '../hooks/useNotifications';
 import { NotificationPrimer } from './NotificationPrimer';
+import { isNative } from '../native/platform';
 
 // The Settings card. Also the only route back in for anyone who declined during
 // onboarding, which is what makes "ask once and never nag" a workable policy:
@@ -47,8 +48,13 @@ export function NotificationSettings() {
       {permission === 'unsupported' && (
         <div className="flex items-start gap-2.5 border-4 border-border rounded-2xl bg-input px-3 py-2.5">
           <AlertTriangle size={14} strokeWidth={2.5} className="text-text-muted shrink-0 mt-0.5" />
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug">
-            This browser cannot show notifications. Alerts still collect in your in-app inbox.
+          <p className="text-[11px] font-bold text-text-muted leading-snug">
+            {/* In the phone app, phone notifications come from the native shell
+                (src/native/localNotifications.ts); this only shows if that
+                failed to load. "This browser" would be wrong there. */}
+            {isNative
+              ? 'Notifications are not available on this phone. Alerts still collect in your in-app inbox.'
+              : 'This browser cannot show notifications. Alerts still collect in your in-app inbox.'}
           </p>
         </div>
       )}
@@ -58,9 +64,10 @@ export function NotificationSettings() {
         // button that silently does nothing would be worse than saying so.
         <div className="flex items-start gap-2.5 border-4 border-action-bleed rounded-2xl bg-action-bleed/10 px-3 py-2.5">
           <BellOff size={14} strokeWidth={2.5} className="text-action-bleed shrink-0 mt-0.5" />
-          <p className="text-[10px] font-bold uppercase tracking-wide text-action-bleed leading-snug">
-            Notifications are blocked for this site. To turn them back on, allow notifications
-            for StackPiggy in your browser settings. Your inbox keeps working either way.
+          <p className="text-[11px] font-bold text-action-bleed leading-snug">
+            {isNative
+              ? "Notifications are turned off for StackPiggy. To turn them back on, allow them in your phone's settings. Your inbox keeps working either way."
+              : 'Notifications are blocked for this site. To turn them back on, allow notifications for StackPiggy in your browser settings. Your inbox keeps working either way.'}
           </p>
         </div>
       )}
@@ -89,7 +96,7 @@ export function NotificationSettings() {
         <button
           type="button"
           onClick={() => setShowPrimer(true)}
-          className="w-full flex items-center justify-center gap-2 h-12 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+          className="w-full flex items-center justify-center gap-2 h-12 border-4 border-black rounded-2xl bg-action-primary text-primary-contrast font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
         >
           <Bell size={13} strokeWidth={3} /> Turn On Reminders
         </button>
@@ -170,12 +177,11 @@ export function NotificationSettings() {
       {/* ── The limits, stated plainly ── */}
       <div className="flex items-start gap-2.5 border-2 border-border rounded-2xl bg-input px-3 py-2.5">
         <Clock size={13} strokeWidth={2.5} className="text-text-muted shrink-0 mt-0.5" />
-        <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug">
-          Capped at {POLICY.maxPerDay} a day and {POLICY.maxPerWeek} a week, and silent from{' '}
-          {hour12(prefs.quietHours.start)} to {hour12(prefs.quietHours.end)}. Reminders wait{' '}
-          {POLICY.defaultCooldownHours} hours before repeating. Risk alerts stay inside those same
-          caps, but can come sooner if your position gets materially worse, or if you are still at
-          high risk on a new day. Account problems are the only thing exempt from the daily cap.
+        <p className="text-[11px] font-bold text-text-muted leading-snug">
+          {/* Only the promise that helps someone decide to leave these on. The
+              cooldown and risk-escalation rules live in POLICY, not on screen. */}
+          At most {POLICY.maxPerDay} a day and {POLICY.maxPerWeek} a week, and never between{' '}
+          {hour12(prefs.quietHours.start)} and {hour12(prefs.quietHours.end)}.
         </p>
       </div>
     </div>

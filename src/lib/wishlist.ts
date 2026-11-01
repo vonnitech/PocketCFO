@@ -30,6 +30,8 @@ export interface WishlistItem {
   /** Local date key it was added, so the list can show how long it has sat. */
   addedOn: string;
   state: WishlistState;
+  /** Set when "Save for it" turned this item into a vault (migration 026). */
+  vaultId?: string;
 }
 
 export function isWishlistItem(v: unknown): v is WishlistItem {

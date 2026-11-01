@@ -216,13 +216,13 @@ export const BillSplitter: React.FC = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill Splitter</h1>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill splitter</h1>
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Split complete</p>
         </div>
         <div className="bg-surface border-4 border-action-capture rounded-3xl p-6 shadow-[6px_6px_0px_0px_var(--shadow-color)] space-y-5">
           <div className="flex items-center gap-3">
             <CheckCircle2 size={24} className="text-capture-readable" strokeWidth={3} />
-            <h2 className="text-xl font-black italic uppercase tracking-tighter text-text-main">Split Done</h2>
+            <h2 className="text-xl font-black italic uppercase tracking-tighter text-text-main">Split done</h2>
           </div>
 
           <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
@@ -240,7 +240,7 @@ export const BillSplitter: React.FC = () => {
           <button
             type="button"
             onClick={() => { setReceiptMode(false); setReceiptSnapshot(null); }}
-            className="w-full h-14 border-4 border-black rounded-full bg-black text-action-primary font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+            className="w-full h-14 border-4 border-black rounded-full bg-action-primary text-primary-contrast font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
           >
             DONE
           </button>
@@ -253,7 +253,7 @@ export const BillSplitter: React.FC = () => {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill Splitter</h1>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Bill splitter</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">Split bills with the squad</p>
       </div>
 
@@ -611,7 +611,7 @@ export const BillSplitter: React.FC = () => {
         type="button"
         onClick={executeSplit}
         disabled={totalBill <= 0 || executing || overBill}
-        className="w-full h-16 border-4 border-black rounded-3xl bg-black text-action-primary font-black uppercase tracking-widest text-sm shadow-[6px_6px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[6px_6px_0px_0px_var(--color-action-primary)]"
+        className="w-full h-16 border-4 border-black rounded-3xl bg-action-primary text-primary-contrast font-black uppercase tracking-widest text-sm shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-40 disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
       >
         {executing ? 'Splitting…' : 'Complete Split'}
       </button>
@@ -656,7 +656,7 @@ export const BillSplitter: React.FC = () => {
               </div>
             ))}
           </div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted mt-3">
+          <p className="text-[11px] font-bold text-text-muted mt-3">
             Tap Collected once someone pays you back. It adds the amount to your balance.
           </p>
         </div>

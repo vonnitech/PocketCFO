@@ -80,9 +80,18 @@ export const DEFAULT_THEME_UNLOCK: ThemeUnlock = { freeThemeId: null, swapsUsed:
 const sameHex = (a?: string, b?: string) =>
   !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
-/** The preset whose colours are applied, or undefined for a custom pair. */
+/**
+ * The preset whose colours are applied, or undefined for a custom pair.
+ *
+ * Either order matches: Settings can flip a pairing so its two accents trade
+ * places, and a flipped pairing is still the same pairing. That keeps a free
+ * account's own pick free when flipped, and keeps the picker's selection on it.
+ * No preset is another one reversed, so this cannot match the wrong one.
+ */
 export const findPreset = (primary?: string, capture?: string): ColorTheme | undefined =>
-  COLOR_THEMES.find(t => sameHex(t.primary, primary) && sameHex(t.capture, capture));
+  COLOR_THEMES.find(t =>
+    (sameHex(t.primary, primary) && sameHex(t.capture, capture))
+    || (sameHex(t.primary, capture) && sameHex(t.capture, primary)));
 
 export const themeName = (id: string | null | undefined): string =>
   COLOR_THEMES.find(t => t.id === id)?.name ?? 'Original';

@@ -25,7 +25,7 @@ const AuditPieChart = lazy(() => import('../components/AuditPieChart'));
 const CATEGORY_LABELS: Record<string, string> = {
   FOOD: 'Food', TRANSPORT: 'Transport', FUN: 'Fun', SHOPPING: 'Shopping',
   HEALTH: 'Health', HOME: 'Home', WORK: 'Work', OTHER: 'Other',
-  GENERAL: 'Other', SOCIAL: 'Splits', PENALTY: 'Penalties',
+  GENERAL: 'Other', SOCIAL: 'Splits', PENALTY: 'Moved to vault',
   VAULT_DEPOSIT: 'Vault', DEBT_PAYMENT: 'Debt', INCOME: 'Income', SAVINGS: 'Savings',
   BILL_PAYMENT: 'Bill',
   SUBSCRIPTION_PAYMENT: 'Subscription',
@@ -36,7 +36,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 type PivotInterval = 'month' | 'week';
 
 // Categories ignored entirely (internal moves)
-const PIVOT_EXCLUDED = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+// PENALTY rows are zero-amount markers for money moved to a vault; the matching
+// SAVINGS row already shows that money.
+const PIVOT_EXCLUDED = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL', 'PENALTY']);
 // Categories that count as income in the NET TOTAL row
 const PIVOT_INCOME_CATS = new Set(['INCOME']);
 // Pre-committed obligations — shown below a divider, excluded from NET TOTAL
@@ -96,14 +98,14 @@ function buildPivot(transactions: Transaction[], interval: PivotInterval): Pivot
     intervals.push(keyFn(d));
   }
 
-  // 2. Sum tx amount (incl flipAmount) by category × interval
+  // 2. Sum tx amount by category × interval
   const cellMap: Record<string, Record<string, number>> = {};
   for (const tx of transactions) {
     if (PIVOT_EXCLUDED.has(tx.category)) continue;
     const k = keyFn(new Date(tx.date));
     if (!intervals.includes(k)) continue;
     if (!cellMap[tx.category]) cellMap[tx.category] = {};
-    cellMap[tx.category][k] = (cellMap[tx.category][k] ?? 0) + tx.amount + (tx.flipAmount || 0);
+    cellMap[tx.category][k] = (cellMap[tx.category][k] ?? 0) + tx.amount;
   }
 
   // 3. Build row objects
@@ -185,7 +187,7 @@ const PivotTable: React.FC = () => {
         </div>
         <div className="text-center py-10">
           <Grid3x3 size={42} className="mx-auto mb-3 text-text-muted opacity-30" />
-          <p className="text-[11px] font-black uppercase tracking-widest text-text-muted">
+          <p className="text-[11px] font-black text-text-muted">
             No transactions yet · log spending or income to build the pivot
           </p>
         </div>
@@ -381,19 +383,14 @@ export const AuditLog: React.FC = () => {
     // Allocated = pre-reserved obligations (debt principal, recurring bills).
     // These get their own panel and stay out of the discretionary spend pie chart.
     const ALLOCATED_CATEGORIES = new Set(['DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT']);
-    const INTERNAL_CATEGORIES  = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+    const INTERNAL_CATEGORIES  = new Set(['VAULT_TRANSFER', 'VAULT_WITHDRAWAL', 'PENALTY']);
 
     const grouped = filteredTransactions
       .filter(tx => !CAPTURED_CATEGORIES.has(tx.category) && !ALLOCATED_CATEGORIES.has(tx.category) && tx.category !== 'INCOME' && !INTERNAL_CATEGORIES.has(tx.category))
       .reduce((acc, tx) => {
         const key = CATEGORY_LABELS[tx.category] ?? tx.category;
         if (!acc[key]) acc[key] = { name: key, base: 0, impulse: 0 };
-        if (tx.category === 'PENALTY') {
-          acc[key].impulse += tx.amount + tx.flipAmount;
-        } else {
-          acc[key].base += tx.amount;
-          acc[key].impulse += tx.flipAmount;
-        }
+        acc[key].base += tx.amount;
         return acc;
       }, {} as Record<string, { name: string; base: number; impulse: number }>);
 
@@ -452,7 +449,7 @@ export const AuditLog: React.FC = () => {
     const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     // MoM compares discretionary spend only — bills, debt, vault funding are pre-reserved.
-    const EXCLUDED = new Set(['INCOME', 'SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+    const EXCLUDED = new Set(['INCOME', 'SAVINGS', 'VAULT_DEPOSIT', 'PENALTY', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
     const spendFor = (start: Date, end: Date) => {
       const cats: Record<string, number> = {};
@@ -460,7 +457,7 @@ export const AuditLog: React.FC = () => {
       transactions.forEach(tx => {
         const d = new Date(tx.date);
         if (d >= start && d < end && !EXCLUDED.has(tx.category)) {
-          const spend = tx.amount + tx.flipAmount;
+          const spend = tx.amount;
           total += spend;
           const key = CATEGORY_LABELS[tx.category] ?? tx.category;
           cats[key] = (cats[key] ?? 0) + spend;
@@ -547,7 +544,7 @@ export const AuditLog: React.FC = () => {
             <Activity size={11} /> TOTAL OUTFLOW
           </div>
           <p className={`${amountFitClass} ${amountTextSize(`-${formatCell(totalOutflow)}`, 'summary')} font-black italic tracking-tighter text-action-bleed tabular-nums`}>-{formatCell(totalOutflow)}</p>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Pure spend + penalties</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2">Everyday spending, not bills or debt</p>
         </div>
         <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-5 shadow-[6px_6px_0px_0px_var(--shadow-color)]">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-action-capture border-2 border-black rounded-full text-capture-contrast text-[10px] font-black tracking-widest uppercase mb-3">

@@ -109,6 +109,12 @@ export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }
 
       } else if (mode === 'signup') {
         if (!email.trim() || !password) return;
+        // The name greets the user on the dashboard and spares setup from asking
+        // for it, so sign-up does not go ahead without one.
+        if (!firstName.trim()) {
+          setError('ENTER YOUR FIRST NAME');
+          return;
+        }
         // Logged before the call so a signup that never completes (duplicate email,
         // rejected password) shows as submitted-without-created.
         logProductEvent({ type: 'signup_submitted', method: 'password' });
@@ -208,10 +214,10 @@ export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }
   };
 
   const headline =
-    mode === 'login'   ? 'Sign In'
-    : mode === 'signup' ? 'Create Account'
-    : mode === 'reset'  ? 'Reset Password'
-    :                     'Set New Password';
+    mode === 'login'   ? 'Sign in'
+    : mode === 'signup' ? 'Create account'
+    : mode === 'reset'  ? 'Reset password'
+    :                     'Set a new password';
 
   const submitLabel =
     mode === 'login'   ? <><LogIn size={16} strokeWidth={3} /> Sign In</>
@@ -258,7 +264,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }
           </h1>
 
           {mode === 'reset' && (
-            <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted leading-snug">
+            <p className="text-[11px] font-bold text-text-muted leading-snug">
               Enter the email you signed up with. We'll send a link to set a new password.
             </p>
           )}
@@ -281,6 +287,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }
                 type="text"
                 autoComplete="given-name"
                 placeholder="FIRST NAME"
+                required
                 value={firstName}
                 onChange={e => { setFirstName(e.target.value); clearMessages(); }}
                 className="w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 pl-10 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-surface transition-colors tracking-wide"
@@ -411,7 +418,7 @@ export function AuthGate({ recoveryMode, onRecoveryDone, initialMode = 'login' }
             type="submit"
             disabled={loading}
             whileTap={{ scale: 0.97 }}
-            className="w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2.5 shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-brutal-sm"
+            className="w-full h-14 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2.5 shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-brutal-sm"
           >
             {loading ? <span className="animate-pulse">Working…</span> : submitLabel}
           </motion.button>

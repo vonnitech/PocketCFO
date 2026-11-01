@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Wallet, TrendingUp, AlertCircle, User, Receipt, Plus, X, ArrowLeft } from 'lucide-react';
 import { supabase } from '../core/supabase';
 import { useStore } from '../store/useStore';
-import { calculateRawSafeSpend, calculateDaysUntilPayday, billKey } from '../core/math';
+import { calculateTrueSafeSpend, calculateDaysUntilPayday, billKey } from '../core/math';
 import { formatCurrency } from '../lib/utils';
+import { CURRENCIES, guessCurrency } from '../lib/currency';
 import { logProductEvent } from '../core/telemetry';
 import { NotificationPrimer } from './NotificationPrimer';
 import { getPrefs, initForUser, permissionState } from '../core/notifications';
@@ -52,14 +53,41 @@ export function OnboardingModal() {
   const existingFirstName = useStore(s => s.firstName);
   const askName = !existingFirstName?.trim();
 
+  // "Re-run onboarding" in Settings reopens this for an account that already has
+  // a setup. Finishing saves the balance, payday and the bill list wholesale, so
+  // a re-run starts from what is saved: otherwise an untouched bills step would
+  // replace every saved bill with none. A new account has nothing saved, so
+  // every field starts blank exactly as before.
+  const [saved] = useState(() => {
+    const s = useStore.getState();
+    const [y, m, d] = (s.nextPayday || '').slice(0, 10).split('-');
+    const paidKeys = new Set(s.paidBillKeys || []);
+    return {
+      // An account that already finished setup. Its colours were picked then,
+      // and changing them belongs to Settings, where the free-plan and Pro rules
+      // apply, so a re-run skips the colour step instead of offering a re-pick.
+      isRerun:  s.isConfigured,
+      balance:  s.isConfigured ? String(s.liquidAssets ?? '') : '',
+      takeHome: s.monthlyTakeHome > 0 ? String(s.monthlyTakeHome) : '',
+      payDay:   d ? String(Number(d)) : '',
+      payMonth: m ? String(Number(m)) : '',
+      payYear:  y && y.length === 4 ? y : '',
+      bills: (s.recurringBills || []).map(b => ({
+        id: b.id, name: b.name, amount: String(b.amount), paid: paidKeys.has(billKey(b)),
+      })) as DraftBill[],
+      // Due day and paused are not edited here, so they are carried through.
+      billsById: new Map((s.recurringBills || []).map(b => [b.id, b])),
+    };
+  });
+
   const [step,      setStep]      = useState<Step>('basics');
   const [firstName, setFirstName] = useState(() => existingFirstName || '');
-  const [balance,   setBalance]   = useState('');
-  const [takeHome,  setTakeHome]  = useState('');
-  const [payDay,    setPayDay]    = useState('');
-  const [payMonth,  setPayMonth]  = useState('');
-  const [payYear,   setPayYear]   = useState('');
-  const [bills,     setBills]     = useState<DraftBill[]>([]);
+  const [balance,   setBalance]   = useState(saved.balance);
+  const [takeHome,  setTakeHome]  = useState(saved.takeHome);
+  const [payDay,    setPayDay]    = useState(saved.payDay);
+  const [payMonth,  setPayMonth]  = useState(saved.payMonth);
+  const [payYear,   setPayYear]   = useState(saved.payYear);
+  const [bills,     setBills]     = useState<DraftBill[]>(saved.bills);
   const [billName,   setBillName]   = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [loading,   setLoading]   = useState(false);
@@ -71,6 +99,10 @@ export function OnboardingModal() {
     const tc = useStore.getState().themeColors;
     return findPreset(tc?.primary, tc?.secondary)?.id ?? 'default';
   });
+  // What was applied on arrival. Leaving the pick on it applies nothing, so a
+  // re-run keeps a flipped pairing or custom Pro colours instead of resetting
+  // them to the preset (or to Original, for custom colours with no preset).
+  const [initialColourPick] = useState(colourPick);
 
   const numBalance  = parseFloat(balance) || 0;
   const numTakeHome = parseFloat(takeHome) || 0;
@@ -78,7 +110,37 @@ export function OnboardingModal() {
     ? `${payYear}-${payMonth.padStart(2, '0')}-${payDay.padStart(2, '0')}`
     : '';
   const resolvedFirstName = firstName.trim() || existingFirstName.trim();
-  const canSubmit = numBalance >= 0 && numTakeHome > 0 && !!payday && !!userId && (!askName || !!resolvedFirstName);
+  // A payday that has already happened is not a next payday. It used to be
+  // accepted, and the days-until-payday floor of 1 then spread the whole
+  // balance over a single day, which produced a wildly inflated first number.
+  const paydayInPast = (() => {
+    if (!payday) return false;
+    const [y, m, d] = payday.split('-').map(Number);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return new Date(y, m - 1, d).getTime() <= today.getTime();
+  })();
+  const canSubmit = numBalance >= 0 && numTakeHome > 0 && !!payday && !paydayInPast && !!userId && (!askName || !!resolvedFirstName);
+
+  // Said under a disabled Next button, so a grey button always comes with the
+  // reason it is grey. Lists only what is still missing, in form order.
+  const missingHint = (() => {
+    // Said in red right under the date instead, where the problem is.
+    if (paydayInPast) return '';
+    const missing: string[] = [];
+    if (askName && !resolvedFirstName) missing.push('your first name');
+    if (balance.trim() === '') missing.push('your bank balance');
+    if (numTakeHome <= 0) missing.push('your take-home pay');
+    if (!payday) missing.push('your next payday');
+    if (missing.length === 0) return '';
+    const list = missing.length === 1
+      ? missing[0]
+      : missing.slice(0, -1).join(', ') + ' and ' + missing[missing.length - 1];
+    return 'Add ' + list + ' to continue.';
+  })();
+
+  const currency    = useStore(s => s.currency);
+  const setCurrency = useStore(s => s.setCurrency);
 
   const parsedBills = useMemo(
     () => bills
@@ -97,19 +159,32 @@ export function OnboardingModal() {
   // simplified estimate that would quietly disagree with it.
   const daysUntilPayday = payday ? calculateDaysUntilPayday(payday) : 0;
 
+  // Mirrors what setHorizon stores, field for field. Bills ticked as paid are
+  // out of the cash already, so they leave upcomingBills, but they still recur
+  // every month, so they stay in fixedBills, which feeds the monthly budget.
+  // The preview used to drop paid bills from both, which made the setup number
+  // higher than the dashboard showed a second later (720 against 503 with rent
+  // ticked off). calculateTrueSafeSpend is the same function the dashboard hero
+  // uses, so tier and pacing are applied here too.
   const previewSafeSpend = useMemo(() => {
     if (!canSubmit) return 0;
-    return calculateRawSafeSpend({
+    return calculateTrueSafeSpend({
       ...(useStore.getState() as any),
       liquidAssets:    numBalance,
       nextPayday:      payday,
       upcomingBills:   billsTotal,
-      fixedBills:      billsTotal,
-      fixedBurn:       billsTotal,
+      fixedBills:      billsAllTotal,
+      fixedBurn:       billsAllTotal,
       monthlyTakeHome: numTakeHome,
       hardDailyCap:    0,
     });
-  }, [canSubmit, numBalance, numTakeHome, payday, billsTotal]);
+  }, [canSubmit, numBalance, numTakeHome, payday, billsTotal, billsAllTotal]);
+
+  // The figure is the lower of a pay-based and a balance-based daily amount.
+  // With a large balance and a smaller pay it can look as if the balance was
+  // ignored, so the preview names which one set the number.
+  const cashDaily = daysUntilPayday > 0 ? Math.max(0, numBalance - billsTotal) / daysUntilPayday : 0;
+  const limitedByPay = previewSafeSpend > 0 && previewSafeSpend < cashDaily - 0.005;
 
   // Decided once, on mount, so the flow cannot grow or lose a step underneath
   // the user. There is nothing to ask if the browser has no support, if the
@@ -119,8 +194,9 @@ export function OnboardingModal() {
     initForUser(useStore.getState().userId);
     return permissionState() === 'default' && getPrefs().primer === 'unasked';
   });
-  const totalSteps = askNotifications ? 4 : 3;
-  const stepNumber = step === 'basics' ? 1 : step === 'bills' ? 2 : step === 'colour' ? 3 : 4;
+  const colourSteps = saved.isRerun ? 0 : 1;
+  const totalSteps = 2 + colourSteps + (askNotifications ? 1 : 0);
+  const stepNumber = step === 'basics' ? 1 : step === 'bills' ? 2 : step === 'colour' ? 3 : 3 + colourSteps;
 
   const startedRef   = useRef(false);
   const previewedRef = useRef(false);
@@ -130,6 +206,19 @@ export function OnboardingModal() {
     startedRef.current = true;
     logProductEvent({ type: 'onboarding_started' });
   }, [hasCompletedOnboarding]);
+
+  // Every new profile starts on the database default, USD, so someone in
+  // Johannesburg saw dollar signs until they found the setting. Guess from the
+  // device once, at the start of setup, and only while the account is still on
+  // that untouched default. The picker on the first step can override it.
+  const currencyGuessedRef = useRef(false);
+  useEffect(() => {
+    if (hasCompletedOnboarding || currencyGuessedRef.current || !userId) return;
+    currencyGuessedRef.current = true;
+    if (currency !== 'USD') return;
+    const guess = guessCurrency();
+    if (guess !== 'USD') void setCurrency(guess);
+  }, [hasCompletedOnboarding, userId, currency, setCurrency]);
 
   useEffect(() => {
     if (existingFirstName.trim() && !firstName.trim()) {
@@ -229,7 +318,14 @@ export function OnboardingModal() {
     // Deferred: the colour step (and maybe the reminders ask) still has to show.
     // Without this, setHorizon marks onboarding complete locally, the modal
     // unmounts and both steps are silently skipped. finishOnboarding sets it.
-    setHorizon(numBalance, payday, 0, 0, parsedBills, { deferOnboardingComplete: true });
+    // The daily cap is left undefined so a re-run keeps the saved one (a new
+    // account's is 0 either way), and saved bills keep the fields this form
+    // does not show.
+    setHorizon(
+      numBalance, payday, 0, undefined,
+      parsedBills.map(b => ({ ...saved.billsById.get(b.id), ...b })),
+      { deferOnboardingComplete: true },
+    );
 
     logProductEvent({
       type: 'activation_completed',
@@ -240,7 +336,9 @@ export function OnboardingModal() {
     });
 
     setLoading(false);
-    setStep('colour');
+    if (!saved.isRerun) setStep('colour');
+    else if (askNotifications) setStep('notify');
+    else finishOnboarding();
   };
 
   // Live preview only. The store, the profile row and the free pick are not
@@ -255,6 +353,11 @@ export function OnboardingModal() {
 
   const handleColour = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (colourPick === initialColourPick) {
+      if (askNotifications) setStep('notify');
+      else finishOnboarding();
+      return;
+    }
     setLoading(true);
     // Choosing Original spends nothing: the pick stays open for later, in
     // Settings. A new account has no pick yet, so any other preset becomes it.
@@ -286,7 +389,7 @@ export function OnboardingModal() {
     'w-full bg-transparent border-4 border-black rounded-2xl px-3 py-3 font-mono font-bold text-sm text-text-main outline-none focus:bg-input transition-colors cursor-pointer';
 
   const submitClass =
-    'w-full h-14 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[3px_3px_0px_0px_var(--color-action-primary)]';
+    'w-full h-14 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4 py-6 overflow-y-auto">
@@ -308,11 +411,11 @@ export function OnboardingModal() {
           {/* Title + step counter */}
           <div className="overflow-hidden">
             <div className="flex items-baseline justify-between gap-2">
-              <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-none truncate">
-                {step === 'basics' ? 'Set Up Your Account'
-                  : step === 'bills' ? 'Your Fixed Bills'
-                  : step === 'colour' ? 'Make It Yours'
-                  : "You're All Set"}
+              <h1 className="text-2xl font-black uppercase tracking-tighter italic text-text-main leading-tight truncate">
+                {step === 'basics' ? 'Set up your account'
+                  : step === 'bills' ? 'Your bills'
+                  : step === 'colour' ? 'Make it yours'
+                  : "You're all set"}
               </h1>
               <span className="text-[10px] font-black uppercase tracking-widest text-text-muted shrink-0">
                 {stepNumber}/{totalSteps}
@@ -435,6 +538,29 @@ export function OnboardingModal() {
                       ))}
                     </select>
                   </div>
+                  {paydayInPast && (
+                    <p className="mt-1.5 text-[10px] font-black uppercase tracking-wide text-action-bleed">
+                      That date has passed. Pick your next payday.
+                    </p>
+                  )}
+                </div>
+
+                {/* Currency. Pre-set from the device; shown so a wrong guess
+                    is one tap to fix rather than a hunt through Settings. */}
+                <div className="flex items-center justify-between gap-3 overflow-hidden">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-text-muted shrink-0">
+                    Currency
+                  </span>
+                  <select
+                    title="Currency"
+                    value={currency}
+                    onChange={e => void setCurrency(e.target.value)}
+                    className="min-w-0 max-w-[65%] bg-transparent border-2 border-border rounded-xl px-2 py-1.5 font-mono font-bold text-xs text-text-main outline-none focus:bg-input cursor-pointer"
+                  >
+                    {CURRENCIES.map(c => (
+                      <option key={c.code} value={c.code}>{c.code} · {c.name}</option>
+                    ))}
+                  </select>
                 </div>
               </motion.div>
             ) : step === 'bills' ? (
@@ -455,21 +581,28 @@ export function OnboardingModal() {
                         <span className={`flex-1 min-w-0 truncate text-[11px] font-black uppercase tracking-wide ${b.paid ? 'text-text-muted line-through' : 'text-text-main'}`}>
                           {b.name}
                         </span>
+                        {/* Amount before the Paid toggle, not after it. With the
+                            amount last, a longer figure (R 6 500,00 against
+                            R 399,00) pushed each row's toggle to a different
+                            spot, so the column of Paid buttons zig-zagged. */}
+                        <span className={`font-mono font-bold text-xs shrink-0 tabular-nums text-right ${b.paid ? 'text-text-muted line-through' : 'text-text-main'}`}>
+                          {formatCurrency(b.amount)}
+                        </span>
                         <button
                           type="button"
                           onClick={() => togglePaid(b.id)}
                           aria-pressed={!!b.paid}
-                          className={`shrink-0 px-2 py-1 border-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                          className={`shrink-0 w-[4.75rem] py-1 border-2 rounded-full text-[9px] font-black uppercase tracking-wider text-center transition-all ${
                             b.paid
                               ? 'bg-action-capture border-black text-capture-contrast'
                               : 'border-border text-text-muted hover:border-black hover:text-text-main'
                           }`}
                         >
-                          Paid
+                          {/* A bare "Paid" read as a status, so every bill looked
+                              paid. The off state now names the action. Fixed
+                              width so both states line up. */}
+                          {b.paid ? 'Paid' : 'Mark paid'}
                         </button>
-                        <span className={`font-mono font-bold text-xs shrink-0 ${b.paid ? 'text-text-muted line-through' : 'text-text-main'}`}>
-                          {formatCurrency(b.amount)}
-                        </span>
                         <button
                           type="button"
                           onClick={() => removeBill(b.id)}
@@ -512,7 +645,7 @@ export function OnboardingModal() {
                     onClick={addBill}
                     disabled={!billName.trim() || (parseFloat(billAmount) || 0) <= 0}
                     aria-label="Add bill"
-                    className="w-14 self-stretch bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center text-black disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                    className="w-14 self-stretch bg-action-primary border-4 border-black rounded-2xl flex items-center justify-center text-primary-contrast disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                   >
                     <Plus size={20} strokeWidth={3} />
                   </button>
@@ -520,13 +653,13 @@ export function OnboardingModal() {
 
                 {/* Safe-to-Spend preview */}
                 <div className="bg-action-primary border-4 border-black rounded-2xl px-4 py-3 overflow-hidden">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-black/50">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/50">
                     Cleared Today
                   </p>
-                  <p className="text-4xl font-black italic tracking-tighter text-black leading-none mt-0.5 truncate">
+                  <p className="text-4xl font-black italic tracking-tighter text-primary-contrast leading-tight mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
                   </p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mt-1">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/40 mt-1">
                     {parsedBills.length === 0
                       ? 'No bills added yet, so nothing is held back'
                       : billsAllTotal > billsTotal
@@ -536,6 +669,13 @@ export function OnboardingModal() {
                         ? 'Holding back ' + formatCurrency(billsTotal) + ' · ' + formatCurrency(billsAllTotal - billsTotal) + ' already paid'
                         : 'After holding back ' + formatCurrency(billsTotal) + ' in bills'}
                   </p>
+                  {previewSafeSpend > 0 && (
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mt-1">
+                      {limitedByPay
+                        ? 'Set by your monthly pay. Your balance covers more, and the rest stays put.'
+                        : 'Set by your balance until payday.'}
+                    </p>
+                  )}
                 </div>
               </motion.div>
             ) : step === 'colour' ? (
@@ -549,7 +689,10 @@ export function OnboardingModal() {
               >
                 {/* Tapping previews live on the app behind the modal; nothing
                     is saved until the button below is pressed. */}
-                <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1 -mr-1 pt-1">
+                {/* The list scrolls. The fade at the bottom edge says there is
+                    more below; without it the grid looked like the full set. */}
+                <div className="relative">
+                <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1 -mr-1 pt-1 pb-6">
                   {COLOR_THEMES.map(t => {
                     const selected = t.id === colourPick;
                     return (
@@ -571,8 +714,10 @@ export function OnboardingModal() {
                     );
                   })}
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug">
-                  Original is always yours too, and you can swap your pick once in Settings. Pro unlocks every pairing.
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-surface to-transparent" />
+                </div>
+                <p className="text-[11px] font-bold text-text-muted leading-snug">
+                  Scroll for more pairings. Original is always yours too, and you can swap your pick once in Settings. Pro unlocks every pairing.
                 </p>
               </motion.div>
             ) : (
@@ -590,7 +735,7 @@ export function OnboardingModal() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-capture-contrast/60">
                     Cleared Today
                   </p>
-                  <p className="text-3xl font-black italic tracking-tighter text-capture-contrast leading-none mt-0.5 truncate">
+                  <p className="text-3xl font-black italic tracking-tighter text-capture-contrast leading-tight mt-0.5 truncate">
                     {formatCurrency(previewSafeSpend)}
                   </p>
                 </div>
@@ -632,6 +777,14 @@ export function OnboardingModal() {
                 : colourPick === 'default' ? 'Keep Original →' : 'Make It Mine →'
               }
             </motion.button>
+          )}
+
+          {/* Why the button is grey. Without this a disabled Next gave no clue
+              which field was holding it back. */}
+          {(step === 'basics' || step === 'bills') && !loading && !canSubmit && missingHint && (
+            <p role="status" className="text-center text-[10px] font-bold uppercase tracking-wide text-text-muted leading-snug -mt-1">
+              {missingHint}
+            </p>
           )}
 
           {step === 'bills' && (

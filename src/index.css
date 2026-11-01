@@ -46,6 +46,16 @@
   --primary-contrast: #000000;
   --capture-readable: #000000;
   --primary-readable: #000000;
+  /* Spend Breakdown donut, largest slice first: logo gold, coin green, Spend-tab
+     pink, then softer tones. No red, which is kept for overspending. */
+  --chart-1: #FFC81A;
+  --chart-2: #1DCB63;
+  --chart-3: #F472B6;
+  --chart-4: #60A5FA;
+  --chart-5: #FB923C;
+  --chart-6: #A78BFA;
+  --chart-7: #2DD4BF;
+  --chart-8: #A3E635;
 }
 
 .dark {
@@ -63,6 +73,16 @@
      first paint renders the :root #000000 on a #1A1A1A card. */
   --capture-readable: #00CC55;
   --primary-readable: #facc15;
+  /* Same hues, less saturated: full-strength colours glared on the dark card. */
+  --chart-1: #EBC45A;
+  --chart-2: #52C68B;
+  --chart-3: #E592BE;
+  --chart-4: #84AAE0;
+  --chart-5: #E3A06E;
+  --chart-6: #AE9EE2;
+  --chart-7: #5CC9B8;
+  --chart-8: #A9CF6A;
+  --chart-track: #24282D;
 }
 
 /* The dashboard's dark surfaces carry depth without colored offset shadows.

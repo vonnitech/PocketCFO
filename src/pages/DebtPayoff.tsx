@@ -113,7 +113,7 @@ export const DebtPayoff: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Debt Payoff</h1>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight italic text-text-main">Debt payoff</h1>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1.5">
           Smart order · highest-cost debts first
         </p>
@@ -214,7 +214,7 @@ export const DebtPayoff: React.FC = () => {
                       type="button"
                       onClick={() => openPay(debt)}
                       disabled={availableForDebt <= 0 || debt.balance <= 0}
-                      className="shrink-0 h-9 px-3 border-2 border-black rounded-full bg-black text-action-primary font-black uppercase text-[10px] tracking-widest hover:bg-action-primary hover:text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="shrink-0 h-9 px-3 border-2 border-black rounded-full bg-action-primary text-primary-contrast font-black uppercase text-[10px] tracking-widest transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Pay
                     </button>
@@ -341,7 +341,7 @@ export const DebtPayoff: React.FC = () => {
                     </button>
                   </div>
 
-                  <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted text-center">
+                  <p className="text-[11px] font-bold text-text-muted text-center">
                     Logs a DEBT_PAYMENT transaction and reduces your cash balance
                   </p>
                 </div>

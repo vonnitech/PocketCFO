@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // Receives LemonSqueezy webhooks and updates profiles.pro_* via the service
 // role (bypasses RLS). Register this URL in LemonSqueezy → Settings → Webhooks.
+// New subscriptions go through Paddle (api/paddle-webhook.ts); this stays so
+// anyone who subscribed through LemonSqueezy keeps working until they cancel.
 // Env (set in Vercel): LEMONSQUEEZY_WEBHOOK_SECRET, LEMONSQUEEZY_VARIANT_MONTHLY/
 // ANNUAL/LIFETIME, LEMONSQUEEZY_STORE_ID, SUPABASE_URL,
 // SUPABASE_SERVICE_ROLE_KEY. Migration 022 must be applied before deployment.
@@ -49,6 +51,9 @@ async function setEntitlement(
     .or(`ls_event_updated_at.is.null,ls_event_updated_at.lte.${eventUpdatedAt}`);
   // A late expiry from an old subscription must not revoke a replacement plan.
   if (expectedSubscriptionId) query = query.eq('ls_subscription_id', expectedSubscriptionId);
+  // Paddle replaced LemonSqueezy for new subscribers. A LemonSqueezy event can
+  // only take away Pro that LemonSqueezy granted, never a Paddle subscription.
+  if (fields.pro_plan === null) query = query.eq('pro_source', 'lemonsqueezy');
   const { data, error } = await query.select('id');
   if (error) throw new Error(`Supabase entitlement update failed: ${error.message}`);
   if (!data?.length) console.info('[webhook] ignored stale or unknown entitlement event');

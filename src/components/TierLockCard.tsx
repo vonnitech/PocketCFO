@@ -161,7 +161,7 @@ export function TierLockCard() {
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-2 leading-snug">
+              <p className="text-[11px] font-bold text-text-muted mt-2 leading-snug">
                 Optional. Holding it means you cannot switch tiers until it ends.
               </p>
             </div>
@@ -245,7 +245,7 @@ export function TierLockCard() {
             <h2 className="text-2xl font-black italic uppercase tracking-tighter text-text-main leading-tight">
               End {activeTier.label} mode early?
             </h2>
-            <p className="text-[12px] font-bold text-text-muted mt-2 leading-relaxed uppercase tracking-wide">
+            <p className="text-[12px] font-bold text-text-muted mt-2 leading-relaxed">
               {daysLeft} day{daysLeft !== 1 ? 's' : ''} left. Your Cleared Today amount goes back to the
               full amount, and you can pick a new tier whenever you want.
             </p>
@@ -254,7 +254,7 @@ export function TierLockCard() {
           <button
             type="button"
             onClick={() => setConfirmOpen(false)}
-            className="w-full h-12 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            className="w-full h-12 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
           >
             Keep the hold
           </button>

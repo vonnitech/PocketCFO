@@ -83,7 +83,7 @@ export function VaultFormSheet({ open, onClose, defaultClass = 'SINKING_FUND' }:
                 <div className={`w-9 h-9 border-2 border-black rounded-xl flex items-center justify-center shrink-0 ${
                   assetClass === opt.id ? 'bg-action-primary' : 'bg-surface'
                 }`}>
-                  <opt.icon size={16} strokeWidth={2.5} className="text-black" />
+                  <opt.icon size={16} strokeWidth={2.5} className="text-primary-contrast" />
                 </div>
                 <div>
                   <p className={`text-[11px] font-black uppercase tracking-widest leading-none ${
@@ -137,7 +137,7 @@ export function VaultFormSheet({ open, onClose, defaultClass = 'SINKING_FUND' }:
           type="button"
           onClick={submit}
           disabled={disabled}
-          className="w-full h-14 border-4 border-black rounded-2xl bg-black text-action-primary font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_var(--color-action-primary)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_var(--color-action-primary)]"
+          className="w-full h-14 border-4 border-black rounded-2xl bg-action-primary text-primary-contrast font-black uppercase tracking-widest text-[11px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
         >
           Create Vault
         </button>

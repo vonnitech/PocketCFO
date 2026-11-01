@@ -9,7 +9,7 @@ const FUTURE_CATEGORIES = new Set(['VAULT_DEPOSIT', 'DEBT_PAYMENT']);
 // Discretionary present-tense spending — the lifestyle bucket. We exclude
 // recurring bills, home, utilities, transport, health, and work since those
 // are fixed obligations rather than lifestyle choices.
-const LIFESTYLE_CATEGORIES = new Set(['FOOD', 'FUN', 'SHOPPING', 'SOCIAL', 'PENALTY']);
+const LIFESTYLE_CATEGORIES = new Set(['FOOD', 'FUN', 'SHOPPING', 'SOCIAL']);
 
 function fmtMoney(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -25,7 +25,7 @@ export function WealthVsLifestyleChart() {
     let l = 0;
     for (const tx of transactions) {
       if (new Date(tx.date) < monthStart) continue;
-      const amt = tx.amount + (tx.flipAmount || 0);
+      const amt = tx.amount;
       if (FUTURE_CATEGORIES.has(tx.category))         f += amt;
       else if (LIFESTYLE_CATEGORIES.has(tx.category)) l += amt;
     }

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, Bell, BellOff, CalendarClock, CheckCheck, Inbox, Receipt, TrendingUp, Wallet, WifiOff, X } from 'lucide-react';
 import { useNotifications, useNotificationToasts } from '../hooks/useNotifications';
 import { CATEGORY_META, type NotificationCategory, type NotificationRecord } from '../core/notifications';
+import { isNative } from '../native/platform';
 
 // The inbox.
 //
@@ -102,11 +103,11 @@ export function NotificationBell() {
                   <h2 className="text-xl font-black uppercase tracking-tighter italic text-text-main leading-none">
                     Notifications
                   </h2>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mt-1">
+                  <p className="text-[11px] font-bold text-text-muted mt-1">
                     {recordingOff
                       ? 'Notifications are off'
                       : muted
-                        ? 'Blocked by your browser. Alerts still collect here.'
+                        ? (isNative ? 'Turned off in your phone settings. Alerts still collect here.' : 'Blocked by your browser. Alerts still collect here.')
                         : unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
                   </p>
                 </div>

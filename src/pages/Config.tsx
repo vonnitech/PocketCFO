@@ -191,7 +191,7 @@ export default function Config() {
       {/* Pay Cycle */}
       <Card badge="PAY CYCLE" badgeColor="bg-action-capture" badgeTextColor={captureTxt}>
         <div className="space-y-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Your real bank balance, next payday, and upcoming bills determine what is cleared today</p>
+          <p className="text-[11px] font-bold text-text-muted">Your real bank balance, next payday, and upcoming bills determine what is cleared today</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Current Bank Balance ($)</label>
@@ -384,7 +384,7 @@ export default function Config() {
               )}
             </div>
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted -mt-1">
+          <p className="text-[11px] font-bold text-text-muted -mt-1">
             These reload automatically every time you save a new Pay Cycle · no re-entry needed each cycle.
           </p>
 
@@ -400,7 +400,7 @@ export default function Config() {
               onChange={e => setHorizonCap(e.target.value)}
               className="w-full bg-input border-4 border-black rounded-2xl p-3 font-black text-text-main outline-none focus:border-action-bleed transition-colors"
             />
-            <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mt-1.5">The most you can spend in a day. Anything above it is moved into a vault automatically.</p>
+            <p className="text-[11px] font-bold text-text-muted mt-1.5">The most you can spend in a day. Anything above it is moved into a vault automatically.</p>
           </div>
           <button
             type="button"
@@ -437,7 +437,7 @@ export default function Config() {
       {/* Monthly Baseline (for subscription & savings rate widgets) */}
       <Card badge="MONTHLY BASELINE" badgeColor="bg-action-primary" badgeTextColor={primaryTxt}>
         <div className="space-y-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Monthly income & savings goal · bills are pulled automatically from your Pay Cycle recurring bills</p>
+          <p className="text-[11px] font-bold text-text-muted">Monthly income & savings goal · bills are pulled automatically from your Pay Cycle recurring bills</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Monthly Take-Home ($)</label>
@@ -529,7 +529,7 @@ export default function Config() {
                       setIsAddingDebt(false); setNewDebtName(''); setNewDebtBalance(''); setNewDebtRate(''); setNewDebtMin('');
                     }
                   }}
-                  className="px-4 h-11 bg-black text-action-primary border-4 border-black rounded-full text-[10px] font-black uppercase"
+                  className="px-4 h-11 bg-action-primary text-primary-contrast border-4 border-black rounded-full text-[10px] font-black uppercase"
                 >
                   Add Debt
                 </button>

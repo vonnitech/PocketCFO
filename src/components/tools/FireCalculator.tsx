@@ -152,8 +152,8 @@ function Field({ label, prefix, value, onChange, integer }: {
 function LiveBadge() {
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-action-capture border-2 border-black rounded-full">
-      <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-      <span className="text-[9px] font-black uppercase tracking-widest text-black">Live</span>
+      <span className="w-1.5 h-1.5 rounded-full bg-capture-contrast animate-pulse" />
+      <span className="text-[9px] font-black uppercase tracking-widest text-capture-contrast">Live</span>
     </span>
   );
 }
@@ -283,11 +283,11 @@ export function FireCalculator() {
           <p className="font-black uppercase text-sm text-text-main leading-snug">
             Connect your financial data to unlock FIRE projections.
           </p>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
+          <p className="text-[11px] font-bold text-text-muted">
             This calculator reads your vault balances and savings goal directly from your profile · no double entry needed.
           </p>
           <div className="flex flex-col gap-2">
-            <Link to="/config" className="flex items-center justify-between px-4 py-3 bg-black border-4 border-black rounded-2xl text-action-primary font-black uppercase text-[11px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+            <Link to="/config" className="flex items-center justify-between px-4 py-3 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-[11px] tracking-widest shadow-brutal-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
               Set up income & savings goal
               <LinkIcon size={13} strokeWidth={2.5} />
             </Link>
@@ -315,8 +315,8 @@ export function FireCalculator() {
           {fireConfig && !isDirty && (
             <div className="flex items-center gap-1.5 mt-2">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-action-capture border-2 border-black rounded-full">
-                <Lock size={10} strokeWidth={3} className="text-black shrink-0" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-black">
+                <Lock size={10} strokeWidth={3} className="text-capture-contrast shrink-0" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-capture-contrast">
                   {STRATEGIES.find(s => s.id === fireConfig.strategy)?.tag ?? fireConfig.strategy} locked
                 </span>
               </div>
@@ -360,12 +360,12 @@ export function FireCalculator() {
           <div className="mb-4 min-w-0">
             <div className="mb-1 flex items-start justify-between gap-3">
               <p className="min-w-0 text-[9px] min-[420px]:text-[10px] font-bold uppercase tracking-wide min-[420px]:tracking-widest text-white/50 mb-1">
-                {calc.isCoast ? 'Your Coast Number' : 'Your FIRE Number'}
+                {calc.isCoast ? 'Your coast number' : 'Your FIRE number'}
               </p>
               <div className="w-9 h-9 min-[420px]:w-10 min-[420px]:h-10 -mt-1 bg-action-primary border-[3px] border-black rounded-xl flex items-center justify-center shadow-brutal-sm shrink-0">
                 {strategy === 'COAST'
-                  ? <Anchor size={19} strokeWidth={3} className="text-black" />
-                  : <Flame size={19} strokeWidth={3} className="text-black" />
+                  ? <Anchor size={19} strokeWidth={3} className="text-primary-contrast" />
+                  : <Flame size={19} strokeWidth={3} className="text-primary-contrast" />
                 }
               </div>
             </div>
@@ -452,8 +452,26 @@ export function FireCalculator() {
           </div>
         </div>
 
-        {vaults.length > 0 && (
+        {/* Says which vaults feed this number, and where the rest come from.
+            Only Investment vaults count; savings for a trip or an emergency
+            fund are spent or held, not invested. */}
+        {vaults.length === 0 ? (
+          <Link to="/vaults" className="flex items-center justify-between mt-3 px-3 py-2 bg-input border-2 border-border rounded-xl">
+            <p className="text-[11px] font-black text-text-muted">
+              No investment vaults yet. Make one in Vaults and it counts here.
+            </p>
+            <LinkIcon size={11} strokeWidth={2.5} className="text-text-muted shrink-0" />
+          </Link>
+        ) : (
           <div className="mt-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">
+                Counted toward FIRE
+              </p>
+              <Link to="/vaults" className="text-[9px] font-black uppercase tracking-widest text-text-muted underline">
+                Vaults
+              </Link>
+            </div>
             {vaults.map(v => {
               const pct = totalVaulted > 0 ? (v.current / totalVaulted) * 100 : 0;
               return (
@@ -741,7 +759,7 @@ export function FireCalculator() {
           <div className="flex items-start gap-3">
             <div className={`w-10 h-10 rounded-2xl border-4 border-black flex items-center justify-center shrink-0 ${calc.onTrack ? 'bg-action-capture' : 'bg-action-bleed'}`}>
               {calc.onTrack
-                ? <Target size={18} strokeWidth={3} className="text-black" />
+                ? <Target size={18} strokeWidth={3} className="text-capture-contrast" />
                 : <TrendingUp size={18} strokeWidth={3} className="text-white" />
               }
             </div>
@@ -757,7 +775,7 @@ export function FireCalculator() {
                       : `You need ${fmtFull(calc.coastNumber)} invested today to coast to retirement at 65. You're ${fmtFull(calc.shortfall)} short.`
                     }
                   </p>
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
+                  <p className="text-[11px] font-bold text-text-muted mt-1.5">
                     {calc.onTrack
                       ? 'Coast FIRE achieved · no more contributions needed · let it ride.'
                       : `Add ${fmtFull(calc.shortfall)} to your vaults to hit your coast number, then stop contributing.`
@@ -786,7 +804,7 @@ export function FireCalculator() {
                       ))}
                     </dl>
                   ) : (
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mt-1.5">
+                    <p className="text-[11px] font-bold text-text-muted mt-1.5">
                       Your target age is too close for your starting balance · move it later or contribute more.
                     </p>
                   )}
@@ -800,7 +818,7 @@ export function FireCalculator() {
       {!calc && (
         <div className="text-center py-12 bg-surface border-4 border-dashed border-border rounded-3xl">
           <Flame size={40} className="mx-auto mb-3 text-action-primary opacity-60" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+          <p className="text-[11px] font-bold text-text-muted">
             {(parseInt(ca) || 0) > 0 && ((parseInt(ca) || 0) < MIN_AGE || (parseInt(ca) || 0) >= MAX_AGE)
               ? `Current age needs to be between ${MIN_AGE} and ${MAX_AGE - 1}.`
               : strategy !== 'COAST' && (parseInt(ta) || 0) > MAX_AGE

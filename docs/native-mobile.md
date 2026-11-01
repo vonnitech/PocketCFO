@@ -140,8 +140,12 @@ when tapped; medium widgets have a separate Log Spend button and Home destinatio
    snapshot must request a refresh instead of presenting yesterday's allowance.
 5. Configure the API origin, then test account deletion with a disposable account.
 6. Exercise file import/export, keyboard, safe areas, back navigation and any
-   biometric or notification features on real devices. Native push registration
-   and native biometric integration are not part of this setup.
+   biometric or notification features on real devices. Phone notifications are
+   local alerts booked on the device a week ahead (src/native/localNotifications.ts
+   and src/core/notifications/projection.ts); there is no server push. To test,
+   allow notifications, add a bill due in 2 to 3 days, close the app and wait for
+   the 9am alert, then reopen and check it is in the inbox and not repeated.
+   Native biometric integration is not part of this setup.
 
 The mobile preview hides web checkout and billing controls; native store purchases
 are not implemented. Before a public release, finish applicable store billing and

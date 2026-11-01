@@ -132,6 +132,7 @@ function parseLog(raw: string | null): NotificationLogState {
         parsed.memory && typeof parsed.memory === 'object'
           ? (parsed.memory as Record<string, string | number>)
           : {},
+      ...(Array.isArray(parsed.scheduled) ? { scheduled: parsed.scheduled } : {}),
     };
   } catch {
     return defaultLog();
