@@ -28,7 +28,7 @@ import { clearSnapshot, cancelQueuedSnapshotSave } from '../db/storage';
 import { CURRENCIES } from '../lib/currency';
 import { useIsPro, useProLocked, refreshProStatus, proSnapshot } from '../lib/pro';
 import { openPaddleCheckout } from '../lib/paddle';
-import { PRICING, TAX_NOTE } from '../lib/pricing';
+import { PRICING, PRO_CHECKOUT_OPEN, TAX_NOTE } from '../lib/pricing';
 import { ProAction } from '../components/ProAction';
 import { validateBackupFile } from '../core/fileValidation';
 
@@ -675,9 +675,15 @@ export default function Settings() {
                 Bill splitter is free and Wishlist holds 2 wishes. Other tools are free previews. Pro unlocks saving, full actions and every result.
               </p>
 
+              {!PRO_CHECKOUT_OPEN && (
+                <p className="text-xs font-bold text-text-main bg-input border-2 border-border rounded-2xl px-4 py-3 mb-3">
+                  Pro upgrades open soon. Everything free works as normal in the meantime.
+                </p>
+              )}
+
               {/* Annual — the hero */}
-              <button type="button" onClick={() => startCheckout('annual')}
-                className="w-full text-left bg-action-primary border-4 border-black rounded-2xl p-4 flex items-center justify-between shadow-brutal mb-3 hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+              <button type="button" onClick={() => startCheckout('annual')} disabled={!PRO_CHECKOUT_OPEN}
+                className="w-full text-left bg-action-primary border-4 border-black rounded-2xl p-4 flex items-center justify-between shadow-brutal mb-3 hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-brutal disabled:hover:translate-x-0 disabled:hover:translate-y-0">
                 <div>
                   <div className="text-lg font-black text-primary-contrast tabular-nums">{PRICING.annual.price}<span className="text-sm font-bold">/yr</span></div>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-primary-contrast/70">{PRICING.annual.sub}</div>
@@ -686,8 +692,8 @@ export default function Settings() {
               </button>
 
               {/* Monthly — quieter */}
-              <button type="button" onClick={() => startCheckout('monthly')}
-                className="w-full text-left bg-input border-2 border-black rounded-2xl p-4 mb-3 hover:border-black hover:bg-surface transition-colors">
+              <button type="button" onClick={() => startCheckout('monthly')} disabled={!PRO_CHECKOUT_OPEN}
+                className="w-full text-left bg-input border-2 border-black rounded-2xl p-4 mb-3 hover:border-black hover:bg-surface transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-input">
                 <div className="text-[1rem] font-black text-text-main tabular-nums">{PRICING.monthly.price}<span className="text-xs font-bold">/mo</span></div>
                 <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{PRICING.monthly.sub}</div>
               </button>

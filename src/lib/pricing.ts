@@ -11,3 +11,8 @@ export const PRICING = {
 } as const;
 
 export const TAX_NOTE = 'Plus tax where applicable';
+
+// Pro upgrades stay closed until Paddle approves the account. Set
+// VITE_PRO_CHECKOUT=on in Vercel and redeploy to open them; /api/checkout reads
+// the same variable, so one switch covers the buttons and the server.
+export const PRO_CHECKOUT_OPEN = import.meta.env.VITE_PRO_CHECKOUT === 'on';

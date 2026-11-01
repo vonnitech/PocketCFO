@@ -62,6 +62,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(415).json({ error: 'Expected application/json' });
   }
 
+  // Closed until Paddle approves the account (see PRO_CHECKOUT_OPEN in src/lib/pricing.ts).
+  if (process.env.VITE_PRO_CHECKOUT !== 'on') {
+    return res.status(503).json({ error: 'Pro upgrades open soon.' });
+  }
+
   try {
     const caller = await requireUser(req);
     if (!caller) return res.status(401).json({ error: 'Not signed in' });
