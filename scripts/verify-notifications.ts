@@ -86,6 +86,7 @@ function slice(over: Partial<Slice> = {}): Slice {
     hasCompletedOnboarding: true,
     monthlyTakeHome: 3000,
     safeSpendLimit: 40,
+    capacitySafeSpendLimit: 0,
     liquidAssets: 1200,
     upcomingBills: 0,
     nextPayday: '2026-09-25',
@@ -348,6 +349,13 @@ section('7. Safe-spend change baseline');
     critical.records[0]?.ruleId === 'safe-spend-low', critical.records[0]?.ruleId);
   check('  and only one nudge is sent for the two overlapping truths',
     critical.records.length === 1);
+
+  // The same thin number, but held there by the user's own daily cap while the
+  // position could afford far more. That is a limit they chose, not a risk, so
+  // "running low" must not fire (it used to, every day).
+  const capped = run(slice({ safeSpendLimit: 20, capacitySafeSpendLimit: 400 }), allOn(), seed.log, at('2026-09-02T19:00:00'));
+  check('a number held down by the daily cap is not reported as running low',
+    !capped.records.some(r => r.ruleId === 'safe-spend-low'), capped.records.map(r => r.ruleId).join(','));
 
   // Payday moves the number by design and the payday rule already covers it.
   const paydayDay = slice({

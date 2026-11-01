@@ -45,10 +45,11 @@ export interface NotificationStateSlice {
   // Today's allowance AFTER Velocity reshapes it. Correct for "did you overspend
   // today", wrong for "is your position dangerous".
   safeSpendLimit: number;
-  // The unshaped figure, before pacing. A weekday trimmed to fund the weekend is
-  // a deliberate reallocation, not a loss of capacity, so capacity questions must
-  // be asked against this.
-  flatSafeSpendLimit: number;
+  // What the position can actually afford per day, before anything the user
+  // chose to hold back: the hard daily cap, the spend tier and pacing. A number
+  // kept at R1 500 by the user's own cap is not a thin position, so capacity
+  // questions ("is this running low?") must be asked against this.
+  capacitySafeSpendLimit: number;
   liquidAssets: number;
   // Bills and subscriptions already reserved before payday. Needed because
   // calculateRawSafeSpend clamps at 0, which hides whether a £0 daily number

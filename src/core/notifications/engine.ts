@@ -28,7 +28,7 @@ import {
 } from './policy';
 import { loadLog, loadPrefs, saveLog, savePrefs, defaultLog, defaultPrefs } from './storage';
 import { isSilentMatch, RULES, type NotificationRule, type NotificationStateSlice, type RuleMatch } from './rules';
-import { calculateFlatSafeSpend } from '../math';
+import { calculateRawSafeSpend } from '../math';
 import { planSchedule, planSignature } from './projection';
 import {
   CATEGORY_META,
@@ -184,7 +184,7 @@ export function toStateSlice(state: StoreState, now?: Date): NotificationStateSl
     hasCompletedOnboarding: state.hasCompletedOnboarding,
     monthlyTakeHome:        state.monthlyTakeHome,
     safeSpendLimit:         state.safeSpendLimit,
-    flatSafeSpendLimit:     calculateFlatSafeSpend(state, now),
+    capacitySafeSpendLimit: calculateRawSafeSpend(state, now),
     liquidAssets:           state.liquidAssets,
     upcomingBills:          state.upcomingBills ?? 0,
     nextPayday:             state.nextPayday,

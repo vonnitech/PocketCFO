@@ -121,13 +121,15 @@ export function assessRisk(state: NotificationStateSlice, now: Date): RiskAssess
 
   const daysToPayday = state.nextPayday ? calculateDaysUntilPayday(state.nextPayday, now) : 0;
 
-  // Asked against the UNSHAPED figure. Velocity moves money between days
-  // without changing how much there is, so a deliberately thin Tuesday funding
-  // a fat Saturday is not a thin position. Reading the paced number here turned
-  // a pacing preference into a daily risk alert about a problem the user had
-  // chosen and already knew about.
-  const capacityDaily = state.flatSafeSpendLimit > 0
-    ? state.flatSafeSpendLimit
+  // Asked against what the position can afford, before anything the user chose
+  // to hold back. Velocity moves money between days without changing how much
+  // there is, and the hard daily cap and spend tier are limits set on purpose,
+  // so none of them makes a position thin. Reading the paced number here turned
+  // a pacing preference into a daily risk alert, and reading the capped one
+  // warned "running low" every day to someone capped at R1 500 with a large
+  // balance.
+  const capacityDaily = state.capacitySafeSpendLimit > 0
+    ? state.capacitySafeSpendLimit
     : state.safeSpendLimit;
 
   const criticallyLow =
