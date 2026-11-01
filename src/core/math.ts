@@ -57,7 +57,10 @@ export const CASH_INFLOW_CATEGORIES = new Set(['INCOME', 'VAULT_WITHDRAWAL']);
 export const isCashInflow = (category: string | undefined | null): boolean =>
   !!category && CASH_INFLOW_CATEGORIES.has(category);
 
-const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
+// PENALTY rows are zero-amount markers for money moved to a vault (the Daily
+// review offset, and the old overspend penalty). Moving money to a vault is not
+// spending, so neither they nor flipAmount count towards the day's drain.
+const DISCRETIONARY_CATEGORIES = new Set(['SAVINGS', 'VAULT_DEPOSIT', 'PENALTY', 'DEBT_PAYMENT', 'BILL_PAYMENT', 'SUBSCRIPTION_PAYMENT', 'INCOME', 'VAULT_TRANSFER', 'VAULT_WITHDRAWAL']);
 
 // `now` defaults to the real clock, but callers that are evaluating "as of" some
 // other moment must pass theirs. Reading the wall clock here regardless meant a
@@ -455,7 +458,7 @@ export const calculateDangerProgress = (dailySpend: number, tierLimit: number): 
 export const calculateDailyDrain = (transactionsToday: any[]): number => {
   return transactionsToday
     .filter(tx => !DISCRETIONARY_CATEGORIES.has(tx.category))
-    .reduce((acc, tx) => acc + tx.amount + tx.flipAmount, 0);
+    .reduce((acc, tx) => acc + tx.amount, 0);
 };
 
 export const calculateDailySurplus = (safeSpendLimit: number, dailyDrain: number): number => {

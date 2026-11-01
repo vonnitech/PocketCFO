@@ -30,7 +30,9 @@ import { useFirstMove } from "../hooks/useFirstMove";
 
 // Categories excluded from the Recent Activity feed — purely internal moves only.
 // Bills and debt payments should remain visible so users have a paper trail.
-const ACTIVITY_HIDDEN = new Set(["VAULT_TRANSFER"]);
+// PENALTY rows are zero-amount markers for money moved to a vault; the
+// matching "MOVED TO VAULT" savings row already shows it.
+const ACTIVITY_HIDDEN = new Set(["VAULT_TRANSFER", "PENALTY"]);
 
 const SPEND_CATEGORIES = [
   { key: "FOOD", label: "Food" },
@@ -1335,13 +1337,16 @@ export default function Dashboard() {
                 // Testing for "INCOME" alone showed withdrawals as money leaving.
                 const isIncome = isCashInflow(tx.category);
                 const isDebt = tx.category === "DEBT_PAYMENT";
+                // isFlip also marks money moved to a vault (SAVINGS rows), which
+                // is not a loss; only an overspent purchase gets the red tile.
+                const isOverspend = tx.isFlip && tx.category !== "SAVINGS";
                 return (
                   <div
                     key={tx.id}
                     className="flex items-center gap-3 px-5 py-3"
                   >
                     <div
-                      className={`w-8 h-8 rounded-xl border-2 border-border flex items-center justify-center shrink-0 ${isIncome ? "bg-action-capture border-black" : isDebt ? "bg-action-primary border-black" : tx.isFlip ? "bg-action-bleed border-black" : "bg-input"}`}
+                      className={`w-8 h-8 rounded-xl border-2 border-border flex items-center justify-center shrink-0 ${isIncome ? "bg-action-capture border-black" : isDebt ? "bg-action-primary border-black" : isOverspend ? "bg-action-bleed border-black" : "bg-input"}`}
                     >
                       {isIncome ? (
                         <ArrowDownLeft
@@ -1354,7 +1359,7 @@ export default function Dashboard() {
                           size={13}
                           strokeWidth={2.5}
                           className={
-                            tx.isFlip ? "text-white" : isDebt ? "text-primary-contrast" : "text-text-main"
+                            isOverspend ? "text-white" : isDebt ? "text-primary-contrast" : "text-text-main"
                           }
                         />
                       )}
@@ -1369,14 +1374,14 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right shrink-0">
                       <p
-                        className={`text-sm font-black italic tabular-nums ${isIncome ? "text-capture-readable" : tx.isFlip ? "text-action-bleed" : "text-text-main"}`}
+                        className={`text-sm font-black italic tabular-nums ${isIncome ? "text-capture-readable" : "text-text-main"}`}
                       >
                         {isIncome ? "+" : "-"}
                         {format(tx.amount)}
                       </p>
                       {tx.isFlip && tx.flipAmount > 0 && (
-                        <p className="dashboard-copy text-[11px] font-bold uppercase text-action-bleed">
-                          {format(tx.flipAmount)} taxed
+                        <p className="dashboard-copy text-[11px] font-bold uppercase text-capture-readable">
+                          {format(tx.flipAmount)} to vault
                         </p>
                       )}
                     </div>

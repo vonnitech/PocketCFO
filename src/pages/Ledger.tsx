@@ -24,7 +24,7 @@ const CATEGORY_META: Record<string, { label: string; bg: string; text: string }>
   DEBT_PAYMENT:     { label: 'Debt',       bg: 'bg-[#14b8a6]/20',         text: 'text-[#14b8a6]' },
   BILL_PAYMENT:     { label: 'Bill',       bg: 'bg-action-bleed/15',      text: 'text-action-bleed' },
   SUBSCRIPTION_PAYMENT: { label: 'Sub',    bg: 'bg-action-bleed/15',      text: 'text-action-bleed' },
-  PENALTY:          { label: 'Penalty',    bg: 'bg-action-bleed/20',      text: 'text-action-bleed' },
+  PENALTY:          { label: 'To vault',   bg: 'bg-action-capture/20',    text: 'text-capture-readable' },
   SOCIAL:           { label: 'Social',     bg: 'bg-[#facc15]/20',         text: 'text-[#facc15]' },
   PAYDAY:           { label: 'Payday',     bg: 'bg-action-primary',       text: 'text-primary-contrast' },
   OTHER:            { label: 'Spend',      bg: 'bg-input',                text: 'text-text-muted' },
@@ -50,7 +50,6 @@ const FILTER_TABS = [
   { id: 'DEBT_PAYMENT',     label: 'Debt' },
   { id: 'BILL_PAYMENT',     label: 'Bill' },
   { id: 'SUBSCRIPTION_PAYMENT', label: 'Sub' },
-  { id: 'PENALTY',          label: 'Penalty' },
   { id: 'SPEND',            label: 'Spend' },
 ];
 
@@ -115,6 +114,8 @@ export default function Ledger() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return transactions.filter(tx => {
+      // Zero-amount marker for money moved to a vault; the SAVINGS row shows it.
+      if (tx.category === 'PENALTY') return false;
       if (category === 'SPEND') {
         if (!SPEND_FILTER_CATEGORIES.has(tx.category)) return false;
       } else if (category !== 'ALL' && tx.category !== category) {

@@ -60,8 +60,12 @@ function txType(category: string): 'Income' | 'Transfer' | 'Bill' | 'Spend' {
   return 'Spend';
 }
 
+// PENALTY rows are zero-amount markers for money moved to a vault; the matching
+// SAVINGS row already carries the money, so exports leave the marker out.
+const isVaultMarker = (t: Transaction) => t.category === 'PENALTY';
+
 export function exportLedgerCSV(transactions: Transaction[]): void {
-  const rows = [...transactions]
+  const rows = transactions.filter(t => !isVaultMarker(t))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map(t => ({
       Date:     fmtDate(t.date),
@@ -70,7 +74,7 @@ export function exportLedgerCSV(transactions: Transaction[]): void {
       Amount:   t.amount.toFixed(2),
       Type:     txType(t.category),
       Flip:     t.isFlip ? 'YES' : 'NO',
-      Penalty:  (t.flipAmount || 0).toFixed(2),
+      'Moved to vault': (t.flipAmount || 0).toFixed(2),
     }));
   const csv = Papa.unparse(rows);
   downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `stackpiggy_ledger.csv`);
@@ -115,7 +119,7 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
   XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
 
   // Ledger tab
-  const ledgerRows = [...snap.transactions]
+  const ledgerRows = snap.transactions.filter(t => !isVaultMarker(t))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map(t => ({
       Date:     fmtDate(t.date),
@@ -123,7 +127,7 @@ export function exportWorkbookXLSX(snap: ExportSnapshot): void {
       Category: t.category,
       Amount:   t.amount,
       Flip:     t.isFlip ? 'YES' : 'NO',
-      Penalty:  t.flipAmount || 0,
+      'Moved to vault': t.flipAmount || 0,
     }));
   const ledgerSheet = XLSX.utils.json_to_sheet(ledgerRows);
   ledgerSheet['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 12 }, { wch: 8 }, { wch: 12 }];
@@ -231,7 +235,7 @@ export async function exportReportPDF(snap: ExportSnapshot): Promise<void> {
   // Recent transactions (last 30 days)
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const recentTxs = snap.transactions
-    .filter(t => new Date(t.date).getTime() >= cutoff)
+    .filter(t => !isVaultMarker(t) && new Date(t.date).getTime() >= cutoff)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   if (recentTxs.length > 0) {
