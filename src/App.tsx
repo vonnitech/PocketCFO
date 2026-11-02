@@ -97,7 +97,7 @@ function RouteFallback() {
 
 function TopHeaderFallback() {
   return (
-    <div className="shrink-0 z-50 w-full flex md:hidden items-center gap-2.5 px-4 pb-3 header-pt-safe bg-base border-b-[3px] border-border dark:border-b dark:border-border/50">
+    <div className="shrink-0 z-50 w-full flex md:hidden items-center gap-2.5 px-4 pb-3 header-pt-safe bg-page border-b-[3px] border-border dark:border-b dark:border-border/50">
       <div className="w-10 h-10 rounded-xl bg-input/60" />
       <div className="h-4 w-24 rounded bg-input/60" />
     </div>
@@ -121,7 +121,7 @@ function NavigationFallback() {
 
 function SyncFallback() {
   return (
-    <div className="fixed inset-0 bg-base dot-bg flex items-center justify-center font-mono">
+    <div className="fixed inset-0 bg-page dot-bg flex items-center justify-center font-mono">
       <div className="bg-surface border-4 border-black rounded-3xl px-6 py-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted animate-pulse">
           SYNCING DATA...
@@ -429,7 +429,7 @@ function App() {
   // Supabase env vars missing — show setup instructions
   if (!isSupabaseConfigured) {
     return (
-      <div className="fixed inset-0 bg-base dot-bg flex items-center justify-center px-4 font-mono">
+      <div className="fixed inset-0 bg-page dot-bg flex items-center justify-center px-4 font-mono">
         <div className="w-full max-w-sm bg-surface border-4 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4">
           <div className="inline-flex px-3 py-1 bg-action-bleed border-2 border-black rounded-full text-white text-[10px] font-black tracking-widest uppercase">
             SETUP REQUIRED
@@ -468,7 +468,7 @@ function App() {
     ));
   const showLanding = !installedApp;
   const authScreen = (initialMode: 'login' | 'signup') => (
-    <div className="min-h-screen bg-base dot-bg text-text-main font-sans overflow-x-hidden p-4">
+    <div className="min-h-screen bg-page dot-bg text-text-main font-sans overflow-x-hidden p-4">
       <AuthGate key={initialMode} initialMode={initialMode} recoveryMode={false} onRecoveryDone={() => setRecoveryMode(false)} />
     </div>
   );
@@ -492,7 +492,7 @@ function App() {
               <Route path="/signup" element={authScreen('signup')} />
               {legalRoutes}
               <Route path="*" element={
-                <div className="min-h-screen bg-base dot-bg text-text-main font-sans overflow-x-hidden p-4">
+                <div className="min-h-screen bg-page dot-bg text-text-main font-sans overflow-x-hidden p-4">
                   {withPageWrapper(<NotFound />)}
                 </div>
               } />
@@ -513,7 +513,7 @@ function App() {
         <Router>
           <PageviewTracker />
           <ScrollToTop />
-          <div className="h-screen bg-base dot-bg text-text-main font-sans overflow-y-auto overflow-x-hidden relative">
+          <div className="h-screen bg-page dot-bg text-text-main font-sans overflow-y-auto overflow-x-hidden relative">
             <main id="main-scroll" className="min-h-screen min-w-0 p-4 pt-4 md:p-8 relative">
               <div className="max-w-4xl min-w-0 mx-auto">
                 <Routes>
@@ -543,7 +543,7 @@ function App() {
         <PaydayBanner />
         <ProUpsellPopover />
         <NotificationToaster />
-        <div className="h-screen bg-base dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">
+        <div className="h-screen bg-page dot-bg text-text-main font-sans flex flex-col md:flex-row overflow-hidden relative">
           <Suspense fallback={<TopHeaderFallback />}>
             <TopHeader />
           </Suspense>
