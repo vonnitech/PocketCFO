@@ -1,5 +1,6 @@
 import { Lock } from 'lucide-react';
 import { useProLocked } from '../lib/pro';
+import { PRO_CHECKOUT_OPEN } from '../lib/pricing';
 
 // Sets expectations before the user invests effort: free users see this at the top
 // of a Pro tool so the later save-action wall reads as honest, not surprise-gated.
@@ -8,7 +9,7 @@ export function PreviewChip({ action = 'save' }: { action?: string }) {
   if (!locked) return null;
   return (
     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-action-primary/20 border-2 border-black rounded-full text-[10px] font-black uppercase tracking-widest text-text-main">
-      <Lock size={11} strokeWidth={3} /> Pro preview · upgrade to {action}
+      <Lock size={11} strokeWidth={3} /> Pro preview · {PRO_CHECKOUT_OPEN ? `upgrade to ${action}` : 'Pro opens soon'}
     </div>
   );
 }
