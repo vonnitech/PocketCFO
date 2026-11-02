@@ -7,6 +7,8 @@ import { MAX_IMPORT_ROWS, validateParsedTable, validateStatementFile } from './f
 
 import { Transaction, Subscription, Vault } from '../types';
 import { Debt } from '../store/useStore';
+import { formatCurrency } from '../lib/utils';
+import { currencyDef, getActiveCurrency } from '../lib/currency';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -16,8 +18,20 @@ function fmtDate(iso: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Amounts in the PDF use the user's own currency. The PDF's built-in Helvetica
+// font only covers Western European characters, so locale spacing is turned
+// into plain spaces, and a symbol it cannot draw (₹, ₱, ฿, ...) falls back to
+// the ISO code (e.g. "INR 1,375.00").
 function fmtMoney(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const text = formatCurrency(n).replace(/[   ]/g, ' ').replace(/−/g, '-');
+  if (!/[^\x20-\x7E -ÿ€’]/.test(text)) return text;
+  const def = currencyDef(getActiveCurrency());
+  try {
+    return new Intl.NumberFormat(def.locale, { style: 'currency', currency: def.code, currencyDisplay: 'code' })
+      .format(n).replace(/[   ]/g, ' ').replace(/−/g, '-');
+  } catch {
+    return `${def.code} ${n.toFixed(2)}`;
+  }
 }
 
 // Spreadsheet programs may execute cells beginning with formula markers. Text

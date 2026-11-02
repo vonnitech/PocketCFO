@@ -17,9 +17,23 @@
 
 /* ── Palette and type ─────────────────────────────────────────────────────── */
 
+/* Digits for the mono labels. DM Mono draws its zero with a slash, which made
+   amounts inside labels ("R50 000 @ 5%") look different from every other number
+   in the app. This face covers only 0-9 and comes first in --font-mono, so
+   labels keep DM Mono's letters while their digits match Manrope. It is the same
+   file index.html already loads for Manrope, so nothing extra is downloaded. */
+@font-face {
+  font-family: "Label Digits";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/manrope/v23/xn7gYHE41ni1AdIRggexSg.woff2) format("woff2");
+  unicode-range: U+0030-0039;
+}
+
 :root {
   --font-sans: "Manrope", system-ui, sans-serif;
-  --font-mono: "DM Mono", ui-monospace, monospace;
+  --font-mono: "Label Digits", "DM Mono", ui-monospace, monospace;
 
   /* The page is a shade deeper than the landing page's cream so the paper-white
      cards stand clear of it. At the same cream they washed into the page. */
