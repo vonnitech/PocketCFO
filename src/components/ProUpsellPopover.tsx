@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Lock, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { PRICING } from '../lib/pricing';
+import { PRICING, PRO_CHECKOUT_OPEN } from '../lib/pricing';
 import { logProductEvent } from '../core/telemetry';
 
 // Single global instance (mounted once in App.tsx). Any ProAction click dispatches
@@ -48,7 +48,9 @@ export function ProUpsellPopover() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-black uppercase tracking-tight text-text-main">This preview saves with Pro</p>
             <p className="text-[11px] font-bold text-text-muted leading-snug mt-0.5">
-              Preview the tool free. Upgrade to keep results and use the full action set. From {PRICING.monthly.price}/mo or {PRICING.annual.price}/yr, plus tax where applicable.
+              {PRO_CHECKOUT_OPEN
+                ? <>Preview the tool free. Upgrade to keep results and use the full action set. From {PRICING.monthly.price}/mo or {PRICING.annual.price}/yr, plus tax where applicable.</>
+                : <>Preview the tool free. Pro keeps results and unlocks the full action set. Pro upgrades open soon.</>}
             </p>
             <div className="flex gap-2 mt-3">
               <Link to="/settings#pro"

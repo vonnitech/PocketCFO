@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { TrendingUp, Plus, Trash2, ChevronDown, Link as LinkIcon, Zap, Target, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { currencySymbol } from '../lib/currency';
+import { currencyDef, currencySymbol, getActiveCurrency } from '../lib/currency';
+import { formatWhole } from '../lib/utils';
 import { PreviewChip } from '../components/PreviewChip';
 import { ProAction } from '../components/ProAction';
 
@@ -31,15 +32,21 @@ function yearsToFire(assets: number, monthly: number, target: number): number | 
   return null;
 }
 
-function fmt(n: number): string {
-  const s = currencySymbol();
-  if (n >= 1_000_000) return `${s}${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${s}${(n / 1_000).toFixed(0)}K`;
-  return `${s}${n.toFixed(0)}`;
-}
+const fmtFull = formatWhole;
 
-function fmtFull(n: number): string {
-  return currencySymbol() + Math.round(n).toLocaleString();
+const dayLabel = (iso: string) => {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString(currencyDef(getActiveCurrency()).locale, { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+// Short axis labels: "R 150 k", "R 1,2 m".
+function fmtAxis(n: number): string {
+  const def = currencyDef(getActiveCurrency());
+  try {
+    return new Intl.NumberFormat(def.locale, { style: 'currency', currency: def.code, notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  } catch {
+    return fmtFull(n);
+  }
 }
 
 // These stat cards are a third of the row, so a six-figure income overruns the
@@ -50,62 +57,74 @@ function statSize(text: string): string {
 }
 
 // ── Income Step Chart ─────────────────────────────────────────────────────────
-const CVW = 400;
-const CVH = 140;
-const CPAD = { t: 12, r: 12, b: 24, l: 52 };
-const CPW = CVW - CPAD.l - CPAD.r;
-const CPH = CVH - CPAD.t - CPAD.b;
+// Drawn at its real size rather than as a small SVG scaled to the card: scaling
+// blew the labels up to headline size and clipped the last date. The line and
+// fill stretch to the plot area; dots and labels are HTML so they never distort.
 
-function IncomeChart({ points }: { points: { date: string; amount: number }[] }) {
+// A round top for the axis (a round step times a power of ten), so the
+// labels read 0 / 200 k / 400 k instead of 0 / 173 k / 311 k.
+function niceMax(v: number): number {
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * mag >= v) ?? 10;
+  return step * mag;
+}
+
+const monthLabel = (iso: string) => {
+  const [y, m] = iso.slice(0, 7).split('-').map(Number);
+  return new Date(y, (m || 1) - 1, 1).toLocaleDateString(currencyDef(getActiveCurrency()).locale, { month: 'short', year: 'numeric' });
+};
+
+function IncomeChart({ points, privacyMode }: { points: { date: string; amount: number }[]; privacyMode: boolean }) {
   if (points.length < 2) return null;
 
-  const maxAmt = Math.max(...points.map(p => p.amount)) * 1.15;
+  const top = niceMax(Math.max(...points.map(p => p.amount)) * 1.1);
   const dates = points.map(p => new Date(p.date).getTime());
   const minDate = dates[0];
-  const maxDate = dates[dates.length - 1];
-  const span = maxDate - minDate || 1;
+  const span = dates[dates.length - 1] - minDate || 1;
 
-  const px = (d: string) => CPAD.l + ((new Date(d).getTime() - minDate) / span) * CPW;
-  const py = (v: number) => CPAD.t + CPH * (1 - v / maxAmt);
+  // Plot coordinates in percent of the plot area.
+  const x = (d: string) => ((new Date(d).getTime() - minDate) / span) * 100;
+  const y = (v: number) => 100 - (v / top) * 100;
 
-  // Build step path: for each point, go horizontal then vertical
-  let pathD = `M ${px(points[0].date).toFixed(1)},${py(points[0].amount).toFixed(1)}`;
+  let pathD = `M ${x(points[0].date)},${y(points[0].amount)}`;
   for (let i = 1; i < points.length; i++) {
-    const x = px(points[i].date).toFixed(1);
-    const y = py(points[i].amount).toFixed(1);
-    const prevY = py(points[i - 1].amount).toFixed(1);
-    pathD += ` L ${x},${prevY} L ${x},${y}`;
+    pathD += ` L ${x(points[i].date)},${y(points[i - 1].amount)} L ${x(points[i].date)},${y(points[i].amount)}`;
   }
-  // Extend to right edge
-  const lastX = (CPAD.l + CPW).toFixed(1);
-  const lastY = py(points[points.length - 1].amount).toFixed(1);
-  pathD += ` L ${lastX},${lastY}`;
-
-  const areaD = pathD + ` L ${lastX},${(CPAD.t + CPH).toFixed(1)} L ${CPAD.l},${(CPAD.t + CPH).toFixed(1)} Z`;
-
-  const yLabels = [0, maxAmt * 0.5, maxAmt * 0.9].map(v => ({ v, y: py(v) }));
+  const areaD = `${pathD} L 100,100 L 0,100 Z`;
+  const ticks = [top, top / 2, 0];
 
   return (
-    <svg viewBox={`0 0 ${CVW} ${CVH}`} className="w-full h-auto" aria-label="Income history chart">
-      <path d={areaD} fill="var(--color-action-capture)" fillOpacity="0.12" />
-      <path d={pathD} fill="none" stroke="var(--color-action-capture)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {points.map(p => (
-        <circle key={p.date} cx={px(p.date)} cy={py(p.amount)} r="4"
-          fill="var(--color-action-capture)" stroke="var(--color-border)" strokeWidth="2" />
-      ))}
-      {yLabels.map(({ v, y }) => (
-        <text key={v} x={CPAD.l - 6} y={y + 4} textAnchor="end"
-          fontSize="8" fontFamily="monospace" fontWeight="bold" fill="var(--color-text-muted)">
-          {fmt(v)}
-        </text>
-      ))}
-      {points.map((p, i) => i === 0 || i === points.length - 1 ? (
-        <text key={p.date} x={px(p.date)} y={CVH - 4} textAnchor="middle"
-          fontSize="8" fontFamily="monospace" fontWeight="bold" fill="var(--color-text-muted)">
-          {p.date.slice(0, 7)}
-        </text>
-      ) : null)}
-    </svg>
+    <div className="flex gap-3" aria-label="Income history chart" role="img">
+      <div className="relative w-14 shrink-0 h-44 md:h-56">
+        {ticks.map(v => (
+          <span key={v} className="absolute right-0 -translate-y-1/2 text-[10px] font-bold text-text-muted tabular-nums whitespace-nowrap"
+            style={{ top: `${y(v)}%` }}>
+            {privacyMode ? '••' : fmtAxis(v)}
+          </span>
+        ))}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="relative h-44 md:h-56">
+          {ticks.map(v => (
+            <div key={v} className="absolute inset-x-0 border-t border-dashed border-border/20" style={{ top: `${y(v)}%` }} />
+          ))}
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible">
+            <path d={areaD} fill="var(--color-action-capture)" fillOpacity="0.12" />
+            <path d={pathD} fill="none" stroke="var(--color-action-capture)" strokeWidth="2.5"
+              strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          </svg>
+          {points.map(p => (
+            <span key={p.date} className="absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-action-capture border-2 border-border"
+              style={{ left: `${x(p.date)}%`, top: `${y(p.amount)}%` }} />
+          ))}
+        </div>
+        <div className="flex justify-between mt-2 text-[10px] font-bold uppercase tracking-wide text-text-muted">
+          <span>{monthLabel(points[0].date)}</span>
+          <span>{monthLabel(points[points.length - 1].date)}</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -139,6 +158,8 @@ export default function IncomeTracker() {
   const neededRate    = monthlyTakeHome > 0 && isFinite(neededMo)
     ? Math.min(100, (neededMo / monthlyTakeHome) * 100)
     : 0;
+  // On the 0-80% slider, about 6 points apart is where the two labels touch.
+  const markersClose = neededRate > 0 && neededRate <= 80 && Math.abs(neededRate - currentRate) < 6;
 
   // Form state
   const [showForm, setShowForm]   = useState(false);
@@ -246,7 +267,7 @@ export default function IncomeTracker() {
               <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">Monthly take-home</span>
             </div>
           </div>
-          <IncomeChart points={chartPoints} />
+          <IncomeChart points={chartPoints} privacyMode={privacyMode} />
         </div>
       )}
 
@@ -291,8 +312,10 @@ export default function IncomeTracker() {
             title="Savings rate simulator"
             className="w-full h-4 rounded-full appearance-none cursor-pointer accent-action-capture bg-input border-2 border-border"
           />
-          {/* Marker lines */}
-          <div className="relative mt-2 h-4">
+          {/* Marker lines. When the two rates sit close together the labels
+              would print on top of each other ("NOWIRE"), so they go on
+              separate rows. */}
+          <div className={`relative mt-2 ${markersClose ? 'h-8' : 'h-4'}`}>
             {/* Current rate marker */}
             <div
               className="absolute -translate-x-1/2 flex flex-col items-center"
@@ -307,8 +330,8 @@ export default function IncomeTracker() {
                 className="absolute -translate-x-1/2 flex flex-col items-center"
                 style={{ left: `${Math.min(100, (neededRate / 80) * 100)}%` }}
               >
-                <div className="w-px h-3 bg-action-primary" />
-                <span className="text-[8px] font-black uppercase tracking-wide text-action-primary whitespace-nowrap">FIRE</span>
+                <div className={`w-px bg-action-primary ${markersClose ? 'h-7' : 'h-3'}`} />
+                <span className="text-[8px] font-black uppercase tracking-wide text-primary-readable whitespace-nowrap">FIRE</span>
               </div>
             )}
           </div>
@@ -359,7 +382,7 @@ export default function IncomeTracker() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-black uppercase tracking-wider text-text-main truncate">{entry.label}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted">{entry.date} · {mask(entry.amount)}/mo</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-text-muted">{dayLabel(entry.date)} · {mask(entry.amount)}/mo</p>
                 </div>
                 <button
                   type="button"

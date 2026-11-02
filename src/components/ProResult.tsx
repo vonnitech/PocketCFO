@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Lock } from 'lucide-react';
+import { PRO_CHECKOUT_OPEN } from '../lib/pricing';
 import { useProResultLocked } from '../lib/pro';
 
 interface Props {
@@ -29,7 +30,7 @@ export function ProResult({ feature, children }: Props) {
           onClick={() => window.dispatchEvent(new CustomEvent('pro-upsell', { detail: { feature } }))}
           className="inline-flex items-center gap-2 px-5 h-12 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase tracking-widest text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
         >
-          <Lock size={14} strokeWidth={3} /> Upgrade to see your result
+          <Lock size={14} strokeWidth={3} /> {PRO_CHECKOUT_OPEN ? 'Upgrade to see your result' : 'Full result with Pro'}
         </button>
       </div>
     </div>

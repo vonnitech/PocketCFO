@@ -36,12 +36,19 @@ function nextMilestone(current: number): number {
   return next;
 }
 
-// ── SVG Chart ────────────────────────────────────────────────────────────────
-const VW = 400;
-const VH = 180;
-const PAD = { t: 14, r: 16, b: 28, l: 52 };
-const PW = VW - PAD.l - PAD.r;
-const PH = VH - PAD.t - PAD.b;
+// ── Chart ──────────────────────────────────────────────────────────────────────
+// Drawn at its real size rather than as a small SVG scaled to the card, which
+// blew the labels up to headline size. The axis runs to a round top, so its
+// labels stay apart however far the projection outgrows the FIRE number (they
+// used to sit at 0, half and the FIRE number, and piled on top of each other).
+// The line and fill stretch to the plot; dots and labels are HTML.
+
+function niceMax(v: number): number {
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * mag >= v) ?? 10;
+  return step * mag;
+}
 
 interface ChartProps {
   data: { age: number; value: number }[];
@@ -52,71 +59,79 @@ interface ChartProps {
 }
 
 function FireChart({ data, fireNumber, targetAge, currentAge, fireAge }: ChartProps) {
-  const maxVal = Math.max(fireNumber * 1.3, data[data.length - 1].value * 1.05, 1);
-  const totalYears = data.length - 1;
+  const top = niceMax(Math.max(fireNumber * 1.3, data[data.length - 1].value * 1.05, 1));
+  const totalYears = Math.max(data.length - 1, 1);
 
-  const px = (i: number) => PAD.l + (i / Math.max(totalYears, 1)) * PW;
-  const py = (v: number) => PAD.t + PH * (1 - Math.min(v / maxVal, 1));
+  const x = (i: number) => (i / totalYears) * 100;
+  const y = (v: number) => 100 - Math.min(v / top, 1) * 100;
 
-  const linePts = data.map((d, i) => `${px(i).toFixed(1)},${py(d.value).toFixed(1)}`).join(' ');
-  const areaPath = `M ${linePts} L ${px(totalYears).toFixed(1)},${(PAD.t + PH).toFixed(1)} L ${PAD.l},${(PAD.t + PH).toFixed(1)} Z`;
+  const line = data.map((d, i) => `${x(i)},${y(d.value)}`).join(' L ');
+  const pathD = `M ${line}`;
+  const areaD = `${pathD} L 100,100 L 0,100 Z`;
 
-  const fireY = py(fireNumber).toFixed(1);
+  const fireY = y(fireNumber);
   const targetI = Math.min(targetAge - currentAge, totalYears);
-  const targetX = px(targetI).toFixed(1);
-
-  const yLabels = [
-    { val: 0, y: py(0) },
-    { val: fireNumber / 2, y: py(fireNumber / 2) },
-    { val: fireNumber, y: py(fireNumber) },
-  ];
+  const crossI = data.findIndex(d => d.value >= fireNumber);
+  const ticks = [top, top / 2, 0];
 
   const xLabels = [
-    { label: String(currentAge), x: px(0) },
-    { label: String(targetAge), x: px(targetI) },
-    ...(totalYears > targetI + 4 ? [{ label: String(currentAge + totalYears), x: px(totalYears) }] : []),
+    { label: String(currentAge), i: 0 },
+    { label: String(targetAge), i: targetI },
+    ...(totalYears > targetI + 4 ? [{ label: String(currentAge + totalYears), i: totalYears }] : []),
   ];
 
-  const crossI = data.findIndex(d => d.value >= fireNumber);
-  const crossX = crossI >= 0 ? px(crossI) : null;
-
   return (
-    <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full h-auto" aria-label="FIRE trajectory chart">
-      <path d={areaPath} fill="var(--color-action-capture)" fillOpacity="0.12" />
-      <line x1={PAD.l} y1={fireY} x2={VW - PAD.r} y2={fireY}
-        stroke="var(--color-action-primary)" strokeWidth="1.5" strokeDasharray="5,4" />
-      <line x1={targetX} y1={PAD.t} x2={targetX} y2={PAD.t + PH}
-        stroke="currentColor" strokeWidth="1" strokeDasharray="4,3" opacity="0.2" />
-      <polyline points={linePts} fill="none" stroke="var(--color-action-capture)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {crossX !== null && (
-        <circle cx={crossX} cy={fireY} r="5" fill="var(--color-action-primary)" stroke="var(--color-border)" strokeWidth="2" />
-      )}
-      {yLabels.map(({ val, y }) => (
-        <text key={val} x={PAD.l - 6} y={y + 4} textAnchor="end"
-          fontSize="8" fontFamily="monospace" fontWeight="bold" fill="var(--color-text-muted)">
-          {fmt(val)}
-        </text>
-      ))}
-      {xLabels.map(({ label, x }) => (
-        <text key={label} x={x} y={VH - 4} textAnchor="middle"
-          fontSize="9" fontFamily="monospace" fontWeight="bold" fill="var(--color-text-muted)">
-          {label}
-        </text>
-      ))}
-      {crossX !== null && fireAge !== null && (() => {
-        const nearEdge = crossI >= 0 && crossI <= 3;
-        return (
-          <text
-            x={nearEdge ? Number(crossX) + 8 : Number(crossX)}
-            y={Number(fireY) - 9}
-            textAnchor={nearEdge ? 'start' : 'middle'}
-            fontSize="8" fontFamily="monospace" fontWeight="bold" fill="var(--color-primary-readable)"
-          >
-            {currentAge + fireAge}
-          </text>
-        );
-      })()}
-    </svg>
+    <div className="flex gap-3" role="img" aria-label="FIRE trajectory chart">
+      <div className="relative w-14 shrink-0 h-48 md:h-60">
+        {ticks.map(v => (
+          <span key={v} className="absolute right-0 -translate-y-1/2 text-[10px] font-bold text-text-muted tabular-nums whitespace-nowrap"
+            style={{ top: `${y(v)}%` }}>
+            {fmt(v)}
+          </span>
+        ))}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="relative h-48 md:h-60">
+          {ticks.map(v => (
+            <div key={v} className="absolute inset-x-0 border-t border-dashed border-border/20" style={{ top: `${y(v)}%` }} />
+          ))}
+          <div className="absolute inset-y-0 border-l border-dashed border-border/30" style={{ left: `${x(targetI)}%` }} />
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible">
+            <path d={areaD} fill="var(--color-action-capture)" fillOpacity="0.12" />
+            <line x1="0" y1={fireY} x2="100" y2={fireY} stroke="var(--color-action-primary)" strokeWidth="1.5"
+              strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
+            <path d={pathD} fill="none" stroke="var(--color-action-capture)" strokeWidth="2.5"
+              strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          </svg>
+          {/* The FIRE line names itself above the line: at the right end, or the
+              left end when the crossing dot and its age label are over there. */}
+          <span className={`absolute ${crossI >= 0 && x(crossI) > 65 ? 'left-0' : 'right-0'} -translate-y-full pb-0.5 text-[10px] font-black uppercase tracking-wide text-primary-readable whitespace-nowrap`}
+            style={{ top: `${fireY}%` }}>
+            FIRE {fmt(fireNumber)}
+          </span>
+          {crossI >= 0 && (
+            <>
+              <span className="absolute w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-action-primary border-2 border-border"
+                style={{ left: `${x(crossI)}%`, top: `${fireY}%` }} />
+              {fireAge !== null && (
+                <span className={`absolute -translate-y-full pb-2 text-[11px] font-black text-primary-readable ${crossI <= 3 ? '' : '-translate-x-1/2'}`}
+                  style={{ left: `${x(crossI)}%`, top: `${fireY}%` }}>
+                  Age {currentAge + fireAge}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+        <div className="relative h-4 mt-2 text-[10px] font-bold text-text-muted tabular-nums">
+          {xLabels.map(({ label, i }, k) => (
+            <span key={label} className={`absolute ${k === 0 ? '' : i >= totalYears ? '-translate-x-full' : '-translate-x-1/2'}`}
+              style={{ left: `${x(i)}%` }}>
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -1,4 +1,5 @@
 import { currencySymbol } from './currency';
+import { formatWhole } from './utils';
 
 // Pure FIRE maths, shared by the FIRE calculator and its tests.
 // Annual growth after inflation, in percent. Users can override it; this is the starting value.
@@ -89,7 +90,7 @@ export function clampPct(raw: string, max: number): string {
 
 export function fmtFull(n: number): string {
   if (n > 0 && n < 1) return `<${currencySymbol()}1`;
-  return currencySymbol() + Math.round(n).toLocaleString();
+  return formatWhole(n);
 }
 
 export function targetProgress(current: number, target: number): number {

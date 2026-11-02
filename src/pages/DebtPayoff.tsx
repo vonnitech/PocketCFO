@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Zap, Check, X, Wallet, ChevronDown, Flame } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatWhole } from '../lib/utils';
 import { currencySymbol } from '../lib/currency';
 import { PreviewChip } from '../components/PreviewChip';
 import { ProAction } from '../components/ProAction';
@@ -124,8 +124,8 @@ export const DebtPayoff: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="min-w-0 overflow-hidden bg-surface border-4 border-border rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Total Debt</p>
-          <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${totalDebt.toLocaleString()}`)} font-black italic tracking-tighter text-text-main tabular-nums mt-1`}>
-            {currencySymbol()}{totalDebt.toLocaleString()}
+          <p className={`${amountFitClass} ${amountTextSize(formatWhole(totalDebt))} font-black italic tracking-tighter text-text-main tabular-nums mt-1`}>
+            {formatWhole(totalDebt)}
           </p>
         </div>
         <div className="bg-surface border-4 border-border rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
@@ -136,8 +136,8 @@ export const DebtPayoff: React.FC = () => {
         </div>
         <div className="min-w-0 overflow-hidden bg-surface border-4 border-action-bleed rounded-3xl p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-action-bleed">Interest Cost</p>
-          <p className={`${amountFitClass} ${amountTextSize(`${currencySymbol()}${Math.round(plan.totalInterest).toLocaleString()}`)} font-black italic tracking-tighter text-action-bleed tabular-nums mt-1`}>
-            {currencySymbol()}{Math.round(plan.totalInterest).toLocaleString()}
+          <p className={`${amountFitClass} ${amountTextSize(formatWhole(Math.round(plan.totalInterest)))} font-black italic tracking-tighter text-action-bleed tabular-nums mt-1`}>
+            {formatWhole(Math.round(plan.totalInterest))}
           </p>
         </div>
       </div>
@@ -151,7 +151,7 @@ export const DebtPayoff: React.FC = () => {
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
             Surplus applied on top of minimums
           </p>
-          <span className="text-3xl font-black italic text-capture-readable">${extraAmmo}</span>
+          <span className="text-3xl font-black italic text-capture-readable">{formatWhole(extraAmmo)}</span>
         </div>
         <input
           type="range"
@@ -190,7 +190,7 @@ export const DebtPayoff: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-1.5">
                       <span className="font-black uppercase text-sm tracking-tight text-text-main truncate">{debt.name}</span>
-                      <span className="font-black text-sm tabular-nums text-text-main ml-2 shrink-0">${debt.balance.toLocaleString()}</span>
+                      <span className="font-black text-sm tabular-nums text-text-main ml-2 shrink-0">{formatCurrency(debt.balance)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-input rounded-full overflow-hidden">
@@ -288,7 +288,7 @@ export const DebtPayoff: React.FC = () => {
                   <div className="bg-input border-2 border-border rounded-2xl px-3 py-2.5">
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">{payTarget.rate}% APR</p>
                     <p className="text-sm font-black uppercase tracking-tight text-text-main mt-0.5 truncate">{payTarget.name}</p>
-                    <p className="text-2xl font-black italic tabular-nums text-text-main mt-1">${payTarget.balance.toLocaleString()}</p>
+                    <p className="text-2xl font-black italic tabular-nums text-text-main mt-1">{formatCurrency(payTarget.balance)}</p>
                   </div>
 
                   <div>

@@ -6,6 +6,7 @@ import { Debt, BillQueueItem } from '../store/useStore';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { formatCurrency } from '../lib/utils';
+import { currencySymbol } from '../lib/currency';
 
 
 
@@ -182,7 +183,7 @@ export default function Config() {
       <Card badge="TOTAL SAVINGS" badgeColor="bg-action-capture" badgeTextColor={captureTxt}>
         <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2">Total Value Protected</p>
         <div className="text-3xl sm:text-4xl font-black italic text-capture-readable tracking-tighter tabular-nums">
-          ${(state.stats.lifetimeCapture || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {formatCurrency(state.stats.lifetimeCapture || 0)}
         </div>
         <p className="text-[10px] font-bold uppercase text-text-muted mt-3">Savings gains & cancelled subscriptions</p>
       </Card>
@@ -194,7 +195,7 @@ export default function Config() {
           <p className="text-[11px] font-bold text-text-muted">Your real bank balance, next payday, and upcoming bills determine what is cleared today</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Current Bank Balance ($)</label>
+              <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Current Bank Balance ({currencySymbol()})</label>
               <input
                 type="number"
                 title="Current Bank Balance"
@@ -327,7 +328,7 @@ export default function Config() {
                           <input
                             type="number"
                             min="0"
-                            placeholder="Amount $"
+                            placeholder={`Amount ${currencySymbol()}`}
                             value={newBillAmount}
                             onFocus={e => e.target.select()}
                             onChange={e => setNewBillAmount(e.target.value)}
@@ -389,7 +390,7 @@ export default function Config() {
           </p>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Hard Daily Cap ($)</label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Hard Daily Cap ({currencySymbol()})</label>
             <input
               type="number"
               title="Hard Daily Cap"
@@ -440,7 +441,7 @@ export default function Config() {
           <p className="text-[11px] font-bold text-text-muted">Monthly income & savings goal · bills are pulled automatically from your Pay Cycle recurring bills</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Monthly Take-Home ($)</label>
+              <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Monthly Take-Home ({currencySymbol()})</label>
               <input
                 type="number"
                 title="Monthly Take-Home"
@@ -452,7 +453,7 @@ export default function Config() {
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Monthly Savings Goal ($)</label>
+              <label className="text-[10px] font-bold uppercase tracking-wide text-text-muted block mb-2">Monthly Savings Goal ({currencySymbol()})</label>
               <input
                 type="number"
                 title="Monthly Savings Goal"
@@ -501,7 +502,7 @@ export default function Config() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-black italic uppercase text-sm tracking-tighter text-text-main">{debt.name}</h4>
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">${debt.balance.toLocaleString()} @ {debt.interestRate}% · Min ${debt.minPayment}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{formatCurrency(debt.balance)} @ {debt.interestRate}% · Min {formatCurrency(debt.minPayment)}</p>
                   </div>
                   <div className="flex gap-2">
                     <button type="button" aria-label="Edit debt" onClick={() => { setEditingDebtId(debt.id); setEditDebtFields({}); }} className="p-2 hover:bg-black/5 rounded-xl transition-colors"><Edit2 size={14} /></button>
@@ -515,9 +516,9 @@ export default function Config() {
             <div className="space-y-3 bg-input border-4 border-black rounded-2xl p-4">
               <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
                 <input autoFocus title="Debt Name" type="text" placeholder="Name (e.g. Credit Card A)" value={newDebtName} onChange={e => setNewDebtName(e.target.value)} className="col-span-2 bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none focus:border-action-bleed transition-colors" />
-                <input title="Balance" type="number" min="0" placeholder="Balance $" value={newDebtBalance} onChange={e => setNewDebtBalance(e.target.value)} className="bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" />
+                <input title="Balance" type="number" min="0" placeholder={`Balance ${currencySymbol()}`} value={newDebtBalance} onChange={e => setNewDebtBalance(e.target.value)} className="bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" />
                 <input title="Interest Rate" type="number" min="0" placeholder="Rate %" value={newDebtRate} onChange={e => setNewDebtRate(e.target.value)} className="bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" />
-                <input title="Min Payment" type="number" min="0" placeholder="Min Payment $" value={newDebtMin} onChange={e => setNewDebtMin(e.target.value)} className="col-span-2 bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" />
+                <input title="Min Payment" type="number" min="0" placeholder={`Min Payment ${currencySymbol()}`} value={newDebtMin} onChange={e => setNewDebtMin(e.target.value)} className="col-span-2 bg-surface border-4 border-black rounded-xl p-2 font-black text-sm text-black outline-none" />
               </div>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setIsAddingDebt(false)} className="px-4 h-11 bg-surface border-4 border-black rounded-full text-[10px] font-black uppercase">Cancel</button>
