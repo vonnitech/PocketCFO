@@ -61,7 +61,7 @@ export function Login({ onAuthenticated }: LoginProps) {
     'w-full bg-transparent border-4 border-black rounded-2xl px-4 py-3 font-mono font-bold text-sm text-text-main outline-none placeholder:text-text-muted focus:bg-surface transition-colors tracking-wide';
 
   return (
-    <div className="fixed inset-0 z-9999 bg-base dot-bg flex flex-col items-center justify-center px-4 font-mono">
+    <div className="fixed inset-0 z-9999 bg-page dot-bg flex flex-col items-center justify-center px-4 font-mono">
       <motion.div
         className="w-full max-w-sm"
         initial={{ opacity: 0, y: 24 }}

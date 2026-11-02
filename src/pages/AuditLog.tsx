@@ -7,6 +7,7 @@ import { CSVImport } from '../components/CSVImport';
 import { ProAction } from '../components/ProAction';
 import { WealthVsLifestyleChart } from '../components/WealthVsLifestyleChart';
 import { currencyDef, getActiveCurrency } from '../lib/currency';
+import { userKey } from '../lib/userScopedStorage';
 import { amountFitClass, amountTextSize } from '../lib/amountDisplay';
 
 type Period = 'week' | 'month' | 'all';
@@ -34,6 +35,21 @@ const CATEGORY_LABELS: Record<string, string> = {
 // ── Pivot Table ──────────────────────────────────────────────────────────────
 
 type PivotInterval = 'month' | 'week';
+
+// The chosen range and pivot view survive a refresh, per user. A remembered
+// choice that is no longer valid (or unreadable storage) falls back to the default.
+function loadChoice<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const v = localStorage.getItem(userKey(key));
+    return allowed.includes(v as T) ? (v as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveChoice(key: string, value: string): void {
+  try { localStorage.setItem(userKey(key), value); } catch { /* ignore */ }
+}
 
 // Categories ignored entirely (internal moves)
 // PENALTY rows are zero-amount markers for money moved to a vault; the matching
@@ -173,7 +189,8 @@ function formatCell(n: number): string {
 
 const PivotTable: React.FC = () => {
   const transactions = useStore(s => s.transactions);
-  const [interval, setInterval] = useState<PivotInterval>('month');
+  const [interval, setIntervalState] = useState<PivotInterval>(() => loadChoice('breakdown-pivot-interval', ['month', 'week'] as const, 'month'));
+  const setInterval = (v: PivotInterval) => { setIntervalState(v); saveChoice('breakdown-pivot-interval', v); };
 
   const matrix = useMemo(() => buildPivot(transactions, interval), [transactions, interval]);
 
@@ -362,11 +379,12 @@ export const AuditLog: React.FC = () => {
   const transactions = useStore(s => s.transactions);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const [shouldLoadChart, setShouldLoadChart] = useState(false);
-  const [period, setPeriod] = useState<Period>('month');
+  const [period, setPeriod] = useState<Period>(() => loadChoice('breakdown-period', ['week', 'month', 'all'] as const, 'month'));
   const [csvOpen, setCsvOpen] = useState(false);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
+    saveChoice('breakdown-period', p);
     setShouldLoadChart(false);
   };
 
