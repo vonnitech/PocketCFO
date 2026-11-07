@@ -56,31 +56,9 @@
 .lp .button-primary:hover { background: #ffe371; }
 .lp .text-link { border-bottom: 1px solid var(--ink); padding-bottom: .22rem; font: 500 .72rem var(--mono); text-transform: uppercase; letter-spacing: .02em; }
 .lp .microcopy { margin: 1.25rem 0 0; font: .64rem/1.5 var(--mono); color: var(--muted); }
-.lp .hero-product { position: relative; padding: 1.3rem; background: var(--ink); border-radius: 1.55rem; color: var(--paper); box-shadow: 11px 11px 0 var(--acid); transform: rotate(1.4deg); }
 .lp .product-topline, .lp .dashboard-foot, .lp .daily-card-top, .lp .pace-board-top, .lp .allocation-heading { display: flex; align-items: center; justify-content: space-between; gap: .8rem; font: .62rem var(--mono); letter-spacing: .04em; }
-.lp .product-date { color: rgba(255,255,255,.58); }
-.lp .live-pill { display: inline-flex; align-items: center; gap: .35rem; padding: .42rem .54rem; background: rgba(255,255,255,.1); border-radius: 999px; color: var(--paper); }
-.lp .live-pill i { width: .42rem; height: .42rem; border-radius: 50%; background: var(--electric); box-shadow: 0 0 0 3px rgba(185,255,33,.15); }
-.lp .cleared-card { margin-top: 1.1rem; padding: 1.6rem; background: var(--paper); color: var(--ink); border-radius: 1.05rem; }
 .lp .card-label, .lp .metric-card span, .lp .daily-numbers span, .lp .allocation-heading, .lp .reserved-total span { display: block; font: .6rem var(--mono); letter-spacing: .08em; }
-.lp .cleared-card strong { display: block; margin: .5rem 0 .4rem; font-size: clamp(3.7rem, 6vw, 5.7rem); line-height: .9; letter-spacing: -.1em; }
-.lp .cleared-card strong span { font-size: .42em; }
-.lp .amount-rule { width: 100%; height: 8px; overflow: hidden; border-radius: 99px; background: #e6e2d6; }
-.lp .amount-rule span { display: block; width: 63%; height: 100%; background: var(--green); border-right: 2px solid var(--ink); }
-.lp .cleared-card p { margin: .55rem 0 0; font: .63rem var(--mono); color: #5f5b52; }
-.lp .dashboard-rail { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
-.lp .metric-card { min-height: 140px; padding: 1rem; border-radius: .9rem; }
-.lp .metric-card strong { display: block; margin: .42rem 0; font-size: 2.35rem; line-height: .95; letter-spacing: -.08em; }
-.lp .metric-card small { font: .55rem var(--mono); letter-spacing: .05em; }
-.lp .metric-card p { margin: .65rem 0 0; font: .57rem/1.35 var(--mono); }
-.lp .metric-dark { background: #343630; }
-.lp .metric-yellow { background: var(--acid); color: var(--ink); }
-.lp .dashboard-foot { margin-top: .8rem; padding: .55rem .2rem .05rem; color: rgba(255,255,255,.7); }
-.lp .dashboard-foot strong { color: var(--paper); }
 .lp .status-good, .lp .on-track { color: var(--electric); }
-.lp .cursor-tag { position: absolute; padding: .43rem .58rem; font: .6rem var(--mono); background: var(--acid); color: var(--ink); border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
-.lp .cursor-one { right: -2.2rem; top: 24%; transform: rotate(7deg); }
-.lp .cursor-two { left: -2.4rem; bottom: 14%; background: var(--electric); transform: rotate(-5deg); }
 .lp .proof-strip { display: flex; align-items: center; justify-content: center; gap: clamp(1rem, 4vw, 3rem); padding: 1rem; overflow: hidden; color: var(--paper); background: var(--ink); white-space: nowrap; font: .65rem var(--mono); letter-spacing: .05em; }
 .lp .proof-strip span { color: var(--acid); }
 .lp .tension { display: grid; grid-template-columns: .62fr 1.38fr; gap: clamp(2rem, 7vw, 7.5rem); padding: 9rem 0; }
@@ -103,9 +81,6 @@
 .lp .pipeline-step:last-child { border: 0; }
 .lp .step-no { color: rgba(255,255,255,.45); font: .65rem var(--mono); }
 .lp .step-icon { width: 58px; height: 58px; margin: 4.2rem 0 1.55rem; display: grid; place-items: center; color: var(--ink); background: var(--acid); border-radius: 50%; font-size: 1.9rem; }
-.lp .icon-calendar { border-radius: .7rem; background: var(--electric); }
-.lp .icon-calendar span { width: 28px; height: 25px; border: 3px solid var(--ink); border-top-width: 8px; }
-.lp .icon-funnel { background: #ff8868; clip-path: polygon(0 0, 100% 0, 65% 46%, 65% 100%, 35% 84%, 35% 46%); }
 .lp .pipeline-step h3 { margin-bottom: .7rem; font-size: 1.55rem; }
 .lp .pipeline-step p { max-width: 290px; margin: 0; color: rgba(255,255,255,.62); line-height: 1.6; }
 .lp .feature-stage { display: grid; grid-template-columns: .75fr 1.25fr; gap: clamp(2.5rem, 8vw, 8rem); align-items: center; padding: 8.5rem 0; }
@@ -243,7 +218,6 @@
 .lp .nav-cta { padding:.68rem .8rem; font-size:.61rem; }
 .lp .hero { min-height:auto; grid-template-columns:1fr; gap:3rem; padding:4.4rem 0 4.8rem; }
 .lp .hero-copy { max-width:650px; }
-.lp .hero-product { width:min(100%, 580px); justify-self:center; }
 .lp .tension, .lp .feature-stage, .lp .pacing-layout, .lp .daily-section, .lp .ledger-layout, .lp .faq-section { grid-template-columns:1fr; }
 .lp .tension { gap:2rem; padding:6rem 0; }
 .lp .tension-copy { grid-template-columns:1fr; }
@@ -268,13 +242,6 @@
 .lp .nav-cta span { font-size:.9rem; }
 .lp .hero { padding-top:3.1rem; }
 .lp .hero-actions { align-items:flex-start; flex-direction:column; }
-.lp .hero-product { padding:1rem; box-shadow:7px 7px 0 var(--acid); }
-.lp .cleared-card { padding:1.25rem; }
-.lp .dashboard-rail { gap:.5rem; }
-.lp .metric-card { min-height:120px; padding:.75rem; }
-.lp .metric-card strong { font-size:1.9rem; }
-.lp .cursor-one { right:-.35rem; top:20%; }
-.lp .cursor-two { left:-.2rem; bottom:12%; }
 .lp .proof-strip { justify-content:flex-start; padding-left:1rem; font-size:.57rem; gap:1rem; }
 .lp .proof-strip p:nth-of-type(n/**/+3), .lp .proof-strip span:nth-of-type(n/**/+2) { display:none; }
 .lp .tension h2, .lp .section-heading h2, .lp .feature-side h2, .lp .pacing-copy h2, .lp .daily-copy h2, .lp .ledger-copy h2, .lp .faq-intro h2, .lp .closing h2 { font-size:2.65rem; }
@@ -416,3 +383,236 @@
   font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em;
 }
 .lp .day-bars strong { font-size: .62rem; }
+
+/* ==== App look ============================================================
+   The landing page wears the app's clothes: the same cream page and dots,
+   cream cards with a soft lift, the app palette (yellow, green, pink, never
+   the old lime), the app's two-tone icons, and the bold yellow card kept for
+   the one number that matters. Nothing is tilted and nothing nudges on hover.
+   This block comes last, so it wins over the older rules above. */
+.lp {
+  --cream: #EFEADD;
+  --paper: #FFFDF8;
+  --field: #F1ECE1;
+  --acid: #FACC15;
+  --electric: #22C55E;
+  --green: #22C55E;
+  --pink: #FB5D95;
+  --muted: #635F56;
+  --line: rgba(17, 17, 15, 0.14);
+  --lift: 0 1px 0 rgba(17,17,15,.04), 0 10px 24px -14px rgba(17,17,15,.28);
+}
+.lp .page-noise { opacity: 1; background-image: radial-gradient(circle, rgba(17,17,15,.13) 1px, transparent 1px); background-size: 28px 28px; }
+.lp h1, .lp h2, .lp h3 { letter-spacing: -.055em; }
+.lp h1 em::after, .lp h2 em::after { transform: none; border-radius: 3px; background: var(--acid); }
+.lp .eyebrow { color: var(--muted); }
+.lp .eyebrow-light { color: var(--muted); }
+.lp .eyebrow-light .eyebrow-dot, .lp .eyebrow-dot { background: var(--acid); border: 1px solid var(--ink); }
+
+/* Buttons: dark like the app's Log spend, no hover nudge. */
+.lp .button { border-radius: .8rem; transition: background .2s ease, color .2s ease, opacity .2s ease; }
+.lp .button:hover { transform: none; box-shadow: none; }
+.lp .button-primary { color: var(--paper); background: var(--ink); border: 1.5px solid var(--ink); }
+.lp .button-primary:hover { background: #34342f; }
+.lp .button-ghost, .lp .button-outline-light { color: var(--ink); background: transparent; border: 1.5px solid var(--ink); border-radius: .8rem; }
+.lp .button-ghost:hover, .lp .button-outline-light:hover { color: var(--ink); background: var(--field); box-shadow: none; }
+.lp .nav-cta:hover { transform: none; }
+
+/* Shared pieces of the daily card used in the hero pile. */
+.lp .hero-daily-top { display: flex; align-items: center; justify-content: space-between; gap: .8rem; font: 500 .66rem var(--mono); letter-spacing: .08em; }
+.lp .hero-chip { padding: .38rem .7rem; color: var(--acid); background: var(--ink); border-radius: 999px; }
+.lp .hero-amount { display: block; margin: 1.1rem 0 .6rem; font-size: clamp(4rem, 7.4vw, 6.6rem); line-height: .9; font-weight: 800; letter-spacing: -.07em; font-variant-numeric: tabular-nums; }
+.lp .hero-amount span { font-size: .48em; }
+.lp .hero-log { display: block; margin-top: 1.4rem; padding: 1rem; color: var(--paper); background: var(--ink); border-radius: .9rem; text-align: center; font: 500 .74rem var(--mono); letter-spacing: .12em; }
+
+/* Hero: a pile of the app's real cards, overlapping like a hand of cards. */
+.lp .hero-pile { position: relative; height: clamp(410px, 38vw, 490px); }
+.lp .pile-card { position: absolute; padding: 1rem 1.1rem; color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 1.2rem; box-shadow: 5px 5px 0 var(--ink); }
+.lp .pile-card span, .lp .pile-tag { font: 500 .6rem var(--mono); letter-spacing: .08em; }
+.lp .pile-card > strong { display: block; margin-top: .35rem; font-size: clamp(1.4rem, 2.4vw, 1.9rem); line-height: 1; font-weight: 800; letter-spacing: -.05em; }
+.lp .pile-card small { display: block; margin-top: .3rem; font: .58rem var(--mono); color: var(--muted); }
+.lp .pc-payday { left: 0; top: 3%; width: 50%; }
+.lp .pc-vault { right: 0; top: 0; width: 47%; background: var(--green); }
+.lp .pc-row { display: flex; justify-content: space-between; gap: .5rem; }
+.lp .pc-row b { font: 500 .62rem var(--mono); }
+.lp .pc-bar { height: 6px; margin-top: .5rem; overflow: hidden; background: rgba(17,17,15,.2); border-radius: 3px; }
+.lp .pc-bar i { display: block; width: 68%; height: 100%; background: var(--ink); }
+.lp .pc-daily { left: 5%; top: 25%; width: 86%; z-index: 2; padding: clamp(1.1rem, 2.4vw, 1.6rem); background: var(--acid); border-radius: 1.5rem; box-shadow: 8px 8px 0 var(--ink); }
+.lp .pc-daily .hero-amount { margin: .8rem 0 1rem; font-size: clamp(3.3rem, 6.2vw, 5.4rem); }
+.lp .pc-daily .hero-log { margin-top: 0; }
+.lp .pc-lunch { left: 0; bottom: 1%; z-index: 1; display: flex; align-items: center; gap: .6rem; padding: .75rem 1rem; font-size: .85rem; font-weight: 700; }
+.lp .pc-lunch strong { margin: 0 0 0 .6rem; font-size: .85rem; letter-spacing: 0; }
+.lp .pc-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--pink); }
+.lp .pile-tag { position: absolute; z-index: 3; padding: .6rem .8rem; color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: .8rem; box-shadow: 4px 4px 0 var(--ink); white-space: nowrap; text-transform: uppercase; }
+.lp .tag-pink { background: var(--pink); }
+.lp .tag-green { background: var(--green); }
+.lp .tag-yellow { background: var(--acid); }
+.lp .pc-note { right: 0; bottom: 9%; animation: lp-bob 2.6s ease-in-out infinite; }
+@keyframes lp-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+
+
+/* Former dark bands become cream sections with cream cards. */
+.lp .plan-pipeline, .lp .pacing-section, .lp .ledger-section, .lp .pricing-section { color: var(--ink); background: transparent; }
+.lp .section-heading, .lp .pricing-intro { border-bottom-color: var(--line); }
+.lp .pipeline-steps { gap: 1rem; margin-top: 2.5rem; }
+.lp .pipeline-step, .lp .pipeline-step:first-child { min-height: 0; padding: 1.6rem; background: var(--paper); border: 0; border-radius: 1.2rem; box-shadow: var(--lift); }
+.lp .pipeline-step:last-child { background: var(--acid); border: 1.5px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); margin: 0 6px 6px 0; }
+.lp .step-no { color: var(--muted); }
+.lp .step-icon { width: 54px; height: 54px; margin: 1.6rem 0 1.2rem; background: var(--field); border-radius: 1rem; clip-path: none; }
+.lp .pipeline-step:last-child .step-icon { background: var(--paper); }
+.lp .pipeline-step p { color: var(--muted); }
+.lp .pipeline-step:last-child p { color: rgba(17,17,15,.75); }
+
+.lp .feature-tab.is-active { border-radius: .6rem; }
+.lp .feature-screen { color: var(--ink); background: var(--paper); border: 0; border-radius: 1.4rem; box-shadow: var(--lift); }
+.lp .feature-screen-header { color: var(--muted); border-bottom-color: var(--line); }
+.lp .window-dots i { background: rgba(17,17,15,.18); }
+.lp .feature-screen-title p { color: var(--muted); }
+.lp .visual-panel { background: var(--field); border-radius: 1rem; }
+.lp .bill-row i { background: var(--green); }
+.lp .vault-visual { border-radius: .9rem; }
+.lp .vault-visual + .vault-visual { background: var(--paper); }
+.lp .review-green { color: #15803D; }
+
+.lp .pacing-copy > p:not(.eyebrow) { color: var(--muted); }
+.lp .pacing-copy > p strong { color: var(--ink); }
+.lp .pace-button { color: var(--ink); background: var(--paper); border: 1.5px solid transparent; border-radius: .8rem; box-shadow: var(--lift); }
+.lp .pace-button:hover:not(.is-active) { color: var(--ink); background: var(--paper); border-color: rgba(17,17,15,.3); }
+.lp .pace-button.is-active { color: var(--ink); background: var(--acid); border-color: var(--ink); }
+.lp .pace-board { transform: none; border-radius: 1.4rem; box-shadow: var(--lift); }
+.lp .pace-board-top { border-bottom-color: var(--line); }
+.lp .day-bars i { border-radius: .45rem .45rem 0 0; }
+.lp .day-bars .weekend i { background: var(--pink); }
+.lp .day-bars i b { background: var(--green); }
+.lp .pace-note { background: var(--field); border-radius: .7rem; }
+.lp .pace-note span { color: #15803D; }
+
+.lp .daily-card { color: var(--ink); background: var(--paper); border-radius: 1.4rem; box-shadow: var(--lift); }
+.lp .daily-card-top { border-bottom-color: var(--line); }
+.lp .daily-numbers span { color: var(--muted); }
+.lp .daily-numbers .remaining strong { color: #15803D; }
+.lp .daily-progress { background: var(--field); }
+.lp .daily-card > p { color: var(--muted); }
+.lp .on-track, .lp .status-good { color: #15803D; }
+.lp .mood-row span { border: 1px solid var(--line); border-radius: 999px; padding: .35rem .6rem; }
+.lp .mood-row span:first-child { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.lp .mini-moods span { border-radius: 999px; }
+
+.lp .ledger-copy > p:not(.eyebrow) { color: var(--muted); }
+.lp .ledger-copy h2 em::after { background: var(--acid); }
+.lp .ledger-ui { transform: none; border-radius: 1.4rem; box-shadow: var(--lift); }
+.lp .ledger-tabs { border-bottom-color: var(--line); }
+.lp .ledger-dot.food, .lp .allocation-bar i, .lp .legend-lifestyle { background: var(--pink); }
+.lp .allocation-block { background: var(--field); border-radius: .9rem; }
+
+.lp .map-node { border: 0; border-radius: 1rem; box-shadow: var(--lift); }
+.lp .map-node-dark { color: var(--ink); background: var(--paper); }
+.lp .map-node-dark span { color: #625e55; }
+.lp .map-node-dark b { color: var(--acid); background: var(--ink); }
+.lp .map-hub { border-width: 1.5px; border-radius: 1.4rem; }
+
+.lp .price-card { border-radius: 1.4rem; box-shadow: var(--lift); }
+.lp .price-card-pro { border-width: 1.5px; box-shadow: 8px 8px 0 var(--ink); margin: 0 8px 8px 0; }
+.lp .price-options > div { border-radius: .8rem; }
+
+.lp .faq-list details { border-bottom-color: var(--line); }
+.lp .closing-card { border-width: 1.5px; border-radius: 1.6rem; box-shadow: 8px 8px 0 var(--ink); }
+.lp .closing-stamp { transform: none; border-width: 1.5px; }
+
+@media (max-width: 860px) {
+  .lp .pipeline-steps { grid-template-columns: 1fr; }
+}
+@media (max-width: 580px) {
+  .lp .pipeline-step, .lp .pipeline-step:first-child { padding: 1.4rem; border-bottom: 0; }
+  .lp .price-card-pro { box-shadow: 6px 6px 0 var(--ink); }
+  .lp .closing-card { box-shadow: 6px 6px 0 var(--ink); }
+}
+
+/* Without the dark bands to separate them, the old 8rem paddings left big
+   empty gaps between sections. */
+.lp .tension, .lp .feature-stage, .lp .daily-section, .lp .faq-section, .lp .map-section { padding: 5rem 0; }
+.lp .plan-pipeline, .lp .pacing-section, .lp .ledger-section, .lp .pricing-section { padding: 5rem 0; }
+/* The app's own .daily-card rule (redesign.css) is global and would give the
+   Daily review example an ink edge and margin; this one is the landing's. */
+.lp .daily-card.daily-card { color: var(--ink); background: var(--paper); border: 0; border-radius: 1.4rem; box-shadow: var(--lift); margin: 0; }
+.lp .closing-card::after { content: none; }
+.lp .closing-card .eyebrow, .lp .price-card-pro .eyebrow { color: rgba(17,17,15,.7); }
+.lp .closing-card .eyebrow-dot { background: var(--ink); }
+.lp .site-footer .wordmark { color: var(--ink); }
+@media (max-width: 860px) {
+  .lp .tension, .lp .feature-stage, .lp .daily-section, .lp .faq-section, .lp .map-section,
+  .lp .plan-pipeline, .lp .pacing-section, .lp .ledger-section, .lp .pricing-section { padding: 3.75rem 0; }
+}
+@media (max-width: 580px) {
+  .lp .nav-cta { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
+  .lp .step-icon { margin: 1.2rem 0 1rem; }
+}
+/* Heading highlight drawn as a background that follows the words across line
+   breaks. The old ::after bar was one box, so a highlighted phrase that
+   wrapped on a phone left a stray dash after the last word. */
+.lp h1 em, .lp h2 em {
+  padding: 0 .05em;
+  background: linear-gradient(transparent 64%, var(--acid) 64%, var(--acid) 94%, transparent 94%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.lp h1 em::after, .lp h2 em::after { content: none; }
+
+/* Section piles: each product card gets an ink edge, a hard shadow, a
+   coloured card peeking out behind (drawn with box-shadows, so no extra
+   markup and no stacking surprises) and a floating tag. */
+.lp .feature-screen, .lp .pace-board, .lp .daily-card.daily-card, .lp .ledger-ui {
+  position: relative; overflow: visible; border: 1.5px solid var(--ink); background: var(--paper);
+}
+.lp .feature-screen { box-shadow: 7px 7px 0 var(--ink), -14px -14px 0 0 var(--green), -14px -14px 0 1.5px var(--ink); }
+.lp .pace-board { box-shadow: 7px 7px 0 var(--ink), 14px -14px 0 0 var(--pink), 14px -14px 0 1.5px var(--ink); }
+.lp .daily-card.daily-card { box-shadow: 7px 7px 0 var(--ink), -14px -14px 0 0 var(--acid), -14px -14px 0 1.5px var(--ink); }
+.lp .ledger-ui { box-shadow: 7px 7px 0 var(--ink), 14px -14px 0 0 var(--green), 14px -14px 0 1.5px var(--ink); }
+.lp .tag-tr { top: -1.2rem; right: 1.4rem; }
+.lp .tag-br { bottom: -1.3rem; right: 1.6rem; }
+.lp .tag-bl { bottom: -1.3rem; left: 1.4rem; }
+
+@media (max-width: 580px) {
+  .lp .hero-pile { height: 400px; }
+  .lp .pile-card { padding: .8rem .85rem; border-radius: 1rem; }
+  .lp .pc-daily { left: 3%; width: 90%; top: 24%; }
+  .lp .pc-lunch { padding: .6rem .8rem; font-size: .78rem; }
+  .lp .pile-tag { padding: .5rem .65rem; font-size: .55rem; }
+  .lp .feature-screen, .lp .daily-card.daily-card { box-shadow: 5px 5px 0 var(--ink), -10px -10px 0 0 var(--green), -10px -10px 0 1.5px var(--ink); }
+  .lp .daily-card.daily-card { box-shadow: 5px 5px 0 var(--ink), -10px -10px 0 0 var(--acid), -10px -10px 0 1.5px var(--ink); }
+  .lp .pace-board, .lp .ledger-ui { box-shadow: 5px 5px 0 var(--ink), 10px -10px 0 0 var(--pink), 10px -10px 0 1.5px var(--ink); }
+  .lp .ledger-ui { box-shadow: 5px 5px 0 var(--ink), 10px -10px 0 0 var(--green), 10px -10px 0 1.5px var(--ink); }
+  .lp .tag-tr { right: .8rem; }
+}
+@media (prefers-reduced-motion: reduce) { .lp .pc-note { animation: none; } }
+
+/* Hero pile fine-tuning: the cents keep the big display face (the generic
+   pile-card span rule had turned them into tiny mono text), and the lunch row
+   and notification tuck over the daily card's bottom edge so the pile reads
+   as one stack. */
+.lp .pc-daily .hero-amount span { font: inherit; font-size: .48em; letter-spacing: -.04em; }
+.lp .hero-pile { height: clamp(430px, 36vw, 460px); }
+.lp .pc-lunch { top: 72%; bottom: auto; }
+.lp .pc-note { top: 69%; bottom: auto; }
+@media (max-width: 580px) {
+  .lp .hero-pile { height: 380px; }
+}
+.lp .pc-lunch { z-index: 3; }
+@media (max-width: 580px) {
+  .lp .hero { padding-bottom: 2.5rem; }
+}
+@media (max-width: 580px) {
+  /* The daily card overlaps the payday card more on a phone; drop the date
+     line rather than show it half covered. */
+  .lp .pc-payday small { display: none; }
+}
+
+/* Warm white page instead of the app's darker cream, which read brown next to
+   the yellow. Cards keep the paper tone, so the soft ones get a faint hairline
+   to stay visible on the lighter page. */
+.lp { --cream: #FAF8F3; --field: #F3EFE6; background: var(--cream); }
+.lp .page-noise { background-image: radial-gradient(circle, rgba(17,17,15,.10) 1px, transparent 1px); }
+.lp .pipeline-step:not(:last-child), .lp .map-node, .lp .price-card:not(.price-card-pro), .lp .pace-button:not(.is-active), .lp .hero-mini {
+  outline: 1px solid rgba(17,17,15,.07); outline-offset: -1px;
+}

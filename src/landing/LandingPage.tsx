@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Smartphone, Play } from 'lucide-react';
 import { PRICING, TAX_NOTE } from '../lib/pricing';
+import { StackPiggyPacingIcon, StackPiggySpendIcon, StackPiggySpendLimitIcon } from '../components/StackPiggyIcons';
 import './landing.css';
 
 // Public landing page shown at "/" to signed-out visitors on the web.
@@ -55,6 +56,18 @@ const PACES: Record<Pace, { label: string; note: string; values: string[]; heigh
 };
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+// The floating tag on each section's card pile: [colour, words].
+const FEATURE_TAG: Record<Feature, [string, string]> = {
+  bills: ['pink', 'Rent set aside · $680'],
+  vaults: ['green', '+$35 swept to Holiday'],
+  review: ['yellow', 'On track today'],
+};
+const PACE_TAG: Record<Pace, [string, string]> = {
+  flat: ['yellow', '$60 every day'],
+  weekend: ['pink', '$90 on Sat and Sun'],
+  vault: ['green', '$66 swept this week'],
+};
 
 const FAQS: { q: string; a: string }[] = [
   { q: 'Why not just check my bank balance?', a: 'Your balance shows cash on hand. It does not put bills, subscriptions, savings goals and the days until payday into the same decision. StackPiggy does that planning before you spend.' },
@@ -141,35 +154,25 @@ export function LandingPage() {
             <p className="microcopy">Free to start. You add your own numbers, no bank access needed.</p>
           </div>
 
-          <div className="hero-product reveal reveal-delay" role="img" aria-label="Example of the StackPiggy dashboard">
-            <div className="product-topline">
-              <span className="live-pill"><i /> TODAY'S PLAN</span>
-              <span className="product-date">FRI · OCT 16</span>
+          {/* A pile of the app's real cards, overlapping like a hand of cards.
+              The daily amount follows the pacing example further down. */}
+          <div className="hero-pile reveal reveal-delay" role="img" aria-label="Example of the StackPiggy dashboard">
+            <div className="pile-card pc-payday"><span>PAYDAY IN</span><strong>9 days</strong><small>Sun, Oct 25</small></div>
+            <div className="pile-card pc-vault">
+              <div className="pc-row"><span>HOLIDAY VAULT</span><b>68%</b></div>
+              <strong>$680</strong>
+              <div className="pc-bar"><i /></div>
             </div>
-            <div className="cleared-card">
-              <span className="card-label">CLEARED TODAY</span>
-              <strong>{p.amount}<span>.00</span></strong>
-              <div className="amount-rule"><span /></div>
-              <p>{p.caption}</p>
-            </div>
-            <div className="dashboard-rail">
-              <div className="metric-card metric-dark">
-                <span>PAYDAY IN</span>
-                <strong>9 <small>DAYS</small></strong>
-                <p>Long stretch. Trust the system.</p>
+            <div className="pile-card pc-daily">
+              <div className="hero-daily-top">
+                <span>CLEARED TODAY</span>
+                <span className="hero-chip">FRI · OCT 16</span>
               </div>
-              <div className="metric-card metric-yellow">
-                <span>RESERVED</span>
-                <strong>$940</strong>
-                <p>Bills and savings protected</p>
-              </div>
+              <strong className="hero-amount">{p.amount}<span>.00</span></strong>
+              <span className="hero-log">+ LOG SPEND</span>
             </div>
-            <div className="dashboard-foot">
-              <span>SPENDABLE <strong>$2,000</strong></span>
-              <span className="status-good">● ON TRACK</span>
-            </div>
-            <div className="cursor-tag cursor-one">Bills first</div>
-            <div className="cursor-tag cursor-two">Then spend</div>
+            <div className="pile-card pc-lunch"><i className="pc-dot" /> Lunch <strong>−$18.50</strong></div>
+            <div className="pile-tag tag-pink pc-note">+$35 swept to Holiday</div>
           </div>
         </section>
 
@@ -201,19 +204,19 @@ export function LandingPage() {
             <div className="pipeline-steps">
               <article className="pipeline-step reveal">
                 <span className="step-no">01</span>
-                <div className="step-icon icon-calendar" aria-hidden="true"><span /></div>
+                <div className="step-icon" aria-hidden="true"><StackPiggyPacingIcon size={30} /></div>
                 <h3>Set the baseline.</h3>
                 <p>Add your balance, take-home pay, next payday and regular bills. That gives your money a time horizon.</p>
               </article>
               <article className="pipeline-step reveal reveal-delay">
                 <span className="step-no">02</span>
-                <div className="step-icon icon-funnel" aria-hidden="true"><span /></div>
+                <div className="step-icon" aria-hidden="true"><StackPiggySpendIcon size={30} /></div>
                 <h3>Clear the commitments.</h3>
                 <p>Bills, subscriptions and savings stop pretending to be "later". They get a place in the plan now.</p>
               </article>
               <article className="pipeline-step reveal reveal-delay-2">
                 <span className="step-no">03</span>
-                <div className="step-icon icon-spark" aria-hidden="true">✦</div>
+                <div className="step-icon" aria-hidden="true"><StackPiggySpendLimitIcon size={30} /></div>
                 <h3>Spend with context.</h3>
                 <p>What remains becomes a daily amount you can use, with payday still in view.</p>
               </article>
@@ -275,6 +278,7 @@ export function LandingPage() {
                 )}
               </div>
             </div>
+            <div key={feature} className={`pile-tag tag-${FEATURE_TAG[feature][0]} tag-br swap-in`} aria-hidden="true">{FEATURE_TAG[feature][1]}</div>
           </div>
         </section>
 
@@ -316,6 +320,7 @@ export function LandingPage() {
                 ))}
               </div>
               <div className="pace-note"><span>↳</span> {p.note}</div>
+              <div key={pace} className={`pile-tag tag-${PACE_TAG[pace][0]} tag-tr swap-in`} aria-hidden="true">{PACE_TAG[pace][1]}</div>
             </div>
           </div>
         </section>
@@ -331,6 +336,7 @@ export function LandingPage() {
             <div className="daily-progress"><span style={{ width: '31%' }} /></div>
             <p>"Dinner with friends. Still steady."</p>
             <div className="mood-row"><span>STEADY</span><span>STRETCHED</span><span>BROKE</span><span>NO-SPEND</span></div>
+            <div className="pile-tag tag-pink tag-br" aria-hidden="true">6-day streak</div>
           </div>
           <div className="daily-copy reveal reveal-delay">
             <p className="eyebrow"><span className="eyebrow-dot" /> A FIVE-MINUTE MONEY HABIT</p>
@@ -358,6 +364,7 @@ export function LandingPage() {
               <div className="allocation-block">
                 <div className="allocation-heading"><span>CAPITAL ALLOCATION</span><span>OCTOBER</span></div>
                 <div className="allocation-bar"><i /><b /></div>
+                <div className="pile-tag tag-green tag-br" aria-hidden="true">37% to your future</div>
                 <div className="allocation-legend"><span><i className="legend-lifestyle" /> LIFESTYLE BURN</span><span><i className="legend-future" /> FUTURE WEALTH</span></div>
               </div>
             </div>
