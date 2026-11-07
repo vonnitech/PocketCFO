@@ -119,12 +119,14 @@ function NavigationFallback() {
   );
 }
 
-function SyncFallback() {
+// Visitors who are not signed in have nothing to sync, so they see "Loading";
+// "Syncing data" is kept for the wait on a signed-in account's data.
+function SyncFallback({ label = 'Loading...' }: { label?: string }) {
   return (
     <div className="fixed inset-0 bg-page dot-bg flex items-center justify-center font-mono">
       <div className="bg-surface border-4 border-black rounded-3xl px-6 py-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted animate-pulse">
-          SYNCING DATA...
+          {label}
         </p>
       </div>
     </div>
@@ -504,7 +506,7 @@ function App() {
   }
 
   // Session established but Supabase data not yet loaded
-  if (!dataLoaded) return <SyncFallback />;
+  if (!dataLoaded) return <SyncFallback label="Syncing data..." />;
 
   if (!hasCompletedOnboarding) {
     return (

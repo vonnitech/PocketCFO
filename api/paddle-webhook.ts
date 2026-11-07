@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { planForPrice, verifyPaddleSignature } from './_paddle.js';
+import { ipInCidrs, paddleWebhookCidrs, planForPrice, verifyPaddleSignature } from './_paddle.js';
 
 // Receives Paddle webhooks and updates profiles.pro_* via the service role.
 // Register this URL as a notification destination in Paddle (Developer tools ->
@@ -71,6 +71,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('[paddle-webhook] PADDLE_WEBHOOK_SECRET is not set; refusing to verify');
     return res.status(500).send('webhook not configured');
   }
+
+  // Only Paddle's published addresses may deliver. Vercel sets x-real-ip to the
+  // connecting client, so it cannot be spoofed by a header the caller sends.
+  const cidrs = await paddleWebhookCidrs();
+  if (!cidrs) {
+    console.error('[paddle-webhook] could not load Paddle IP list; refusing delivery');
+    return res.status(503).send('try again');
+  }
+  const ip = String(req.headers['x-real-ip'] ?? '').trim();
+  if (!ipInCidrs(ip, cidrs)) return res.status(403).send('forbidden');
 
   let raw: Buffer;
   try {

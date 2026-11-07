@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { captureError } from '../core/analytics';
+import { isStaleChunkError, reloadForNewVersion } from '../lib/staleChunk';
 
 interface Props { children: ReactNode; }
 interface State { hasError: boolean; error?: Error; }
@@ -12,6 +13,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // An old tab after a deploy: reload into the new version instead of showing
+    // the crash screen. Falls through to the screen if it already tried.
+    if (isStaleChunkError(error) && reloadForNewVersion()) return;
+
     captureError(error, {
       source: 'error_boundary',
       component_stack: info.componentStack ?? undefined,
