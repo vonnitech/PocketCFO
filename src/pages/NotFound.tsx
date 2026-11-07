@@ -1,11 +1,12 @@
 import { ArrowLeft, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import CoinCatch from '../components/CoinCatch';
 
 export default function NotFound() {
   const { pathname } = useLocation();
 
   return (
-    <section className="min-h-[calc(100vh-8rem)] flex items-center justify-center py-4">
+    <section className="min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center gap-6 py-4">
       <div className="w-full max-w-xl bg-surface border-4 border-border rounded-[2rem] shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden">
         {/* The numerals carry the page. A dotted field behind them gives the
             block some weight without adding another competing element. */}
@@ -55,6 +56,11 @@ export default function NotFound() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Below the way out, so anyone who just wants to leave is not slowed down. */}
+      <div className="w-full max-w-xl">
+        <CoinCatch />
       </div>
     </section>
   );
