@@ -6,6 +6,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import App from './App.tsx';
 import { initAnalytics } from './core/analytics';
 import { captureAttribution } from './core/attribution';
+import { reloadForNewVersion } from './lib/staleChunk';
 import './index.css';
 import './redesign.css';
 
@@ -17,6 +18,14 @@ captureAttribution();
 // No-op unless VITE_POSTHOG_KEY is set. Runs on native too: funnel drop-off in
 // the phone builds matters as much as on the web.
 initAnalytics();
+
+// A tab left open across a deploy can ask for page files that were replaced.
+// Vite reports that here; reload once so the tab moves to the new version.
+if (import.meta.env.PROD) {
+  window.addEventListener('vite:preloadError', (event) => {
+    if (reloadForNewVersion()) event.preventDefault();
+  });
+}
 
 // A production preview can leave a service worker controlling localhost. Vite's
 // development server does not install one, so remove any existing registrations

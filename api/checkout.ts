@@ -29,7 +29,19 @@ async function customerFor(userId: string, email: string): Promise<string> {
     .eq('id', userId)
     .maybeSingle() as { data: { paddle_customer_id?: string | null } | null; error: { code?: string } | null };
   if (error) throw new Error(`profile lookup failed: ${error.code ?? 'unknown'}`);
-  if (data?.paddle_customer_id) return data.paddle_customer_id;
+
+  // Preview deployments share this database but use Paddle sandbox, so a stored
+  // id can belong to the other environment. Keep it only if it exists here.
+  let staleId: string | null = null;
+  if (data?.paddle_customer_id) {
+    try {
+      await paddleApi<Customer>(`/customers/${encodeURIComponent(data.paddle_customer_id)}`);
+      return data.paddle_customer_id;
+    } catch (e) {
+      if (!(e instanceof PaddleApiError && e.status === 404)) throw e;
+      staleId = data.paddle_customer_id;
+    }
+  }
 
   const existing = await paddleApi<Customer[]>(`/customers?email=${encodeURIComponent(email)}`);
   const customerId = existing[0]?.id ?? (await paddleApi<Customer>('/customers', {
@@ -37,13 +49,16 @@ async function customerFor(userId: string, email: string): Promise<string> {
     body: { email },
   })).id;
 
-  // Only fills an empty link, so a race between two checkouts cannot swap an
-  // account onto a different customer.
-  const { error: linkError } = await supabase
+  // Only fills an empty link (or replaces the other environment's id read
+  // above), so a race between two checkouts cannot swap an account onto a
+  // different customer.
+  const linkQuery = supabase
     .from('profiles')
     .update({ paddle_customer_id: customerId })
-    .eq('id', userId)
-    .is('paddle_customer_id', null);
+    .eq('id', userId);
+  const { error: linkError } = await (staleId
+    ? linkQuery.eq('paddle_customer_id', staleId)
+    : linkQuery.is('paddle_customer_id', null));
   if (linkError) throw new Error(`customer link failed: ${linkError.code ?? 'unknown'}`);
 
   // Whichever link won is the one the webhook will use, so check out with it.

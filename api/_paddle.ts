@@ -53,6 +53,55 @@ export async function paddleApi<T>(path: string, init: { method?: string; body?:
   return json.data as T;
 }
 
+// Paddle sends webhooks only from a published set of addresses. The list is
+// fetched from Paddle (GET /ips, `ipv4_cidrs`) rather than hard-coded, because
+// Paddle can change it, and cached per function instance for an hour. If the
+// list cannot be fetched and nothing is cached, callers get null and should
+// refuse the delivery; Paddle retries it later.
+const IPS_TTL_MS = 60 * 60 * 1000;
+let ipsCache: { cidrs: string[]; fetchedAt: number } | null = null;
+
+export async function paddleWebhookCidrs(now = Date.now()): Promise<string[] | null> {
+  if (ipsCache && now - ipsCache.fetchedAt < IPS_TTL_MS) return ipsCache.cidrs;
+  try {
+    const resp = await fetch(`${API_BASE}/ips`, { headers: { Accept: 'application/json' } });
+    const json = await resp.json() as { data?: { ipv4_cidrs?: unknown } };
+    const cidrs = Array.isArray(json.data?.ipv4_cidrs)
+      ? json.data.ipv4_cidrs.filter((c): c is string => typeof c === 'string')
+      : [];
+    if (!resp.ok || cidrs.length === 0) throw new Error(`ips ${resp.status}`);
+    ipsCache = { cidrs, fetchedAt: now };
+  } catch {
+    // A stale list beats none: Paddle rarely changes it.
+    if (!ipsCache) return null;
+  }
+  return ipsCache.cidrs;
+}
+
+function ipv4ToInt(ip: string): number | null {
+  const parts = ip.split('.');
+  if (parts.length !== 4) return null;
+  let n = 0;
+  for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part) || Number(part) > 255) return null;
+    n = n * 256 + Number(part);
+  }
+  return n;
+}
+
+export function ipInCidrs(ip: string, cidrs: string[]): boolean {
+  const addr = ipv4ToInt(ip.replace(/^::ffff:/, ''));
+  if (addr === null) return false;
+  return cidrs.some(cidr => {
+    const [base, bitsText = '32'] = cidr.split('/');
+    const start = ipv4ToInt(base);
+    const bits = Number(bitsText);
+    if (start === null || !Number.isInteger(bits) || bits < 0 || bits > 32) return false;
+    const size = 2 ** (32 - bits);
+    return Math.floor(addr / size) === Math.floor(start / size);
+  });
+}
+
 // Signatures are `ts=<unix>;h1=<hex>[;h1=<hex>...]`, an HMAC-SHA256 of
 // `${ts}:${rawBody}` keyed with the destination secret. More than one h1 can
 // appear while Paddle rotates a secret, so any match is accepted.
