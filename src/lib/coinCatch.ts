@@ -9,9 +9,10 @@ export interface CoinCatchCallbacks {
   onSaved: (saved: number) => void;
   onLives: (lives: number) => void;
   onPhase: (phase: CoinCatchPhase) => void;
-  /** Bottom edge (px, from the field top) of the start panel, so the idle demo
-   *  coins sit in the open band between it and the pig. */
-  readyPanelBottom: () => number;
+  /** Bottom edge (px, from the field top) of whatever sits over the start
+   *  screen, so idle demo coins hang between it and the pig. Without it the
+   *  start screen shows just the pig. */
+  readyPanelBottom?: () => number;
 }
 
 export interface CoinCatchGame {
@@ -32,8 +33,13 @@ interface Pop { x: number; y: number; text: string; color: string; life: number 
 
 // Fixed brand colours: logo gold for the pig, coin green, the app's red for bills.
 const PIG = { body: '#FFC81A', dark: '#E8A400', light: '#FFE07A', cheek: '#FF8A3D' };
-const COIN = '#1DCB63';
-const COIN_SHINE = '#86E8AE';
+// Minted coin: darker edge and rim, a lighter raised face with a soft highlight.
+const COIN_EDGE = '#0E8F43';
+const COIN_RIM = '#16B257';
+const COIN_FACE = '#2BD46E';
+const COIN_HI = '#9AF0BF';
+const COIN_LINE = 'rgba(0,70,25,0.45)';
+const COIN_INK = '#08371B';
 const BILL = '#E8174B';
 
 const COINS: Coin[] = [
@@ -76,7 +82,8 @@ export function createCoinCatch(field: HTMLElement, canvas: HTMLCanvasElement, c
   let items: Item[] = [];
   let pops: Pop[] = [];
   let saved = 0, lives = LIVES, t = 0, spawnIn = 0.6;
-  const pig = { x: 0, y: 0, targetX: 0, face: 1, squash: 0, hurt: 0, deposit: 0 };
+  // size: drawn smaller while waiting on the start screen, grows to full size once a game starts.
+  const pig = { x: 0, y: 0, targetX: 0, face: 1, squash: 0, hurt: 0, deposit: 0, size: 0.72 };
   const keys = { left: false, right: false };
 
   function setPhase(next: CoinCatchPhase) {
@@ -255,21 +262,55 @@ export function createCoinCatch(field: HTMLElement, canvas: HTMLCanvasElement, c
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
 
+  // Draws a coin centred on the current origin. k is cos of the spin angle:
+  // 1 is face on, 0 is edge on, and its sign says which side the edge shows.
+  function coinBody(r: number, k: number, label: string | null, glint: number) {
+    const sx = Math.max(0.12, Math.abs(k));
+    const edge = r * 0.22 * Math.sqrt(1 - sx * sx);
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2.5;
+    if (edge > 0.6) {
+      const ox = (k >= 0 ? 1 : -1) * edge * 0.5;
+      ctx.beginPath(); ctx.ellipse(ox, 0, r * sx + edge * 0.5, r, 0, 0, Math.PI * 2);
+      ctx.fillStyle = COIN_EDGE; ctx.fill(); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.ellipse(0, 0, r * sx, r, 0, 0, Math.PI * 2);
+    ctx.fillStyle = COIN_RIM; ctx.fill(); ctx.stroke();
+    const fr = r * 0.76;
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(0, 0, fr * sx, fr, 0, 0, Math.PI * 2);
+    ctx.fillStyle = COIN_FACE; ctx.fill();
+    ctx.clip();
+    ctx.globalAlpha = 0.55; ctx.fillStyle = COIN_HI;
+    ctx.beginPath(); ctx.ellipse(-r * 0.25 * sx, -r * 0.3, r * 0.9 * sx, r * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.beginPath(); ctx.ellipse(0, 0, fr * sx, fr, 0, 0, Math.PI * 2);
+    ctx.lineWidth = 1.2; ctx.strokeStyle = COIN_LINE; ctx.stroke();
+    if (label && sx > 0.3) {
+      ctx.save(); ctx.scale(sx, 1);
+      ctx.font = `800 ${Math.round(r * 0.74)}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillText(label, 0.8, 2);
+      ctx.fillStyle = COIN_INK; ctx.fillText(label, 0, 1);
+      ctx.restore();
+    }
+    if (glint > 0.55) {
+      const g = r * 0.26 * (glint - 0.4);
+      ctx.save(); ctx.translate(r * 0.42 * sx, -r * 0.48);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.moveTo(0, -g);
+      ctx.quadraticCurveTo(0, 0, g, 0); ctx.quadraticCurveTo(0, 0, 0, g);
+      ctx.quadraticCurveTo(0, 0, -g, 0); ctx.quadraticCurveTo(0, 0, 0, -g);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
   function drawCoin(it: { x: number; y: number; r: number; label: string; rot: number }) {
     ctx.save();
     ctx.translate(it.x, it.y);
-    ctx.scale(Math.abs(Math.cos(it.rot)) * 0.35 + 0.65, 1);
-    ctx.beginPath(); ctx.arc(0, 0, it.r, 0, Math.PI * 2);
-    ctx.fillStyle = COIN; ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(-it.r * 0.35, -it.r * 0.4, it.r * 0.22, 0, Math.PI * 2);
-    ctx.fillStyle = COIN_SHINE; ctx.fill();
-    ctx.beginPath(); ctx.arc(0, 0, it.r * 0.7, 0, Math.PI * 2);
-    ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = '#000';
-    ctx.font = `800 ${Math.round(it.r * 0.72)}px Inter, system-ui, sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(it.label, 0, 1);
+    coinBody(it.r, Math.cos(it.rot), it.label, (Math.sin(it.rot * 1.3) + 1) / 2);
     ctx.restore();
   }
 
@@ -346,13 +387,8 @@ export function createCoinCatch(field: HTMLElement, canvas: HTMLCanvasElement, c
       ctx.save();
       ctx.beginPath(); ctx.rect(sx - 20, sy - 30, 40, 30); ctx.clip();
       const cr = 11, cy = sy - 9 + (1 - st.deposit) * 22;
-      ctx.beginPath(); ctx.arc(sx, cy, cr, 0, TAU);
-      ctx.fillStyle = COIN; ctx.fill();
-      ctx.lineWidth = 3; ctx.stroke();
-      ctx.lineWidth = 1.8; ctx.strokeStyle = 'rgba(0,60,20,0.45)';
-      ctx.beginPath(); ctx.arc(sx, cy, cr - 4, 0, TAU); ctx.stroke();
-      ctx.fillStyle = COIN_SHINE;
-      ctx.beginPath(); ctx.ellipse(sx - 4.5, cy - 4.5, 3, 1.7, -0.7, 0, TAU); ctx.fill();
+      ctx.translate(sx, cy);
+      coinBody(cr, 1, null, 0);
       ctx.restore();
     }
     ctx.strokeStyle = ink;
@@ -380,26 +416,27 @@ export function createCoinCatch(field: HTMLElement, canvas: HTMLCanvasElement, c
     ctx.beginPath(); ctx.ellipse(22, 8, 6.5, 4.5, 0, 0, TAU); ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Snout: a short cylinder seen at three quarters. Side band first...
-    const px = 49, py = 4, prx = 9.5, pry = 11;
+    // Snout: a short, soft disc sitting on the face. It used to be a long dark
+    // cylinder that stuck out like a doorknob; now it is shallower, lighter
+    // than the body and tucked in, with two small nostrils.
+    const px = 46, py = 5, prx = 7, pry = 9.5;
     ctx.beginPath();
-    ctx.moveTo(41, py - pry + 0.5);
+    ctx.moveTo(41.5, py - pry + 0.6);
     ctx.lineTo(px, py - pry);
     ctx.ellipse(px, py, prx, pry, 0, -Math.PI / 2, Math.PI / 2, false);
-    ctx.lineTo(41, py + pry - 0.5);
-    ctx.ellipse(41, py, 5, pry - 0.5, 0, Math.PI / 2, -Math.PI / 2, false);
+    ctx.lineTo(41.5, py + pry - 0.6);
+    ctx.ellipse(41.5, py, 4, pry - 0.6, 0, Math.PI / 2, -Math.PI / 2, false);
     ctx.closePath();
     ctx.fillStyle = PIG.dark; ctx.fill();
-    ctx.fillStyle = 'rgba(120,60,0,0.22)'; ctx.fill();
     ctx.stroke();
-    // ...then the front plate with two nostrils side by side
+    // Front of the snout, in the pale belly colour, with a small shine
     ctx.beginPath(); ctx.ellipse(px, py, prx, pry, 0, 0, TAU);
-    ctx.fillStyle = PIG.dark; ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.beginPath(); ctx.ellipse(px - 2, py - 6, 3, 1.6, -0.3, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#2a1800';
-    ctx.beginPath(); ctx.ellipse(px - 3.6, py + 1, 1.9, 3.2, 0, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(px + 3.6, py + 1, 1.9, 3.2, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = PIG.light; ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.ellipse(px - 1.5, py - 5.5, 2.2, 1.2, -0.3, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3a2400';
+    ctx.beginPath(); ctx.ellipse(px - 2.6, py + 1.2, 1.4, 2.4, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + 2.6, py + 1.2, 1.4, 2.4, 0, 0, TAU); ctx.fill();
 
     // Eye: hurt, happy, blinking or open
     const ex = 26, ey = -9;
@@ -419,8 +456,13 @@ export function createCoinCatch(field: HTMLElement, canvas: HTMLCanvasElement, c
 
   function drawPig(now: number) {
     ctx.save();
-    ctx.translate(pig.x, pig.y);
-    ctx.scale(pig.face * scale * (1 + pig.squash * 0.08), scale * (1 - pig.squash * 0.1));
+    // Ease toward full size during play; shrinking keeps the feet on the floor.
+    const restSize = phase === 'ready' ? 0.72 : 1;
+    pig.size += (restSize - pig.size) * 0.2;
+    if (Math.abs(restSize - pig.size) < 0.005) pig.size = restSize;
+    const k = scale * pig.size;
+    ctx.translate(pig.x, pig.y + 40 * scale * (1 - pig.size));
+    ctx.scale(pig.face * k * (1 + pig.squash * 0.08), k * (1 - pig.squash * 0.1));
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     drawPigLocal({ happy: pig.squash > 0.2, hurt: pig.hurt > 0, blink: now % 3200 < 120, deposit: pig.deposit });
     ctx.restore();
@@ -431,7 +473,7 @@ export function createCoinCatch(field: HTMLElement, canvas: HTMLCanvasElement, c
     ctx.fillStyle = colors.floor;
     ctx.fillRect(0, H - 4, W, 4);
 
-    if (phase === 'ready') {
+    if (phase === 'ready' && cb.readyPanelBottom) {
       // A few coins and a bill hanging between the start panel and the pig, so
       // the field reads as a game before anyone presses Play. Skipped when the
       // field is too short to fit them.
