@@ -1,14 +1,28 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatWhole } from '../lib/utils';
+
+// Long amounts step down in size so they stay on one line in the card.
+function amountSize(text: string): string {
+  if (text.length <= 12) return 'text-[3.4rem]';
+  if (text.length <= 15) return 'text-[2.6rem]';
+  return 'text-[2rem]';
+}
 
 export function PaydayBanner() {
   const paydayBanner       = useStore(s => s.paydayBanner);
   const dismissPaydayBanner = useStore(s => s.dismissPaydayBanner);
   const privacyMode        = useStore(s => s.privacyMode);
   const navigate           = useNavigate();
+
+  const todayLabel = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  // Cents only when the pay actually has them ("R 50 000", not "R 50 000,00").
+  const amountText = !paydayBanner ? ''
+    : privacyMode || !Number.isInteger(paydayBanner.amount)
+      ? formatCurrency(paydayBanner.amount, privacyMode)
+      : formatWhole(paydayBanner.amount);
 
   const handleFundVaults = () => {
     dismissPaydayBanner();
@@ -34,42 +48,56 @@ export function PaydayBanner() {
             className="w-full max-w-sm"
             onClick={e => e.stopPropagation()}
           >
-            <div className="bg-black border-4 border-action-primary rounded-3xl p-6 shadow-[8px_8px_0px_0px_var(--color-action-primary)]">
-
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 bg-action-primary border-4 border-black rounded-xl flex items-center justify-center shrink-0">
-                  <DollarSign size={24} strokeWidth={3} className="text-primary-contrast" />
-                </div>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-white/40 leading-none mb-0.5">Payday</p>
-                  <p className="text-[15px] font-black uppercase tracking-tight text-white leading-none">Take-Home Landed</p>
-                </div>
+            {/* The bold colour card, same family as the dashboard's daily card:
+                the account's own colour, an ink edge and a hard ink shadow.
+                Edge and shadow are inline so the restyle's global border rules
+                (which thin and soften borders) cannot reach them. */}
+            <div
+              className="bg-action-primary text-primary-contrast rounded-[1.6rem] p-6"
+              style={{ border: '1.5px solid #11110F', boxShadow: '7px 7px 0 #11110F' }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest">Payday</p>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full text-action-primary"
+                  style={{ background: '#11110F' }}
+                >
+                  {todayLabel}
+                </span>
               </div>
 
-              <p className="text-5xl font-black italic tracking-tighter text-action-primary tabular-nums leading-none mb-1">
-                {formatCurrency(paydayBanner.amount, privacyMode)}
-              </p>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-6">
-                Added to your liquid balance
+              <p className="text-[1.4rem] font-extrabold tracking-tight leading-tight mt-6">Your pay is in</p>
+
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, duration: 0.45, ease: 'easeOut' }}
+                className={`${amountSize(amountText)} font-extrabold tracking-tighter tabular-nums leading-none mt-2 [overflow-wrap:anywhere]`}
+              >
+                {amountText}
+              </motion.p>
+              <p className="text-sm font-semibold opacity-75 mt-3">
+                Added to your balance.
               </p>
 
-              <div className="flex gap-3">
+              <div className="flex gap-2.5 mt-6">
                 <button
                   type="button"
                   onClick={handleFundVaults}
-                  className="flex-1 h-13 bg-action-primary border-4 border-black rounded-2xl text-primary-contrast font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                  className="flex-1 h-12 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-opacity hover:opacity-90"
+                  style={{ background: '#11110F', color: '#FFFDF8' }}
                 >
-                  Fund Vaults
+                  Fund vaults
                 </button>
                 <button
                   type="button"
                   onClick={dismissPaydayBanner}
-                  className="h-13 px-5 border-4 border-white/20 rounded-2xl text-white/50 font-black uppercase text-[11px] tracking-widest hover:border-white/40 hover:text-white/80 transition-colors"
+                  className="h-12 px-5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-colors hover:bg-black/10"
+                  style={{ border: '1.5px solid currentColor' }}
                 >
                   Later
                 </button>
               </div>
-
             </div>
           </motion.div>
         </motion.div>
