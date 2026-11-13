@@ -2,65 +2,49 @@ import { ArrowLeft, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import CoinCatch from '../components/CoinCatch';
 
+// A compact card: the coin catch game screen on top, then what happened and a
+// way out. Short enough that on a phone the game, the words and both buttons
+// all sit above the bottom menu without scrolling.
 export default function NotFound() {
   const { pathname } = useLocation();
 
   return (
-    <section className="min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center gap-6 py-4">
-      <div className="w-full max-w-xl bg-surface border-4 border-border rounded-[2rem] shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden">
-        {/* The numerals carry the page. A dotted field behind them gives the
-            block some weight without adding another competing element. */}
-        <div className="dot-bg border-b-4 border-border px-6 py-7 sm:py-9 text-center">
-          <span className="inline-flex px-3 py-1 mb-4 bg-action-primary border-2 border-black rounded-full font-mono text-[10px] font-black uppercase tracking-widest text-primary-contrast">
-            Error 404
-          </span>
-          <p className="font-black italic leading-none tracking-tighter text-[4.5rem] sm:text-[6.5rem] text-action-primary [text-shadow:5px_5px_0_var(--border-primary)]">
-            404
-          </p>
-        </div>
+    <section className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-4">
+      <div
+        className="w-full max-w-xl bg-surface rounded-[1.6rem]"
+        style={{ padding: '14px 14px 20px', border: '1.5px solid #11110F', boxShadow: '7px 7px 0 #11110F', marginRight: 7 }}
+      >
+        <CoinCatch />
 
-        <div className="px-6 py-7 sm:px-10 text-center">
-          <h1 className="text-3xl sm:text-4xl font-black italic uppercase tracking-tight text-text-main">
+        <div className="mt-4 px-1.5">
+          <h1 className="text-[1.6rem] sm:text-[2rem] font-extrabold tracking-tight leading-tight text-text-main">
             Page not found
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-sm font-bold leading-relaxed text-text-muted">
-            This address may be incorrect, or the page may have moved.
-          </p>
-
           {/* Showing the path that failed turns a dead end into something the
               person can actually check or correct. */}
-          <div className="mt-5 inline-flex max-w-full items-baseline gap-2 rounded-xl border-[3px] border-border bg-input px-3 py-2">
-            <span className="shrink-0 font-mono text-[10px] font-black uppercase tracking-widest text-text-muted">
-              Path
-            </span>
-            <span className="min-w-0 truncate font-mono text-xs font-bold text-text-main">
-              {pathname}
-            </span>
-          </div>
+          <p className="mt-1 text-[15px] font-semibold text-text-muted">Maybe a typo, or the page moved.</p>
+          <p className="mt-2.5 inline-block max-w-full truncate align-top font-mono text-[11px] font-bold text-text-main px-2.5 py-1 rounded-lg bg-input" style={{ border: '1.5px dashed currentColor' }}>{pathname}</p>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-2 gap-3">
             <Link
               to="/"
-              className="dark:bg-action-primary dark:text-primary-contrast dark:border-action-primary dark:shadow-none dark:hover:translate-x-0 dark:hover:translate-y-0 dark:hover:brightness-110 min-w-0 flex items-center justify-center gap-2 h-14 bg-action-primary border-4 border-black rounded-2xl text-sm font-black uppercase tracking-widest text-primary-contrast shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+              className="min-w-0 flex items-center justify-center gap-2 h-12 rounded-xl bg-action-primary text-primary-contrast text-[11px] font-bold uppercase tracking-widest transition-opacity hover:opacity-90"
+              style={{ border: '1.5px solid #11110F' }}
             >
-              <Home size={18} strokeWidth={3} aria-hidden="true" />
+              <Home size={16} strokeWidth={2.5} aria-hidden="true" />
               Dashboard
             </Link>
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="min-w-0 flex items-center justify-center gap-2 h-14 bg-input border-4 border-border rounded-2xl text-sm font-black uppercase tracking-widest text-text-main shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+              className="min-w-0 flex items-center justify-center gap-2 h-12 rounded-xl text-[11px] font-bold uppercase tracking-widest text-text-main transition-colors hover:bg-input"
+              style={{ border: '1.5px solid currentColor' }}
             >
-              <ArrowLeft size={18} strokeWidth={3} aria-hidden="true" />
+              <ArrowLeft size={16} strokeWidth={2.5} aria-hidden="true" />
               Go back
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Below the way out, so anyone who just wants to leave is not slowed down. */}
-      <div className="w-full max-w-xl">
-        <CoinCatch />
       </div>
     </section>
   );
